@@ -1,0 +1,39 @@
+plugins {
+    `java-library`
+    id("maven-publish")
+}
+
+allprojects {
+    group = "com.onetattva.infron"
+    version = "0.1.0"
+
+    repositories {
+        mavenCentral()
+    }
+
+    tasks.withType<JavaCompile> {
+        options.release.set(25)
+    }
+}
+
+subprojects {
+    apply(plugin = "java-library")
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+        }
+    }
+    repositories {
+        maven {
+            name = "github"
+            url = uri("https://maven.pkg.github.com/onetattva/infron-core")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}

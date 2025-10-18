@@ -1,0 +1,49 @@
+[versions]
+spring-boot = "3.5.6"
+spring-dep-mgmt = "1.1.7"
+springdoc = "2.8.13"
+quarkus = "3.28.3"
+micronaut = "4.8.0"
+micronaut-app = "4.5.5"
+micrometer = "1.15.5"
+postgres = "42.7.8"
+flyway = "11.14.1"
+otel = "2.18.1"
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+micronaut-app = { id = "io.micronaut.application", version.ref = "micronaut-app"}
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dep-mgmt = { id = "io.spring.dependency-management", version.ref = "spring-dep-mgmt" }
+
+[libraries]
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security", version.ref = "spring-boot" }
+spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "spring-boot" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "spring-boot" }
+spring-boot-starter-jdbc = { module = "org.springframework.boot:spring-boot-starter-data-jdbc", version.ref = "spring-boot" }
+springdoc-openapi-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+# Quarkus
+quarkus-bom = { module = "io.quarkus:quarkus-bom", version.ref = "quarkus" }
+quarkus-kafka-client = { module = "io.quarkus:quarkus-kafka-client" }
+quarkus-grpc = { module = "io.quarkus:quarkus-grpc" }
+quarkus-opentelemetry = { module = "io.quarkus:quarkus-opentelemetry" }
+quarkus-arc = { module = "io.quarkus:quarkus-arc" }
+quarkus-scheduler = { module = "io.quarkus:quarkus-scheduler" }
+quarkus-redis-client = { module = "io.quarkus:quarkus-redis-client" }
+
+# Micronaut
+micronaut-bom = { module = "io.micronaut:micronaut-bom", version.ref = "micronaut" }
+
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+
+
+[bundles]
+spring-boot-starter = ["spring-boot-starter-web", "spring-boot-starter-security", "spring-boot-starter-oauth2-resource-server",
+    "spring-boot-starter-actuator", "springdoc-openapi-webmvc-ui"]
+spring-boot-jdbc = ["spring-boot-starter-jdbc", "postgresql", "flyway-core", "flyway-postgres"]

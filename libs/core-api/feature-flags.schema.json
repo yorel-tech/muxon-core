@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FeatureFlags",
+  "type": "object",
+  "properties": {
+    "branding": {
+      "type": "boolean"
+    },
+    "advancedRbac": {
+      "type": "boolean"
+    },
+    "saml": {
+      "type": "boolean"
+    },
+    "scim": {
+      "type": "boolean"
+    },
+    "auditExport": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

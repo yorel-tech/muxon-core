@@ -1,0 +1,9 @@
+
+services:
+  keycloak:
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ${PWD}/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/realm-infron-dev.json:ro

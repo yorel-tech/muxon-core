@@ -1,0 +1,1 @@
+Place .proto files here and generate stubs.

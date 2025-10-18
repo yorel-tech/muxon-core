@@ -1,0 +1,155 @@
+# ========================================
+# IntelliJ IDEA
+# ========================================
+.idea/
+*.iml
+*.iws
+out/
+.idea_modules/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/dictionaries
+.idea/**/libraries
+.idea/**/shelf/
+.idea/**/gradle.xml
+.idea/**/compiler.xml
+.idea/**/misc.xml
+.idea/**/vcs.xml
+.idea/**/modules.xml
+.idea/**/jarRepositories.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+
+# IntelliJ logs
+.idea/**/httpRequests/
+.idea/caches/
+.idea/shelf/
+
+# ========================================
+# Gradle
+# ========================================
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Local Gradle configuration
+gradle-app.setting
+.gradle/
+**/build/
+**/out/
+
+# Avoid including local Gradle properties (contains machine paths, credentials, etc.)
+gradle.properties
+
+# ========================================
+# Java
+# ========================================
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ========================================
+# Logs, temp, OS junk
+# ========================================
+*.log
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ========================================
+# JetBrains Rider / Android Studio
+# ========================================
+.idea/caches/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# ========================================
+# Optional: VS Code if used
+# ========================================
+.vscode/
+
+# ========================================
+# Optional: Test Reports
+# ========================================
+test-results/
+reports/
+
+# ========================================
+# Node.js / Package managers
+# ========================================
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json.*.backup
+.npm/
+.pnpm-store/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# ========================================
+# Next.js
+# ========================================
+.next/
+.next-static/
+.next-turbo/
+out/                  # next export output
+.vercel/              # Vercel project/linking info
+*.next-build-stats.json
+
+# SWC / Turbopack / Turborepo
+.swc/
+.turbo/
+**/.cache/
+turbo-*cache/
+
+# ========================================
+# TypeScript / Lint / Test
+# ========================================
+*.tsbuildinfo
+.eslintcache
+coverage/
+nyc_output/
+
+# Playwright / Cypress (if used)
+playwright-report/
+test-results/
+.cypress-cache/
+cypress/screenshots/
+cypress/videos/
+
+# Storybook (if used)
+storybook-static/
+
+# ========================================
+# Env files (keep secrets out of git)
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# (Commit a template instead)
+# .env.example
