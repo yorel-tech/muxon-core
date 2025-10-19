@@ -7,6 +7,8 @@ servers:
 paths:
   /healthz:
     get:
+      tags:
+        - Health
       summary: Health check
       responses:
         '200':
@@ -17,6 +19,8 @@ paths:
                 $ref: '#/components/schemas/Health'
   /api/v1/projects:
     get:
+      tags:
+        - Projects
       summary: List projects
       responses:
         '200':
@@ -28,6 +32,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Project'
     post:
+      tags:
+        - Projects
       summary: Create project
       requestBody:
         required: true

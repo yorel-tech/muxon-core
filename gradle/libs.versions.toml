@@ -9,12 +9,14 @@ micrometer = "1.15.5"
 postgres = "42.7.8"
 flyway = "11.14.1"
 otel = "2.18.1"
+openapi = "7.16.0"
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 micronaut-app = { id = "io.micronaut.application", version.ref = "micronaut-app"}
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dep-mgmt = { id = "io.spring.dependency-management", version.ref = "spring-dep-mgmt" }
+openapi-generator = { id = "org.openapi.generator", version.ref = "openapi" }
 
 [libraries]
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }

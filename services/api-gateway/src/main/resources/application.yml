@@ -26,3 +26,15 @@ spring:
           issuer-uri: http://localhost:8085/realms/infron-dev
           # Optional: if you want to enforce audience (recommended)
           # We'll add a custom validator in SecurityConfig
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.web: DEBUG
+
+  file:
+    name: logs/infron-core.log    # writes to this file
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
