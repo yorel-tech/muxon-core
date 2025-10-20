@@ -18,6 +18,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Build
         run: ./gradlew build -x test
       - name: Unit tests
