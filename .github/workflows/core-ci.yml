@@ -35,6 +35,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Publish artifacts (GitHub Packages)
         env:
           GITHUB_ACTOR: ${{ github.actor }}
