@@ -27,6 +27,7 @@ publishing {
         }
     }
     repositories {
+
         maven {
             name = "github"
             url = uri("https://maven.pkg.github.com/onetattva/infron-core")

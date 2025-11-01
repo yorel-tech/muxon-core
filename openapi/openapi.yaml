@@ -2,52 +2,24 @@ openapi: 3.0.3
 info:
   title: Infron Core API
   version: 0.1.0
+  description: Core API resources for tenants (organizations) — CRUD, list with pagination and filters.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  contact:
+    name: API Support
+    url: http://www.onetattva.com/support
+    email: support@onetattva.com
+
 servers:
-  - url: http://localhost:8080
-paths:
-  /healthz:
-    get:
-      tags:
-        - Health
-      summary: Health check
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Health'
-  /api/v1/projects:
-    get:
-      tags:
-        - Projects
-      summary: List projects
-      responses:
-        '200':
-          description: Project list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Project'
-    post:
-      tags:
-        - Projects
-      summary: Create project
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectCreate'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
+  - url: http://api.infron.onetattva.com/v1
+
+tags:
+  - name: Tenants
+    description: Tenant / Organization lifecycle operations
+  - name: Health
+    description: Health endpoints
+
 components:
   schemas:
     Health:
@@ -55,15 +27,48 @@ components:
       properties:
         status:
           type: string
-    Project:
-      type: object
-      properties:
-        id: { type: string }
-        name: { type: string }
-        orgId: { type: string }
-    ProjectCreate:
-      type: object
-      required: [name]
-      properties:
-        name: { type: string }
-        orgId: { type: string }
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth/token
+          scopes:
+            admin: "Full admin access"
+            read: "Read-only access"
+
+# Apply security globally: either BearerAuth OR ApiKeyHeader OR OAuth2 (clientCredentials w/ scopes)
+security:
+  - BearerAuth: []
+  - ApiKeyHeader: []
+  - OAuth2: ["read"]
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealthStatus
+      tags:
+        - Health
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+  /tenants:
+    $ref: './tenants.yaml#/paths/~1tenants'
+  /tenants/{tenantId}:
+    $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}'

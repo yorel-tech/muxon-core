@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: Infron API
+  version: 0.1.0
+  description: Tenant API
+
+security:
+  - BearerAuth: []
+
+components:
+  parameters:
+    tenantId:
+      name: tenantId
+      in: path
+      description: UUID of the tenant
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Tenant:
+      type: object
+      required:
+        - id
+        - name
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "c9b1f1f4-1a2b-4c3d-9e01-0123456789ab"
+        name:
+          type: string
+          example: "acme-corp"
+        displayName:
+          type: string
+          example: "ACME Corporation"
+        status:
+          type: string
+          description: Tenant lifecycle status
+          enum:
+            - active
+            - inactive
+            - suspended
+          example: active
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Arbitrary key/value metadata
+          example:
+            region: "eu-west-1"
+            billing_account: "BA-12345"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-10-01T12:34:56Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-10-20T09:10:11Z"
+
+    TenantCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Unique name/slug for the tenant
+          example: "acme-corp"
+        displayName:
+          type: string
+          example: "ACME Corporation"
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    TenantUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        contact:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+
+    TenantList:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 125
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tenant'
+
+paths:
+  /tenants:
+    get:
+      tags:
+        - Tenants
+      summary: List tenants
+      description: Returns a paginated list of tenants. Supports basic filtering by name and sorting.
+      operationId: listTenants
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: './commons.yaml#/components/parameters/sort'
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by tenant name (exact or partial depending on implementation)
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, suspended]
+          description: Filter by tenant status
+      responses:
+        '200':
+          description: Paginated list of tenants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantList'
+              examples:
+                sample:
+                  value:
+                    total: 2
+                    page: 1
+                    perPage: 20
+                    items:
+                      - id: "c9b1f1f4-1a2b-4c3d-9e01-0123456789ab"
+                        name: "acme-corp"
+                        displayName: "ACME Corporation"
+                        status: active
+                        createdAt: "2025-10-01T12:34:56Z"
+                      - id: "d1f2e3d4-5a6b-7c8d-9e00-abcdef123456"
+                        name: "globex"
+                        displayName: "Globex"
+                        status: inactive
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Tenants
+      summary: Create a tenant
+      description: Create a new tenant (organization). Returns the created tenant.
+      operationId: createTenant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreate'
+            examples:
+              createExample:
+                value:
+                  name: "acme-corp"
+                  displayName: "ACME Corporation"
+                  contact:
+                    email: "admin@acme.example"
+                    phone: "+1-555-123-4567"
+                  metadata:
+                    billing_account: "BA-12345"
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+              examples:
+                created:
+                  value:
+                    id: "c9b1f1f4-1a2b-4c3d-9e01-0123456789ab"
+                    name: "acme-corp"
+                    displayName: "ACME Corporation"
+                    metadata:
+                      billing_account: "BA-12345"
+                    status: active
+                    createdAt: "2025-10-28T10:00:00Z"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}:
+    parameters:
+      - $ref: '#/components/parameters/tenantId'
+
+    get:
+      tags:
+        - Tenants
+      summary: Get tenant details
+      operationId: getTenant
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+              examples:
+                tenant:
+                  value:
+                    id: "c9b1f1f4-1a2b-4c3d-9e01-0123456789ab"
+                    name: "acme-corp"
+                    displayName: "ACME Corporation"
+                    status: active
+                    metadata:
+                      region: "eu-west-1"
+                    createdAt: "2025-10-01T12:34:56Z"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Tenants
+      summary: Update tenant
+      description: Update entire tenant resource. Provide full TenantUpdate payload (fields not provided may be reset depending on implementation).
+      operationId: updateTenant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdate'
+            examples:
+              updateExample:
+                value:
+                  displayName: "ACME Corporation (New)"
+                  metadata:
+                    region: "eu-west-2"
+      responses:
+        '200':
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Tenants
+      summary: Partially update tenant
+      description: Apply partial changes to tenant (JSON Merge Patch or JSON Patch depending on implementation).
+      operationId: patchTenant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdate'
+            examples:
+              patchExample:
+                value:
+                  displayName: "ACME Corporation (New)"
+      responses:
+        '200':
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Tenants
+      summary: Delete a tenant
+      description: Remove a tenant. Implementations may choose soft-delete and return 204.
+      operationId: deleteTenant
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Tenant deleted (no content)
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

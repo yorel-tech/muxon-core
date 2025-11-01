@@ -1,4 +1,5 @@
 [versions]
+java = "25"
 spring-boot = "3.5.6"
 spring-dep-mgmt = "1.1.7"
 springdoc = "2.8.13"
@@ -9,7 +10,18 @@ micrometer = "1.15.5"
 postgres = "42.7.8"
 flyway = "11.14.1"
 otel = "2.18.1"
-openapi = "7.16.0"
+openapi = "7.17.0"
+jackson = "2.20"
+spring-web = "6.2.12"
+servlet-api = "6.1.0"
+swagger = "2.2.40"
+
+# Plugin versions
+node-gradle = "7.1.0"
+nodejs = "24.11.0"
+npm = "11.6.2"
+# CLI tools (node-based)
+redocly-cli = "2.10.0"
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
@@ -17,6 +29,7 @@ micronaut-app = { id = "io.micronaut.application", version.ref = "micronaut-app"
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dep-mgmt = { id = "io.spring.dependency-management", version.ref = "spring-dep-mgmt" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle" }
 
 [libraries]
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
@@ -24,7 +37,12 @@ spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "spring-boot" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-boot-starter-jdbc = { module = "org.springframework.boot:spring-boot-starter-data-jdbc", version.ref = "spring-boot" }
+spring-boot-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring-boot" }
 springdoc-openapi-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
+spring-web = { module = "org.springframework:spring-web", version.ref = "spring-web" }
+servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "servlet-api" }
+swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
