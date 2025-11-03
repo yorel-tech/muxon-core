@@ -1,8 +1,14 @@
 openapi: 3.0.3
 info:
-  title: Infron API
+  title: Infron Tenant API
   version: 0.1.0
-  description: Tenant API
+  description: Tenant API for managing organizations
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://api.infron.onetattva.com/v1
 
 security:
   - BearerAuth: []
@@ -115,7 +121,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tenant'
-
+            
 paths:
   /tenants:
     get:
@@ -325,6 +331,94 @@ paths:
       responses:
         '204':
           description: Tenant deleted (no content)
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+  /tenants/{tenantId}/settings:
+    get:
+      tags:
+        - Tenants
+      summary: Get tenant settings
+      operationId: getTenantSettings
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant settings
+          content:
+            application/json:
+              schema:
+                $ref: './tenant_settings.yaml#/TenantSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Tenants
+      summary: Replace tenant settings
+      operationId: replaceTenantSettings
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './tenant_settings.yaml#/TenantSettings'
+      responses:
+        '200':
+          description: Updated tenant settings
+          content:
+            application/json:
+              schema:
+                $ref: './tenant_settings.yaml#/TenantSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Tenants
+      summary: Partially update tenant settings
+      operationId: updateTenantSettings
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './tenant_settings.yaml#/TenantSettings'
+      responses:
+        '200':
+          description: Updated tenant settings
+          content:
+            application/json:
+              schema:
+                $ref: './tenant_settings.yaml#/TenantSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':

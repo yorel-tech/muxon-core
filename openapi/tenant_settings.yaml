@@ -1,0 +1,274 @@
+# File: components/schemas/TenantSettings.yaml
+TenantSettings:
+  type: object
+  description: Tenant-scoped configuration grouping for notifications, leases, security, identity, compute, storage, networking, quotas, observability, and UI.
+  properties:
+    notifications:
+      $ref: '#/NotificationSettings'
+    lease:
+      $ref: '#/LeaseSettings'
+    passwordPolicy:
+      $ref: '#/PasswordPolicySettings'
+    idp:
+      $ref: '#/IdpSettings'
+    user:
+      $ref: '#/UserSettings'
+    compute:
+      $ref: '#/ComputeSettings'
+    storage:
+      $ref: '#/StorageSettings'
+    network:
+      $ref: '#/NetworkSettings'
+    quota:
+      $ref: '#/QuotaSettings'
+    audit:
+      $ref: '#/AuditSettings'
+    observability:
+      $ref: '#/ObservabilitySettings'
+    billing:
+      $ref: '#/BillingSettings'
+    ui:
+      $ref: '#/UISettings'
+  additionalProperties: false
+
+# Notification settings
+NotificationSettings:
+  type: object
+  properties:
+    fromEmail:
+      type: string
+      format: email
+    subjectPrefix:
+      type: string
+    senderList:
+      type: array
+      items:
+        type: string
+        format: email
+    notifyOnEvents:
+      type: array
+      items:
+        type: string
+    preferredChannels:
+      type: array
+      items:
+        type: string
+        enum: [email, webhook, slack, sms]
+    webhookEndpoints:
+      type: array
+      items:
+        type: object
+        properties:
+          url:
+            type: string
+            format: uri
+          secret:
+            type: string
+            writeOnly: true
+    digestFrequency:
+      type: string
+      enum: [immediate, hourly, daily, weekly]
+  additionalProperties: false
+
+# Lease settings
+LeaseSettings:
+  type: object
+  properties:
+    runtimeLeaseDays:
+      type: integer
+      minimum: 0
+    storageLeaseDays:
+      type: integer
+      minimum: 0
+    templateLeaseDays:
+      type: integer
+      minimum: 0
+    actionOnRuntimeLeaseExpiry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ suspend, poweroff ]
+    actionOnStorageLeaseExpiry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ snapshot, archive, delete ]
+    notifyBeforeExpiryDays:
+      type: integer
+      minimum: 0
+    retentionDaysAfterLeaseExpiry:
+      type: integer
+      minimum: 0
+  additionalProperties: false
+
+# Password policy settings
+PasswordPolicySettings:
+  type: object
+  properties:
+    minLength:
+      type: integer
+      minimum: 6
+    requireUppercase:
+      type: boolean
+    requireLowercase:
+      type: boolean
+    requireDigit:
+      type: boolean
+    requireSymbol:
+      type: boolean
+    passwordExpiryDays:
+      type: integer
+      minimum: 0
+    reuseHistoryCount:
+      type: integer
+      minimum: 0
+  additionalProperties: false
+
+SecurityPolicySettings:
+  properties:
+    lockAfterFailedAttempts:
+      type: boolean
+    maxFailedAttempts:
+      type: integer
+      minimum: 0
+    lockDurationMinutes:
+      type: integer
+      minimum: 0
+    twoFactorRequired:
+      type: boolean
+    requireMfa:
+      type: boolean
+    sessionIdleTimeoutMinutes:
+      type: integer
+      minimum: 0
+    sessionMaxLifetimeHours:
+      type: integer
+      minimum: 0
+  additionalProperties: false
+
+# IdP settings
+IdpSettings:
+  type: object
+  properties:
+    type:
+      type: string
+      enum: [oidc, saml, ldap, internal]
+    issuerUrl:
+      type: string
+      format: uri
+    clientId:
+      type: string
+      writeOnly: true
+    clientSecret:
+      type: string
+      writeOnly: true
+    metadataUrl:
+      type: string
+      format: uri
+    autoProvisionUsers:
+      type: boolean
+    groupMapping:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    justInTimeProvisioning:
+      type: boolean
+    mfaEnforced:
+      type: boolean
+  additionalProperties: false
+
+# User settings
+UserSettings:
+  type: object
+  properties:
+    maxConsolesPerUser:
+      type: integer
+      minimum: 0
+    maxLoginSessionsPerUser:
+      type: integer
+      minimum: 0
+    maxRunningVmsPerUser:
+      type: integer
+      minimum: 0
+    maxRunningContainersPerUser:
+      type: integer
+      minimum: 0
+  additionalProperties: false
+
+# Audit settings
+AuditSettings:
+  type: object
+  properties:
+    auditRetentionDays:
+      type: integer
+      minimum: 0
+    enableApiAudit:
+      type: boolean
+    enableCmdAudit:
+      type: boolean
+    logExportDestination:
+      type: string
+  additionalProperties: false
+
+# Observability settings
+ObservabilitySettings:
+  type: object
+  properties:
+    enableMetricsExport:
+      type: boolean
+    metricsRetentionDays:
+      type: integer
+      minimum: 0
+    alertPolicy:
+      type: object
+      additionalProperties:
+        type: integer
+    integrationTargets:
+      type: array
+      items:
+        type: string
+    notificationChannels:
+      type: array
+      items:
+        type: string
+  additionalProperties: false
+
+# Billing settings
+BillingSettings:
+  type: object
+  properties:
+    billingModel:
+      type: string
+      enum: [pay-as-you-go, subscription, reserved]
+    creditLimitUsd:
+      type: number
+      minimum: 0
+    autoSuspendOnCreditExceeded:
+      type: boolean
+    showUsageInPortal:
+      type: boolean
+  additionalProperties: false
+
+# UI / Branding settings
+UISettings:
+  type: object
+  properties:
+    uiTheme:
+      type: string
+      enum: [light, dark, custom]
+    customCssUrl:
+      type: string
+      format: uri
+    supportContacts:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+  additionalProperties: false
