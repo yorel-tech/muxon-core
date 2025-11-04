@@ -13,14 +13,6 @@ TenantSettings:
       $ref: '#/IdpSettings'
     user:
       $ref: '#/UserSettings'
-    compute:
-      $ref: '#/ComputeSettings'
-    storage:
-      $ref: '#/StorageSettings'
-    network:
-      $ref: '#/NetworkSettings'
-    quota:
-      $ref: '#/QuotaSettings'
     audit:
       $ref: '#/AuditSettings'
     observability:

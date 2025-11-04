@@ -6,6 +6,22 @@ components:
       bearerFormat: JWT
 
   parameters:
+    tenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Tenant UUID
+    projectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project UUID
     page:
       name: page
       in: query
@@ -34,6 +50,44 @@ components:
         type: string
 
   schemas:
+    EntityReference:
+      type: object
+      description: >
+        Reference object used to describe any Infron entity lie datacenter, tenant, user, role etc.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      example:
+        id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+        name: "acme"
+    ResourceLimits:
+      type: object
+      description: >
+        Resource limits for a tenant or project. Server must validate that
+        project limits do not exceed tenant/datacenter grants.
+      properties:
+        maxCpus:
+          type: integer
+          minimum: 0
+        maxMemoryGb:
+          type: integer
+          minimum: 0
+        maxStorageGb:
+          type: integer
+          minimum: 0
+        maxVms:
+          type: integer
+          minimum: 0
+        maxVolumes:
+          type: integer
+          minimum: 0
+        maxLoadBalancers:
+          type: integer
+          minimum: 0
+
     Error:
       type: object
       properties:

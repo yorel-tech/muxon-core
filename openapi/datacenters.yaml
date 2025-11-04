@@ -1,0 +1,523 @@
+openapi: 3.0.3
+info:
+  title: Infron Datacenters & Tenant Grants API
+  version: 2025-11-03
+  description: Datacenter/provider capability definitions and Tenant→Datacenter grant (quotas & feature access) management.
+
+components:
+  parameters:
+    dcId:
+      name: datacenterId
+      in: path
+      required: true
+      description: Datacenter UUID
+      schema:
+        type: string
+        format: uuid
+    tenantId:
+      name: tenantId
+      in: path
+      required: true
+      description: Tenant UUID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    DatacenterCapacity:
+      type: object
+      properties:
+        totalCpus:
+          type: integer
+          minimum: 0
+          example: 1000
+        totalMemoryGb:
+          type: integer
+          minimum: 0
+          example: 4096
+        totalStorageGb:
+          type: integer
+          minimum: 0
+          example: 20000
+
+    DatacenterSettings:
+      type: object
+      description: Provider-side defaults & capability descriptors for a datacenter.
+      properties:
+        defaultCpuOvercommitRatio:
+          type: number
+          minimum: 0
+          example: 4.0
+        defaultMemoryOvercommitRatio:
+          type: number
+          minimum: 0
+          example: 1.5
+        vmClasses:
+          type: array
+          items:
+            type: string
+          example: ["small","medium","large"]
+        storageClasses:
+          type: array
+          items:
+            type: string
+          example: ["gold","silver"]
+        networkDomains:
+          type: array
+          items:
+            type: string
+          example: ["private","public"]
+        providerType:
+          $ref: '#/components/schemas/DatacenterType'
+      additionalProperties: false
+
+    DatacenterType:
+      type: string
+      enum: [ kvm, vcenter, k8s, mixed ]
+      example: kvm
+
+    DatacenterFeature:
+      type: string
+      enum: [ k8s, loadBalancer, publicIp, snapshots ]
+
+    Datacenter:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+        name:
+          type: string
+          example: "prod-east-1"
+        description:
+          type: string
+        capacity:
+          $ref: '#/components/schemas/DatacenterCapacity'
+        settings:
+          $ref: '#/components/schemas/DatacenterSettings'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DatacenterCreate:
+      type: object
+      required:
+        - name
+        - providerType
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        providerType:
+          $ref: '#/components/schemas/DatacenterType'
+        settings:
+          $ref: '#/components/schemas/DatacenterSettings'
+
+    DatacenterUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        settings:
+          $ref: '#/components/schemas/DatacenterSettings'
+
+    DatacenterList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Datacenter'
+
+    # Tenant-level binding (grant)
+    TenantDatacenterGrant:
+      type: object
+      required:
+        - tenantId
+        - datacenterId
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        access:
+          type: boolean
+          description: Whether tenant has access to the datacenter
+          default: true
+        limits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        enabledFeatures:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatacenterFeature'
+        overrideSettings:
+          $ref: '#/components/schemas/DatacenterSettings'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    TenantDatacenterGrantCreate:
+      type: object
+      required:
+        - tenantId
+        - datacenterId
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        access:
+          type: boolean
+          default: true
+        limits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        enabledFeatures:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatacenterFeature'
+        overrideSettings:
+          $ref: '#/components/schemas/DatacenterSettings'
+
+    TenantDatacenterGrantList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantDatacenterGrant'
+
+paths:
+
+  # Provider datacenter management
+  /datacenters:
+    get:
+      tags: [Datacenters]
+      summary: List datacenters
+      operationId: listDatacenters
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - name: providerType
+          in: query
+          schema:
+            $ref: '#/components/schemas/DatacenterType'
+      responses:
+        '200':
+          description: Paginated datacenter list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterList'
+    post:
+      tags: [Datacenters]
+      summary: Create datacenter
+      operationId: createDatacenter
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterCreate'
+      responses:
+        '201':
+          description: Created datacenter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+
+  /datacenters/{datacenterId}:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: Get datacenter
+      operationId: getDatacenter
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Datacenter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [Datacenters]
+      summary: Replace datacenter
+      operationId: replaceDatacenter
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterUpdate'
+      responses:
+        '200':
+          description: Updated datacenter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+    patch:
+      tags: [Datacenters]
+      summary: Partially update datacenter
+      operationId: updateDatacenter
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterUpdate'
+      responses:
+        '200':
+          description: Updated datacenter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datacenter'
+    delete:
+      tags: [Datacenters]
+      summary: Delete datacenter
+      operationId: deleteDatacenter
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /datacenters/{datacenterId}/settings:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: Get datacenter settings
+      operationId: getDatacenterSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Datacenter settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterSettings'
+    put:
+      tags: [Datacenters]
+      summary: Replace datacenter settings
+      operationId: replaceDatacenterSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterSettings'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterSettings'
+    patch:
+      tags: [Datacenters]
+      summary: Partially update datacenter settings
+      operationId: updateDatacenterSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterSettings'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterSettings'
+
+  # Tenant <-> Datacenter bindings (grants)
+  /tenants/{tenantId}/datacenters:
+    parameters:
+      - $ref: '#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/page'
+      - $ref: './commons.yaml#/components/parameters/perPage'
+    get:
+      tags: [TenantDatacenters]
+      summary: List datacenters accessible to a tenant (with grants/limits)
+      operationId: listTenantDatacenters
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Grants list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDatacenterGrantList'
+    post:
+      tags: [TenantDatacenters]
+      summary: Grant tenant access to datacenter (create or replace)
+      operationId: createTenantDatacenterGrant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDatacenterGrantCreate'
+      responses:
+        '201':
+          description: Grant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDatacenterGrant'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}:
+    parameters:
+      - $ref: '#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [TenantDatacenters]
+      summary: Get tenant grant for a specific datacenter
+      operationId: getTenantDatacenterGrant
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenant datacenter grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDatacenterGrant'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [TenantDatacenters]
+      summary: Replace tenant datacenter grant
+      operationId: replaceTenantDatacenterGrant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDatacenterGrant'
+      responses:
+        '200':
+          description: Updated grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDatacenterGrant'
+    patch:
+      tags: [TenantDatacenters]
+      summary: Partially update tenant datacenter grant
+      operationId: updateTenantDatacenterGrant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDatacenterGrant'
+      responses:
+        '200':
+          description: Updated grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDatacenterGrant'
+    delete:
+      tags: [TenantDatacenters]
+      summary: Revoke tenant access to datacenter
+      operationId: deleteTenantDatacenterGrant
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Revoked
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/effective:
+    parameters:
+      - $ref: '#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [TenantDatacenters]
+      summary: Get effective settings for tenant in datacenter (merged datacenter defaults + override + tenant global)
+      operationId: getTenantDatacenterEffective
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Effective settings & limits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datacenter:
+                    $ref: '#/components/schemas/Datacenter'
+                  grant:
+                    $ref: '#/components/schemas/TenantDatacenterGrant'
+                  effectiveSettings:
+                    $ref: '#/components/schemas/DatacenterSettings'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

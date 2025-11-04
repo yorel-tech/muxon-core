@@ -7,13 +7,8 @@ info:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
-servers:
-  - url: http://api.infron.onetattva.com/v1
-
-security:
-  - BearerAuth: []
-
 components:
+
   parameters:
     tenantId:
       name: tenantId
@@ -223,7 +218,7 @@ paths:
 
   /tenants/{tenantId}:
     parameters:
-      - $ref: '#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/tenantId'
 
     get:
       tags:

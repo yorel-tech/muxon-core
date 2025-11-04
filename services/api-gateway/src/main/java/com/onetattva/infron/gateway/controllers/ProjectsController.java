@@ -12,12 +12,10 @@ import java.util.UUID;
 @RestController
 public class ProjectsController implements ProjectsApi {
 
-    @Override
     public ResponseEntity<List<Project>> apiV1ProjectsGet() {
 
         Project test = new Project();
         test.setName("First Project");
-        test.setId(UUID.randomUUID().toString());
         List<Project> projects = List.of(test);
         return new ResponseEntity<>(projects, HttpStatus.OK);
     }

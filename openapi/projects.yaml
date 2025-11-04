@@ -1,0 +1,368 @@
+# Projects API (OpenAPI fragment)
+# Schemas + paths for tenant-scoped Projects and project-level resource limits/membership.
+
+components:
+  schemas:
+
+    ProjectMember:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
+        role:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
+        joinedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Project:
+      type: object
+      required: [id, tenant, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+        tenant:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
+        name:
+          type: string
+          example: "webapp-team"
+        displayName:
+          type: string
+          example: "WebApp Team"
+        description:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            env: "production"
+            team: "webapp"
+        status:
+          type: string
+          enum: [active, suspended, archived]
+          example: active
+        owner:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
+        resourceLimits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+      additionalProperties: false
+
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "webapp-team"
+        displayName:
+          type: string
+        description:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        owner:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        resourceLimits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+
+    ProjectUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        description:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        owner:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        resourceLimits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+      additionalProperties: false
+
+    ProjectList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+
+paths:
+
+  /tenants/{tenantId}/projects:
+    get:
+      tags: [Projects]
+      summary: List projects within a tenant
+      operationId: listProjects
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated list of projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      summary: Create a project
+      operationId: createProject
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+
+  /tenants/{tenantId}/projects/{projectId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/projectId'
+
+    get:
+      tags: [Projects]
+      summary: Get a project
+      operationId: getProject
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    put:
+      tags: [Projects]
+      summary: Replace a project
+      operationId: replaceProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    patch:
+      tags: [Projects]
+      summary: Partially update a project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Projects]
+      summary: Delete a project
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  # Project members management
+  /tenants/{tenantId}/projects/{projectId}/members:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/projectId'
+    get:
+      tags: [Projects]
+      summary: List members of a project
+      operationId: listProjectMembers
+      responses:
+        '200':
+          description: Member list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectMember'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      summary: Add user to project
+      operationId: addProjectMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectMember'
+      responses:
+        '201':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectMember'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+
+  /tenants/{tenantId}/projects/{projectId}/members/{userId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/projectId'
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Projects]
+      summary: Remove user from project
+      operationId: removeProjectMember
+      responses:
+        '204':
+          description: Removed
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  # Optionally: project-level datacenter grants (if you want per-project-per-datacenter limits)
+  /tenants/{tenantId}/projects/{projectId}/datacenters/{datacenterId}/grant:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/projectId'
+      - name: datacenterId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: Get project datacenter grant (limits where project will run)
+      operationId: getProjectDatacenterGrant
+      responses:
+        '200':
+          description: Grant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datacenterId: { type: string, format: uuid }
+                  resourceLimits:
+                    $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Projects]
+      summary: Set/replace project datacenter grant
+      operationId: replaceProjectDatacenterGrant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resourceLimits:
+                  $ref: './commons.yaml#/components/schemas/ResourceLimits'
+      responses:
+        '200':
+          description: Updated grant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datacenterId: { type: string, format: uuid }
+                  resourceLimits:
+                    $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Projects]
+      summary: Remove project datacenter grant
+      operationId: deleteProjectDatacenterGrant
+      responses:
+        '204':
+          description: Removed
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
