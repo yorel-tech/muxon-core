@@ -1,0 +1,40 @@
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+spring:
+  main:
+    keep-alive: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/infron
+    username: infron
+    password: infron
+    driver-class-name: org.postgresql.Driver
+    jpa:
+      hibernate:
+        ddl-auto: none   # or update/create-drop as you prefer
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085/realms/infron-dev
+          # Optional: if you want to enforce audience (recommended)
+          # We'll add a custom validator in SecurityConfig
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.web: DEBUG
+
+  file:
+    name: logs/infron-core.log    # writes to this file
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

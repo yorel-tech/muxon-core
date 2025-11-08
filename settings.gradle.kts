@@ -2,6 +2,7 @@ rootProject.name = "infron-core"
 
 include(
     "libs:core-api",
+    "libs:core-persistence",
     "libs:core-proto",
     "libs:core-auth",
     "libs:core-spi",
