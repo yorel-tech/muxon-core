@@ -7,6 +7,8 @@ dependencies {
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))
+    implementation(project(":libs:core-persistence"))
+    implementation(project(":services:core-services"))
 
     implementation(libs.bundles.spring.boot.starter)
     implementation(libs.bundles.spring.boot.jdbc)

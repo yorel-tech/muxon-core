@@ -3,5 +3,7 @@ plugins {
 }
 
 dependencies {
-    api("org.springframework.boot:spring-boot-starter-data-jpa:${libs.versions.spring-boot.get()}")
+    api(libs.spring.boot.starter.data.jpa)
+    implementation(libs.vladmihalcea.hibernate.types)
+    implementation(project(":libs:core-api"))
 }

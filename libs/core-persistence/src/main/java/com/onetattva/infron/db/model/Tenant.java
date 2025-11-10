@@ -4,8 +4,12 @@
 package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.db.TenantStatus;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -26,8 +30,9 @@ public class Tenant {
     @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
     private TenantStatus status;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String metadata; // JSONB as String
+    private Map<String, String> metadata; // JSONB as String
 
     @Column(columnDefinition = "jsonb")
     private String settings; // JSONB as String
@@ -80,11 +85,11 @@ public class Tenant {
         this.status = status;
     }
 
-    public String getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(String metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 

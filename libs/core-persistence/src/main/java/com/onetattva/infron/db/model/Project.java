@@ -3,9 +3,14 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.ResourceLimits;
 import com.onetattva.infron.db.ProjectStatus;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -32,8 +37,9 @@ public class Project {
 
     private String description;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String labels; // JSONB as String
+    private Map<String, String> labels; // JSONB as String
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "project_status default 'active'")
@@ -43,8 +49,9 @@ public class Project {
     @JoinColumn(name = "owner")
     private TenantUser owner;
 
+    @Type(value = JsonBinaryType.class)
     @Column(name = "resource_limits", columnDefinition = "jsonb")
-    private String resourceLimits; // JSONB as String
+    private ResourceLimits resourceLimits; // JSONB as String
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -105,11 +112,11 @@ public class Project {
         this.description = description;
     }
 
-    public String getLabels() {
+    public Map<String, String> getLabels() {
         return labels;
     }
 
-    public void setLabels(String labels) {
+    public void setLabels(Map<String, String> labels) {
         this.labels = labels;
     }
 
@@ -129,11 +136,11 @@ public class Project {
         this.owner = owner;
     }
 
-    public String getResourceLimits() {
+    public ResourceLimits getResourceLimits() {
         return resourceLimits;
     }
 
-    public void setResourceLimits(String resourceLimits) {
+    public void setResourceLimits(ResourceLimits resourceLimits) {
         this.resourceLimits = resourceLimits;
     }
 

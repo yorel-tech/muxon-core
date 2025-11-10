@@ -8,6 +8,7 @@ include(
     "libs:core-spi",
     "libs:core-commons",
     "services:api-gateway",
+    "services:core-services",
     "services:orchestrator",
     "services:usage-billing",
     "services:agent",
