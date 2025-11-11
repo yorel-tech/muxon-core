@@ -1,6 +1,7 @@
 package com.onetattva.infron.services;
 
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.db.model.TenantEntity;
 import com.onetattva.infron.db.repository.TenantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class TenantsService {
     private TenantRepository tenantRepository;
 
     public Tenant createTenant(TenantCreate tenantCreate) {
-        com.onetattva.infron.db.model.Tenant entityTenant = new com.onetattva.infron.db.model.Tenant();
+        TenantEntity entityTenant = new TenantEntity();
         entityTenant.setId(UUID.randomUUID());
         entityTenant.setName(tenantCreate.getName());
         entityTenant.setDisplayName(tenantCreate.getDisplayName());
@@ -32,7 +33,7 @@ public class TenantsService {
         Instant now = Instant.now();
         entityTenant.setCreatedAt(now);
         entityTenant.setUpdatedAt(now);
-        com.onetattva.infron.db.model.Tenant saved = tenantRepository.save(entityTenant);
+        TenantEntity saved = tenantRepository.save(entityTenant);
         return mapEntityToApi(saved);
     }
 
@@ -41,14 +42,14 @@ public class TenantsService {
     }
 
     public Tenant getTenant(UUID tenantId) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow();
         return mapEntityToApi(entity);
     }
 
     public TenantList listTenants(Integer page, Integer perPage, String sort, String name, String status) {
         // TODO: Implement listing with filters and pagination
-        List<com.onetattva.infron.db.model.Tenant> entities = tenantRepository.findAll().stream()
+        List<TenantEntity> entities = tenantRepository.findAll().stream()
                 .limit(perPage)
                 .toList();
         List<Tenant> apiTenants = entities.stream()
@@ -63,7 +64,7 @@ public class TenantsService {
     }
 
     public Tenant patchTenant(UUID tenantId, TenantUpdate tenantUpdate) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow();
         if (tenantUpdate.getDisplayName() != null) {
             entity.setDisplayName(tenantUpdate.getDisplayName());
@@ -76,12 +77,12 @@ public class TenantsService {
             }
         }
         entity.setUpdatedAt(Instant.now());
-        com.onetattva.infron.db.model.Tenant saved = tenantRepository.save(entity);
+        TenantEntity saved = tenantRepository.save(entity);
         return mapEntityToApi(saved);
     }
 
     public Tenant updateTenant(UUID tenantId, TenantUpdate tenantUpdate) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow();
         entity.setDisplayName(tenantUpdate.getDisplayName());
         try {
@@ -90,19 +91,19 @@ public class TenantsService {
             // ignore
         }
         entity.setUpdatedAt(Instant.now());
-        com.onetattva.infron.db.model.Tenant saved = tenantRepository.save(entity);
+        TenantEntity saved = tenantRepository.save(entity);
         return mapEntityToApi(saved);
     }
 
     public TenantSettings getTenantSettings(UUID tenantId) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
         // TODO: Parse settings JSON and return proper TenantSettings object
         return new TenantSettings();
     }
 
     public TenantSettings replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
         // TODO: Serialize settings to JSON and save
         entity.setUpdatedAt(Instant.now());
@@ -111,7 +112,7 @@ public class TenantsService {
     }
 
     public TenantSettings updateTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
-        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+        TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
         // TODO: Merge settings JSON and save
         entity.setUpdatedAt(Instant.now());
@@ -119,7 +120,7 @@ public class TenantsService {
         return tenantSettings;
     }
 
-    private Tenant mapEntityToApi(com.onetattva.infron.db.model.Tenant entity) {
+    private Tenant mapEntityToApi(TenantEntity entity) {
         Tenant api = new Tenant();
         api.setId(entity.getId());
         api.setName(entity.getName());

@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "node")
-public class Node {
+public class NodeEntity {
 
     @Id
     @Column(name = "id")
@@ -17,11 +17,11 @@ public class Node {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cluster_id")
-    private NodeCluster cluster;
+    private NodeClusterEntity cluster;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "datacenter_id")
-    private Datacenter datacenter;
+    private DatacenterEntity datacenter;
 
     @Column(nullable = false)
     private String name;
@@ -49,10 +49,10 @@ public class Node {
     private Instant updatedAt;
 
     // Constructors
-    public Node() {
+    public NodeEntity() {
     }
 
-    public Node(UUID id, String name) {
+    public NodeEntity(UUID id, String name) {
         this.id = id;
         this.name = name;
     }
@@ -66,19 +66,19 @@ public class Node {
         this.id = id;
     }
 
-    public NodeCluster getCluster() {
+    public NodeClusterEntity getCluster() {
         return cluster;
     }
 
-    public void setCluster(NodeCluster cluster) {
+    public void setCluster(NodeClusterEntity cluster) {
         this.cluster = cluster;
     }
 
-    public Datacenter getDatacenter() {
+    public DatacenterEntity getDatacenter() {
         return datacenter;
     }
 
-    public void setDatacenter(Datacenter datacenter) {
+    public void setDatacenter(DatacenterEntity datacenter) {
         this.datacenter = datacenter;
     }
 

@@ -1,38 +1,28 @@
 /**
- * Entity for tenant table.
+ * Entity for datacenter table.
  */
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.TenantStatus;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
-import org.hibernate.annotations.Type;
-
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tenant")
-public class Tenant {
+@Table(name = "datacenter")
+public class DatacenterEntity {
 
     @Id
+    // @GeneratedValue(strategy = GenerationType.AUTO) // For UUID
     @Column(name = "id")
     private UUID id;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "display_name")
-    private String displayName;
+    private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
-    private TenantStatus status;
-
-    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private Map<String, String> metadata; // JSONB as String
+    private String capacity; // JSONB as String
 
     @Column(columnDefinition = "jsonb")
     private String settings; // JSONB as String
@@ -44,10 +34,10 @@ public class Tenant {
     private Instant updatedAt;
 
     // Constructors
-    public Tenant() {
+    public DatacenterEntity() {
     }
 
-    public Tenant(UUID id, String name) {
+    public DatacenterEntity(UUID id, String name) {
         this.id = id;
         this.name = name;
     }
@@ -69,28 +59,20 @@ public class Tenant {
         this.name = name;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public String getDescription() {
+        return description;
     }
 
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    public TenantStatus getStatus() {
-        return status;
+    public String getCapacity() {
+        return capacity;
     }
 
-    public void setStatus(TenantStatus status) {
-        this.status = status;
-    }
-
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+    public void setCapacity(String capacity) {
+        this.capacity = capacity;
     }
 
     public String getSettings() {

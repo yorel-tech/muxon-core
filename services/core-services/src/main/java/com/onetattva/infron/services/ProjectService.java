@@ -1,6 +1,9 @@
 package com.onetattva.infron.services;
 
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.db.model.ProjectEntity;
+import com.onetattva.infron.db.model.TenantEntity;
+import com.onetattva.infron.db.model.TenantUserEntity;
 import com.onetattva.infron.db.repository.ProjectRepository;
 import com.onetattva.infron.db.repository.TenantRepository;
 import com.onetattva.infron.db.repository.TenantUserRepository;
@@ -24,8 +27,8 @@ public class ProjectService {
     private TenantUserRepository tenantUserRepository;
 
     public Project createProject(UUID tenantId, ProjectCreate projectCreate) {
-        com.onetattva.infron.db.model.Tenant tenant = tenantRepository.findById(tenantId).orElseThrow();
-        com.onetattva.infron.db.model.Project entityProject = new com.onetattva.infron.db.model.Project();
+        TenantEntity tenant = tenantRepository.findById(tenantId).orElseThrow();
+        ProjectEntity entityProject = new ProjectEntity();
         entityProject.setId(UUID.randomUUID());
         entityProject.setTenant(tenant);
         entityProject.setName(projectCreate.getName());
@@ -34,7 +37,7 @@ public class ProjectService {
         entityProject.setLabels(projectCreate.getLabels());
         entityProject.setStatus(com.onetattva.infron.db.ProjectStatus.ACTIVE);
         if (projectCreate.getOwner() != null) {
-            com.onetattva.infron.db.model.TenantUser owner = tenantUserRepository
+            TenantUserEntity owner = tenantUserRepository
                     .findById(projectCreate.getOwner().getId()).orElseThrow();
             entityProject.setOwner(owner);
         }
@@ -42,12 +45,12 @@ public class ProjectService {
         Instant now = Instant.now();
         entityProject.setCreatedAt(now);
         entityProject.setUpdatedAt(now);
-        com.onetattva.infron.db.model.Project saved = projectRepository.save(entityProject);
+        ProjectEntity saved = projectRepository.save(entityProject);
         return mapEntityToApi(saved);
     }
 
     public Project getProject(UUID tenantId, UUID projectId) {
-        com.onetattva.infron.db.model.Project entity = projectRepository.findById(projectId)
+        ProjectEntity entity = projectRepository.findById(projectId)
                 .filter(p -> p.getTenant().getId().equals(tenantId))
                 .orElseThrow();
         return mapEntityToApi(entity);
@@ -59,7 +62,7 @@ public class ProjectService {
                 .ifPresent(projectRepository::delete);
     }
 
-    private Project mapEntityToApi(com.onetattva.infron.db.model.Project entity) {
+    private Project mapEntityToApi(ProjectEntity entity) {
         Project api = new Project();
         api.setId(entity.getId());
         api.setTenant(new EntityReference().id(entity.getTenant().getId()).name(entity.getTenant().getDisplayName()));

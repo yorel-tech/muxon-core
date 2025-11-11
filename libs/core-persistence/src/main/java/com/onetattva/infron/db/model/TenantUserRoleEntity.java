@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tenant_user_role")
-public class TenantUserRole {
+public class TenantUserRoleEntity {
 
     @Id
     @Column(name = "id")
@@ -17,21 +17,21 @@ public class TenantUserRole {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    private TenantEntity tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private TenantUser user;
+    private TenantUserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    private RoleEntity role;
 
     @Column(name = "assigned_at", nullable = false, updatable = false)
     private Instant assignedAt;
 
     // Constructors
-    public TenantUserRole() {
+    public TenantUserRoleEntity() {
     }
 
     // Getters and setters
@@ -43,27 +43,27 @@ public class TenantUserRole {
         this.id = id;
     }
 
-    public Tenant getTenant() {
+    public TenantEntity getTenant() {
         return tenant;
     }
 
-    public void setTenant(Tenant tenant) {
+    public void setTenant(TenantEntity tenant) {
         this.tenant = tenant;
     }
 
-    public TenantUser getUser() {
+    public TenantUserEntity getUser() {
         return user;
     }
 
-    public void setUser(TenantUser user) {
+    public void setUser(TenantUserEntity user) {
         this.user = user;
     }
 
-    public Role getRole() {
+    public RoleEntity getRole() {
         return role;
     }
 
-    public void setRole(Role role) {
+    public void setRole(RoleEntity role) {
         this.role = role;
     }
 

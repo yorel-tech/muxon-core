@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tenant_user")
-public class TenantUser {
+public class TenantUserEntity {
 
     @Id
     @Column(name = "id")
@@ -38,10 +38,10 @@ public class TenantUser {
     private Instant updatedAt;
 
     // Constructors
-    public TenantUser() {
+    public TenantUserEntity() {
     }
 
-    public TenantUser(UUID id, String email) {
+    public TenantUserEntity(UUID id, String email) {
         this.id = id;
         this.email = email;
     }

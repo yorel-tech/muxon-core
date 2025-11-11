@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "audit_log")
-public class AuditLog {
+public class AuditLogEntity {
 
     @Id
     @Column(name = "id")
@@ -17,11 +17,11 @@ public class AuditLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
+    private TenantEntity tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_user_id")
-    private TenantUser actorUser;
+    private TenantUserEntity actorUser;
 
     @Column(nullable = false)
     private String action;
@@ -33,7 +33,7 @@ public class AuditLog {
     private Instant createdAt;
 
     // Constructors
-    public AuditLog() {
+    public AuditLogEntity() {
     }
 
     // Getters and setters
@@ -45,19 +45,19 @@ public class AuditLog {
         this.id = id;
     }
 
-    public Tenant getTenant() {
+    public TenantEntity getTenant() {
         return tenant;
     }
 
-    public void setTenant(Tenant tenant) {
+    public void setTenant(TenantEntity tenant) {
         this.tenant = tenant;
     }
 
-    public TenantUser getActorUser() {
+    public TenantUserEntity getActorUser() {
         return actorUser;
     }
 
-    public void setActorUser(TenantUser actorUser) {
+    public void setActorUser(TenantUserEntity actorUser) {
         this.actorUser = actorUser;
     }
 

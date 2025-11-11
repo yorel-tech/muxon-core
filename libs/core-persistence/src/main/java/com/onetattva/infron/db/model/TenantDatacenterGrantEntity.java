@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tenant_datacenter_grant")
-public class TenantDatacenterGrant {
+public class TenantDatacenterGrantEntity {
 
     @Id
     @Column(name = "id")
@@ -17,11 +17,11 @@ public class TenantDatacenterGrant {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    private TenantEntity tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "datacenter_id", nullable = false)
-    private Datacenter datacenter;
+    private DatacenterEntity datacenter;
 
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean access;
@@ -42,7 +42,7 @@ public class TenantDatacenterGrant {
     private Instant updatedAt;
 
     // Constructors
-    public TenantDatacenterGrant() {
+    public TenantDatacenterGrantEntity() {
     }
 
     // Getters and setters
@@ -54,19 +54,19 @@ public class TenantDatacenterGrant {
         this.id = id;
     }
 
-    public Tenant getTenant() {
+    public TenantEntity getTenant() {
         return tenant;
     }
 
-    public void setTenant(Tenant tenant) {
+    public void setTenant(TenantEntity tenant) {
         this.tenant = tenant;
     }
 
-    public Datacenter getDatacenter() {
+    public DatacenterEntity getDatacenter() {
         return datacenter;
     }
 
-    public void setDatacenter(Datacenter datacenter) {
+    public void setDatacenter(DatacenterEntity datacenter) {
         this.datacenter = datacenter;
     }
 

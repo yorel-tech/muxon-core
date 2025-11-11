@@ -1,3 +1,4 @@
+
 /**
  * Entity for project_member table.
  */
@@ -9,7 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "project_member")
-public class ProjectMember {
+public class ProjectMemberEntity {
 
     @Id
     @Column(name = "id")
@@ -17,21 +18,21 @@ public class ProjectMember {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    private ProjectEntity project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private TenantUser user;
+    private TenantUserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    private RoleEntity role;
 
     @Column(name = "joined_at", nullable = false, updatable = false)
     private Instant joinedAt;
 
     // Constructors
-    public ProjectMember() {
+    public ProjectMemberEntity() {
     }
 
     // Getters and setters
@@ -43,27 +44,27 @@ public class ProjectMember {
         this.id = id;
     }
 
-    public Project getProject() {
+    public ProjectEntity getProject() {
         return project;
     }
 
-    public void setProject(Project project) {
+    public void setProject(ProjectEntity project) {
         this.project = project;
     }
 
-    public TenantUser getUser() {
+    public TenantUserEntity getUser() {
         return user;
     }
 
-    public void setUser(TenantUser user) {
+    public void setUser(TenantUserEntity user) {
         this.user = user;
     }
 
-    public Role getRole() {
+    public RoleEntity getRole() {
         return role;
     }
 
-    public void setRole(Role role) {
+    public void setRole(RoleEntity role) {
         this.role = role;
     }
 

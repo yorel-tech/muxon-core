@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "role")
-public class Role {
+public class RoleEntity {
 
     @Id
     @Column(name = "id")
@@ -20,7 +20,7 @@ public class Role {
     private String description;
 
     // Constructors
-    public Role() {
+    public RoleEntity() {
     }
 
     // Getters and setters

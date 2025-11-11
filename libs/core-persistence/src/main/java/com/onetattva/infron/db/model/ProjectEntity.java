@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "project")
-public class Project {
+public class ProjectEntity {
 
     @Id
     @Column(name = "id")
@@ -23,11 +23,11 @@ public class Project {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    private TenantEntity tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_datacenter_grant_id")
-    private TenantDatacenterGrant tenantDatacenterGrant;
+    private TenantDatacenterGrantEntity tenantDatacenterGrant;
 
     @Column(nullable = false)
     private String name;
@@ -47,7 +47,7 @@ public class Project {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner")
-    private TenantUser owner;
+    private TenantUserEntity owner;
 
     @Type(value = JsonBinaryType.class)
     @Column(name = "resource_limits", columnDefinition = "jsonb")
@@ -60,7 +60,7 @@ public class Project {
     private Instant updatedAt;
 
     // Constructors
-    public Project() {
+    public ProjectEntity() {
     }
 
     // Getters and setters
@@ -72,19 +72,19 @@ public class Project {
         this.id = id;
     }
 
-    public Tenant getTenant() {
+    public TenantEntity getTenant() {
         return tenant;
     }
 
-    public void setTenant(Tenant tenant) {
+    public void setTenant(TenantEntity tenant) {
         this.tenant = tenant;
     }
 
-    public TenantDatacenterGrant getTenantDatacenterGrant() {
+    public TenantDatacenterGrantEntity getTenantDatacenterGrant() {
         return tenantDatacenterGrant;
     }
 
-    public void setTenantDatacenterGrant(TenantDatacenterGrant tenantDatacenterGrant) {
+    public void setTenantDatacenterGrant(TenantDatacenterGrantEntity tenantDatacenterGrant) {
         this.tenantDatacenterGrant = tenantDatacenterGrant;
     }
 
@@ -128,11 +128,11 @@ public class Project {
         this.status = status;
     }
 
-    public TenantUser getOwner() {
+    public TenantUserEntity getOwner() {
         return owner;
     }
 
-    public void setOwner(TenantUser owner) {
+    public void setOwner(TenantUserEntity owner) {
         this.owner = owner;
     }
 
