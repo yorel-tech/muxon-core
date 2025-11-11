@@ -102,19 +102,73 @@ tasks.named<GenerateTask>("openApiGenerate") {
     additionalProperties.set(
         mapOf(
             "interfaceOnly" to "true",
+            "skipDefaultInterface" to "true",
+            "skipOperationExample" to "true",
+            "generateBuilders" to "true",
+            "serializableModel" to "true",
             "useTags" to "true",
             "dateLibrary" to "java8",
             "useSpringBoot3" to "true",
             "useJakartaEe" to "true",
-            "performBeanValidation" to "true",
+            //"performBeanValidation" to "true",
             "useFullyQualifiedNames" to "true",
+            "oas3" to "true",
             "openApiNullable" to "false"   // ← disables JsonNullable usage
         )
     )
 
+    importMappings.set(mapOf(
+        // ensure the generator imports the Jakarta Email annotation
+        "Email" to "jakarta.validation.constraints.Email"
+    ))
+    typeMappings.set(mapOf(
+        // tells the generator to consider Email a known type -> helps imports in some templates
+        "Email" to "jakarta.validation.constraints.Email"
+    ))
     // clean the output dir before regen
     doFirst { delete(openApiOutputDir) }
 }
+
+val generatedJavaDir = openApiOutputDir.map { it.file("src/main/java") }
+
+//tasks.register("patchGeneratedEmailAnnotations") {
+//    group = "openapi"
+//    description = "Add jakarta.validation Email import to generated sources where missing"
+//    dependsOn("openApiGenerate")
+//    doLast {
+//        val dir = generatedJavaDir.get().asFile
+//        if (!dir.exists()) return@doLast
+//
+//        val javaFiles = fileTree(dir).matching { include("**/*.java") }.files
+//        javaFiles.forEach { file ->
+//            var text = file.readText()
+//            val hasEmailAnnotation = text.contains("@Email") || text.contains("@jakarta.validation.constraints.Email")
+//            if (!hasEmailAnnotation) return@forEach
+//
+//            // If the file already imports jakarta Email, nothing to do
+//            if (text.contains("import jakarta.validation.constraints.Email;")) return@forEach
+//
+//            // If the file imports the old Hibernate Email, prefer jakarta (we will add jakarta import to disambiguate)
+//            // Insert the jakarta import after package and existing imports
+//            val packageRegex = Regex("""(^package\s+[\w\.]+;\s*)""", RegexOption.MULTILINE)
+//            val importJakarta = "import jakarta.validation.constraints.Email;\n"
+//            if (packageRegex.containsMatchIn(text)) {
+//                // find the last import line to append after; otherwise insert after package line
+//                val lastImportMatch = Regex("""(?s)(?:^|\n)import\s+[\w\.\*]+;\s*""").findAll(text).lastOrNull()
+//                val insertPos =
+//                    lastImportMatch?.range?.endInclusive?.plus(1) ?: (packageRegex.find(text)!!.range.endInclusive + 1)
+//                text = text.substring(0, insertPos) + "\n" + importJakarta + text.substring(insertPos)
+//            } else {
+//                // No package line? just prepend import
+//                text = importJakarta + text
+//            }
+//
+//            // Also, if the file contains simple @Email usages *and* generator left some fully-qualified ones,
+//            // the explicit import will disambiguate to Jakarta.
+//            file.writeText(text)
+//        }
+//    }
+//}
 
 sourceSets.named("main") {
     java.srcDir(openApiOutputDir.map { it.dir("src/main/java") })

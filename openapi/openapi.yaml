@@ -74,22 +74,37 @@ paths:
                 $ref: '#/components/schemas/Health'
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
+
+  # Datacenters
+  /datacenters:
+    $ref: './datacenters.yaml#/paths/~1datacenters'
+  /datacenters/{datacenterId}:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}'
+  /datacenters/{datacenterId}/settings:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1settings'
+
+  # Tenants
   /tenants:
     $ref: './tenants.yaml#/paths/~1tenants'
   /tenants/{tenantId}:
     $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}'
+  /tenants/{tenantId}/settings:
+    $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}~1settings'
 
+  # Tenant datacenter grants
+  /tenants/{tenantId}/datacenters:
+    $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters'
+  /tenants/{tenantId}/datacenters/{datacenterId}:
+    $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}'
+  /tenants/{tenantId}/datacenters/{datacenterId}/effective:
+    $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1effective'
+
+  # Projects
   /tenants/{tenantId}/projects:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects'
-
   /tenants/{tenantId}/projects/{projectId}:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}'
-
   /tenants/{tenantId}/projects/{projectId}/members:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members'
-
   /tenants/{tenantId}/projects/{projectId}/members/{userId}:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members~1{userId}'
-
-  /tenants/{tenantId}/projects/{projectId}/datacenters/{datacenterId}/grant:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1datacenters~1{datacenterId}~1grant'

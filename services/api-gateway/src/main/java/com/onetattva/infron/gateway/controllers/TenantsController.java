@@ -51,4 +51,22 @@ public class TenantsController implements TenantsApi {
         Tenant tenant = tenantsService.updateTenant(tenantId, tenantUpdate);
         return ResponseEntity.ok(tenant);
     }
+
+    @Override
+    public ResponseEntity<TenantSettings> getTenantSettings(UUID tenantId) {
+        TenantSettings settings = tenantsService.getTenantSettings(tenantId);
+        return ResponseEntity.ok(settings);
+    }
+
+    @Override
+    public ResponseEntity<TenantSettings> replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
+        TenantSettings settings = tenantsService.replaceTenantSettings(tenantId, tenantSettings);
+        return ResponseEntity.ok(settings);
+    }
+
+    @Override
+    public ResponseEntity<TenantSettings> updateTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
+        TenantSettings settings = tenantsService.updateTenantSettings(tenantId, tenantSettings);
+        return ResponseEntity.ok(settings);
+    }
 }

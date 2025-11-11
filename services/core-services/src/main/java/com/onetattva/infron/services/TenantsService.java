@@ -94,6 +94,31 @@ public class TenantsService {
         return mapEntityToApi(saved);
     }
 
+    public TenantSettings getTenantSettings(UUID tenantId) {
+        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        // TODO: Parse settings JSON and return proper TenantSettings object
+        return new TenantSettings();
+    }
+
+    public TenantSettings replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
+        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        // TODO: Serialize settings to JSON and save
+        entity.setUpdatedAt(Instant.now());
+        tenantRepository.save(entity);
+        return tenantSettings;
+    }
+
+    public TenantSettings updateTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
+        com.onetattva.infron.db.model.Tenant entity = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        // TODO: Merge settings JSON and save
+        entity.setUpdatedAt(Instant.now());
+        tenantRepository.save(entity);
+        return tenantSettings;
+    }
+
     private Tenant mapEntityToApi(com.onetattva.infron.db.model.Tenant entity) {
         Tenant api = new Tenant();
         api.setId(entity.getId());

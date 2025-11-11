@@ -38,24 +38,9 @@ public class ProjectsController implements ProjectsApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteProjectDatacenterGrant(UUID tenantId, UUID projectId, UUID datacenterId) {
-        // TODO: Implement delete project datacenter grant logic
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
     public ResponseEntity<Project> getProject(UUID tenantId, UUID projectId) {
         Project project = projectService.getProject(tenantId, projectId);
         return ResponseEntity.ok(project);
-    }
-
-    @Override
-    public ResponseEntity<GetProjectDatacenterGrant200Response> getProjectDatacenterGrant(UUID tenantId, UUID projectId,
-            UUID datacenterId) {
-        // TODO: Implement get project datacenter grant logic
-        GetProjectDatacenterGrant200Response response = new GetProjectDatacenterGrant200Response();
-        // Assuming some grant details
-        return ResponseEntity.ok(response);
     }
 
     @Override
@@ -109,18 +94,6 @@ public class ProjectsController implements ProjectsApi {
             project.setResourceLimits(projectUpdate.getResourceLimits());
         project.setStatus(Project.StatusEnum.ACTIVE);
         return ResponseEntity.ok(project);
-    }
-
-    @Override
-    public ResponseEntity<GetProjectDatacenterGrant200Response> replaceProjectDatacenterGrant(UUID tenantId,
-            UUID projectId,
-            UUID datacenterId, ReplaceProjectDatacenterGrantRequest replaceProjectDatacenterGrantRequest) {
-        // TODO: Implement replace project datacenter grant logic
-        GetProjectDatacenterGrant200Response response = new GetProjectDatacenterGrant200Response();
-        if (replaceProjectDatacenterGrantRequest != null) {
-            // Mapping logic would go here
-        }
-        return ResponseEntity.ok(response);
     }
 
     @Override
