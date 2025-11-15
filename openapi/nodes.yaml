@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: Infron Node API
+  version: 0.1.0
+  description: Node API for managing infrastructure nodes
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+components:
+
+  parameters:
+    nodeId:
+      name: nodeId
+      in: path
+      description: UUID of the node
+      required: true
+      schema:
+        type: string
+        format: uuid
+    clusterId:
+      name: clusterId
+      in: path
+      description: UUID of the NodeCluster
+      required: true
+      schema:
+        type: string
+        format: uuid
+    providerId:
+      name: providerId
+      in: path
+      description: UUID of the Provider
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    NodeProviderType:
+      type: string
+      enum: [ kvm, k8s ]
+      example: kvm
+
+    Node:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            cluster:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
+            provider:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
+            externalId:
+              type: string
+              example: "host-12345"
+            role:
+              type: string
+              example: "control-plane"
+            cpuTotal:
+              type: integer
+              example: 8
+            memMb:
+              type: integer
+              example: 16384
+            status:
+              type: string
+              example: "ready"
+            lastSeenAt:
+              type: string
+              format: date-time
+              example: "2025-10-20T09:10:11Z"
+            credentials:
+              type: object
+              description: Authentication configuration (JSON)
+              additionalProperties:
+                type: string
+              example:
+                username: "admin"
+                password: "secret"
+            ipAddresses:
+              type: array
+              items:
+                type: string
+              example: ["192.168.1.100", "10.0.0.1"]
+
+    NodeList:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 25
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+
+paths:
+  /api/nodes:
+    get:
+      tags:
+        - Nodes
+      summary: List nodes
+      description: Returns a paginated list of nodes. Supports filtering by clusterId or providerId.
+      operationId: listNodes
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: './commons.yaml#/components/parameters/sort'
+        - name: clusterId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by cluster ID
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by provider ID
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by node name (exact or partial depending on implementation)
+        - name: providerType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/NodeProviderType'
+          description: Filter by provider type
+      responses:
+        '200':
+          description: Paginated list of nodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeList'
+              examples:
+                sample:
+                  value:
+                    total: 2
+                    page: 1
+                    perPage: 20
+                    items:
+                      - id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                        name: "node-01"
+                        cluster:
+                          id: "12345678-1234-1234-1234-123456789abc"
+                          name: "web-cluster"
+                        datacenter:
+                          id: "98765432-1234-1234-1234-fedcba987654"
+                          name: "prod-east-1"
+                        providerType: "kvm"
+                        endpoint: "192.168.1.100"
+                        port: 22
+                        ipAddresses: ["192.168.1.100"]
+                        createdAt: "2025-10-01T12:34:56Z"
+                      - id: "4e3b5698-f255-5137-f0ca-0c8abf159851"
+                        name: "node-02"
+                        cluster:
+                          id: "12345678-1234-1234-1234-123456789abc"
+                          name: "web-cluster"
+                        datacenter:
+                          id: "98765432-1234-1234-1234-fedcba987654"
+                          name: "prod-east-1"
+                        providerType: "kvm"
+                        endpoint: "192.168.1.101"
+                        port: 22
+                        ipAddresses: ["192.168.1.101"]
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /api/nodes/{nodeId}:
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+
+    get:
+      tags:
+        - Nodes
+      summary: Get node details
+      operationId: getNode
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+              examples:
+                node:
+                  value:
+                    id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                    name: "node-01"
+                    cluster:
+                      id: "12345678-1234-1234-1234-123456789abc"
+                      name: "web-cluster"
+                    datacenter:
+                      id: "98765432-1234-1234-1234-fedcba987654"
+                      name: "prod-east-1"
+                    providerType: "kvm"
+                    endpoint: "192.168.1.100"
+                    port: 22
+                    ipAddresses: ["192.168.1.100"]
+                    metadata:
+                      cpu_cores: "8"
+                      memory_gb: "16"
+                    createdAt: "2025-10-01T12:34:56Z"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/nodes/{nodeId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+    get:
+      tags:
+        - Metadata
+      summary: Get node metadata
+      operationId: getNodeMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Node metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                cpu_cores: "8"
+                memory_gb: "16"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update node metadata
+      operationId: updateNodeMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+            example:
+              cpu_cores: "8"
+              memory_gb: "16"
+      responses:
+        '200':
+          description: Updated node metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                cpu_cores: "8"
+                memory_gb: "16"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

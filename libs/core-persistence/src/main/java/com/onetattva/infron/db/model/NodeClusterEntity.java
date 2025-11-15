@@ -3,8 +3,12 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -24,8 +28,9 @@ public class NodeClusterEntity {
 
     private String description;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String metadata; // JSONB as String
+    private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -75,11 +80,11 @@ public class NodeClusterEntity {
         this.description = description;
     }
 
-    public String getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(String metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 

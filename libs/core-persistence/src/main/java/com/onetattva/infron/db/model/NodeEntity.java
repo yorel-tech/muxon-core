@@ -3,8 +3,12 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -16,31 +20,44 @@ public class NodeEntity {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cluster_id")
+    @JoinColumn(name = "cluster_id", nullable = true)
     private NodeClusterEntity cluster;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "datacenter_id")
-    private DatacenterEntity datacenter;
+    @JoinColumn(name = "provider_id", nullable = false)
+    private ProviderEntity provider;
+
+    @Column(name = "external_id")
+    private String externalId;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "provider_type")
-    private String providerType;
+    @Column
+    private String role;
 
-    private String endpoint;
+    @Column(name = "cpu_total")
+    private Integer cpuTotal;
 
-    private Integer port;
+    @Column(name = "mem_mb")
+    private Integer memMb;
 
+    @Column(nullable = false)
+    private String status;
+
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
+
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String auth; // JSONB as String
+    private Map<String, String> credentials; // JSONB as String
 
     @Column(name = "ip_addresses")
-    private String[] ipAddresses; // TEXT[]
+    private java.util.List<String> ipAddresses; // TEXT[] - but API uses List<String>
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String metadata; // JSONB as String
+    private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -74,12 +91,20 @@ public class NodeEntity {
         this.cluster = cluster;
     }
 
-    public DatacenterEntity getDatacenter() {
-        return datacenter;
+    public ProviderEntity getProvider() {
+        return provider;
     }
 
-    public void setDatacenter(DatacenterEntity datacenter) {
-        this.datacenter = datacenter;
+    public void setProvider(ProviderEntity provider) {
+        this.provider = provider;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public String getName() {
@@ -90,51 +115,67 @@ public class NodeEntity {
         this.name = name;
     }
 
-    public String getProviderType() {
-        return providerType;
+    public String getRole() {
+        return role;
     }
 
-    public void setProviderType(String providerType) {
-        this.providerType = providerType;
+    public void setRole(String role) {
+        this.role = role;
     }
 
-    public String getEndpoint() {
-        return endpoint;
+    public Integer getCpuTotal() {
+        return cpuTotal;
     }
 
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
+    public void setCpuTotal(Integer cpuTotal) {
+        this.cpuTotal = cpuTotal;
     }
 
-    public Integer getPort() {
-        return port;
+    public Integer getMemMb() {
+        return memMb;
     }
 
-    public void setPort(Integer port) {
-        this.port = port;
+    public void setMemMb(Integer memMb) {
+        this.memMb = memMb;
     }
 
-    public String getAuth() {
-        return auth;
+    public String getStatus() {
+        return status;
     }
 
-    public void setAuth(String auth) {
-        this.auth = auth;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public String[] getIpAddresses() {
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
+    }
+
+    public void setLastSeenAt(Instant lastSeenAt) {
+        this.lastSeenAt = lastSeenAt;
+    }
+
+    public Map<String, String> getCredentials() {
+        return credentials;
+    }
+
+    public void setCredentials(Map<String, String> credentials) {
+        this.credentials = credentials;
+    }
+
+    public java.util.List<String> getIpAddresses() {
         return ipAddresses;
     }
 
-    public void setIpAddresses(String[] ipAddresses) {
+    public void setIpAddresses(java.util.List<String> ipAddresses) {
         this.ipAddresses = ipAddresses;
     }
 
-    public String getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(String metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 

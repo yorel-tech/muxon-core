@@ -113,7 +113,8 @@ tasks.named<GenerateTask>("openApiGenerate") {
             //"performBeanValidation" to "true",
             "useFullyQualifiedNames" to "true",
             "oas3" to "true",
-            "openApiNullable" to "false"   // ← disables JsonNullable usage
+            "openApiNullable" to "false",   // ← disables JsonNullable usage
+            "openApiSpec" to "3.0.3"
         )
     )
 

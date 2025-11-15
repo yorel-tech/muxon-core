@@ -18,44 +18,27 @@ components:
           readOnly: true
 
     Project:
-      type: object
-      required: [id, tenant, name, status]
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
-        tenant:
-          $ref: './commons.yaml#/components/schemas/EntityReference'
-        name:
-          type: string
-          example: "webapp-team"
-        displayName:
-          type: string
-          example: "WebApp Team"
-        description:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-          example:
-            env: "production"
-            team: "webapp"
-        status:
-          type: string
-          enum: [active, suspended, archived]
-          example: active
-        owner:
-          $ref: './commons.yaml#/components/schemas/EntityReference'
-        resourceLimits:
-          $ref: './commons.yaml#/components/schemas/ResourceLimits'
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-      additionalProperties: false
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [tenant, status]
+          properties:
+            tenant:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
+            displayName:
+              type: string
+              example: "WebApp Team"
+            description:
+              type: string
+            status:
+              type: string
+              enum: [active, suspended, archived]
+              example: active
+            owner:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
+            resourceLimits:
+              $ref: './commons.yaml#/components/schemas/ResourceLimits'
+          additionalProperties: false
 
     ProjectCreate:
       type: object
@@ -68,7 +51,7 @@ components:
           type: string
         description:
           type: string
-        labels:
+        metadata:
           type: object
           additionalProperties:
             type: string
@@ -90,7 +73,7 @@ components:
           type: string
         description:
           type: string
-        labels:
+        metadata:
           type: object
           additionalProperties:
             type: string
@@ -298,3 +281,61 @@ paths:
           description: Removed
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/projects/{projectId}/metadata:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/projectId'
+    get:
+      tags:
+        - Metadata
+      summary: Get project metadata
+      operationId: getProjectMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                env: "production"
+                team: "webapp"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update project metadata
+      operationId: updateProjectMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+            example:
+              env: "production"
+              team: "webapp"
+      responses:
+        '200':
+          description: Updated project metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                env: "production"
+                team: "webapp"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

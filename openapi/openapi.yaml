@@ -23,6 +23,10 @@ tags:
     description: Tenant / Organization lifecycle operations
   - name: Projects
     description: Project lifecycle operations
+  - name: NodeClusters
+    description: Node cluster grouping and management
+  - name: Nodes
+    description: Individual infrastructure node management
   - name: Health
     description: Health endpoints
 
@@ -108,3 +112,33 @@ paths:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members'
   /tenants/{tenantId}/projects/{projectId}/members/{userId}:
     $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members~1{userId}'
+
+  # Nodes
+  /api/nodes:
+    $ref: './nodes.yaml#/paths/~1api~1nodes'
+  /api/nodes/{nodeId}:
+    $ref: './nodes.yaml#/paths/~1api~1nodes~1{nodeId}'
+
+  # Node Clusters
+  /api/node-clusters:
+    $ref: './node_clusters.yaml#/paths/~1api~1node-clusters'
+  /api/node-clusters/{clusterId}:
+    $ref: './node_clusters.yaml#/paths/~1api~1node-clusters~1{clusterId}'
+  /api/node-clusters/{clusterId}/nodes:
+    $ref: './node_clusters.yaml#/paths/~1api~1node-clusters~1{clusterId}~1nodes'
+
+  # Node Clusters in Datacenters
+  /api/datacenters/{datacenterId}/node-clusters:
+    $ref: './node_clusters.yaml#/paths/~1api~1datacenters~1{datacenterId}~1node-clusters'
+
+  # Metadata paths
+  /tenants/{tenantId}/metadata:
+    $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}~1metadata'
+  /tenants/{tenantId}/projects/{projectId}/metadata:
+    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1metadata'
+  /api/nodes/{nodeId}/metadata:
+    $ref: './nodes.yaml#/paths/~1api~1nodes~1{nodeId}~1metadata'
+  /api/node-clusters/{clusterId}/metadata:
+    $ref: './node_clusters.yaml#/paths/~1api~1node-clusters~1{clusterId}~1metadata'
+  /datacenters/{datacenterId}/metadata:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1metadata'

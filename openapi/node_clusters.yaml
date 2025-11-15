@@ -1,0 +1,423 @@
+# Infron Node Cluster API (OpenAPI fragment)
+# Node Cluster API for managing node clusters within datacenters
+
+components:
+
+  parameters:
+    clusterId:
+      name: clusterId
+      in: path
+      description: UUID of the node cluster
+      required: true
+      schema:
+        type: string
+        format: uuid
+    datacenterId:
+      name: datacenterId
+      in: path
+      description: UUID of the datacenter
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    NodeCluster:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            datacenter:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
+            description:
+              type: string
+              example: "Production web server cluster"
+
+    NodeClusterCreate:
+      type: object
+      required:
+        - name
+        - datacenterId
+      properties:
+        datacenterId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "web-cluster"
+        description:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    NodeClusterUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    NodeClusterList:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 15
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeCluster'
+
+paths:
+  /api/node-clusters:
+    get:
+      tags:
+        - NodeClusters
+      summary: List node clusters
+      description: Returns a paginated list of node clusters. Supports filtering by datacenter.
+      operationId: listNodeClusters
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: './commons.yaml#/components/parameters/sort'
+        - name: datacenterId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by datacenter ID
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by cluster name (exact or partial depending on implementation)
+      responses:
+        '200':
+          description: Paginated list of node clusters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeClusterList'
+              examples:
+                sample:
+                  value:
+                    total: 2
+                    page: 1
+                    perPage: 20
+                    items:
+                      - id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                        name: "web-cluster"
+                        description: "Production web server cluster"
+                        datacenter:
+                          id: "12345678-1234-1234-1234-123456789abc"
+                          name: "prod-east-1"
+                        createdAt: "2025-10-01T12:34:56Z"
+                      - id: "4e3b5698-f255-5137-f0ca-0c8abf159851"
+                        name: "db-cluster"
+                        description: "Database server cluster"
+                        datacenter:
+                          id: "12345678-1234-1234-1234-123456789abc"
+                          name: "prod-east-1"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - NodeClusters
+      summary: Create a node cluster
+      description: Create a new node cluster in the specified datacenter. Returns the created cluster.
+      operationId: createNodeCluster
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeClusterCreate'
+            examples:
+              createExample:
+                value:
+                  name: "web-cluster"
+                  datacenterId: "12345678-1234-1234-1234-123456789abc"
+                  description: "Production web server cluster"
+                  metadata:
+                    environment: "production"
+      responses:
+        '201':
+          description: Node cluster created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeCluster'
+              examples:
+                created:
+                  value:
+                    id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                    name: "web-cluster"
+                    description: "Production web server cluster"
+                    datacenter:
+                      id: "12345678-1234-1234-1234-123456789abc"
+                      name: "prod-east-1"
+                    metadata:
+                      environment: "production"
+                    createdAt: "2025-10-28T10:00:00Z"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/node-clusters/{clusterId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/clusterId'
+    get:
+      tags:
+        - Metadata
+      summary: Get node cluster metadata
+      operationId: getNodeClusterMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Node cluster metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                environment: "production"
+                region: "us-east-1"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update node cluster metadata
+      operationId: updateNodeClusterMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+            example:
+              environment: "production"
+              region: "us-east-1"
+      responses:
+        '200':
+          description: Updated node cluster metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                environment: "production"
+                region: "us-east-1"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/node-clusters/{clusterId}:
+    parameters:
+      - $ref: '#/components/parameters/clusterId'
+
+    get:
+      tags:
+        - NodeClusters
+      summary: Get node cluster details
+      operationId: getNodeCluster
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Node cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeCluster'
+              examples:
+                cluster:
+                  value:
+                    id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                    name: "web-cluster"
+                    description: "Production web server cluster"
+                    datacenter:
+                      id: "12345678-1234-1234-1234-123456789abc"
+                      name: "prod-east-1"
+                    metadata:
+                      environment: "production"
+                    createdAt: "2025-10-01T12:34:56Z"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    put:
+      tags:
+        - NodeClusters
+      summary: Update node cluster
+      description: Update entire node cluster resource. Provide full NodeClusterUpdate payload.
+      operationId: updateNodeCluster
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeClusterUpdate'
+            examples:
+              updateExample:
+                value:
+                  name: "web-cluster-updated"
+                  description: "Updated production web server cluster"
+                  metadata:
+                    environment: "production"
+                    version: "2.0"
+      responses:
+        '200':
+          description: Updated node cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeCluster'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - NodeClusters
+      summary: Partially update node cluster
+      description: Apply partial changes to node cluster.
+      operationId: patchNodeCluster
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeClusterUpdate'
+            examples:
+              patchExample:
+                value:
+                  description: "Updated cluster description"
+      responses:
+        '200':
+          description: Updated node cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeCluster'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - NodeClusters
+      summary: Delete a node cluster
+      description: Remove a node cluster. Implementations may choose soft-delete.
+      operationId: deleteNodeCluster
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Node cluster deleted (no content)
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/node-clusters/{clusterId}/nodes:
+    parameters:
+      - $ref: '#/components/parameters/clusterId'
+    get:
+      tags:
+        - NodeClusters
+      summary: List nodes in a cluster
+      description: Returns all nodes that belong to the specified cluster.
+      operationId: listClusterNodes
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: './commons.yaml#/components/parameters/sort'
+      responses:
+        '200':
+          description: List of nodes in the cluster
+          content:
+            application/json:
+              schema:
+                $ref: './nodes.yaml#/components/schemas/NodeList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/datacenters/{datacenterId}/node-clusters:
+    parameters:
+      - $ref: '#/components/parameters/datacenterId'
+    get:
+      tags:
+        - NodeClusters
+      summary: List node clusters in a datacenter
+      description: Returns a paginated list of node clusters within the specified datacenter.
+      operationId: listDatacenterClusters
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: './commons.yaml#/components/parameters/sort'
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by cluster name
+      responses:
+        '200':
+          description: List of node clusters in the datacenter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeClusterList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

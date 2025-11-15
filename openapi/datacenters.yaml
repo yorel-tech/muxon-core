@@ -81,30 +81,16 @@ components:
       enum: [ k8s, loadBalancer, publicIp, snapshots ]
 
     Datacenter:
-      type: object
-      required:
-        - id
-        - name
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
-        name:
-          type: string
-          example: "prod-east-1"
-        description:
-          type: string
-        capacity:
-          $ref: '#/components/schemas/DatacenterCapacity'
-        settings:
-          $ref: '#/components/schemas/DatacenterSettings'
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            description:
+              type: string
+            capacity:
+              $ref: '#/components/schemas/DatacenterCapacity'
+            settings:
+              $ref: '#/components/schemas/DatacenterSettings'
 
     DatacenterCreate:
       type: object
@@ -240,6 +226,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatacenterList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     post:
       tags: [Datacenters]
       summary: Create datacenter
@@ -303,6 +291,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Datacenter'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     patch:
       tags: [Datacenters]
       summary: Partially update datacenter
@@ -322,6 +312,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Datacenter'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     delete:
       tags: [Datacenters]
       summary: Delete datacenter
@@ -331,7 +323,65 @@ paths:
       responses:
         '204':
           description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
 
+  /datacenters/{datacenterId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags:
+        - Metadata
+      summary: Get datacenter metadata
+      operationId: getDatacenterMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Datacenter metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                provider: "aws"
+                region: "us-east-1"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update datacenter metadata
+      operationId: updateDatacenterMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+            example:
+              provider: "aws"
+              region: "us-east-1"
+      responses:
+        '200':
+          description: Updated datacenter metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                provider: "aws"
+                region: "us-east-1"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
   /datacenters/{datacenterId}/settings:
     parameters:
       - $ref: '#/components/parameters/dcId'
@@ -348,6 +398,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatacenterSettings'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     put:
       tags: [Datacenters]
       summary: Replace datacenter settings
@@ -367,6 +419,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatacenterSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     patch:
       tags: [Datacenters]
       summary: Partially update datacenter settings
@@ -386,6 +442,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatacenterSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
 
   # Tenant <-> Datacenter bindings (grants)
   /tenants/{tenantId}/datacenters:
@@ -406,6 +466,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantDatacenterGrantList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     post:
       tags: [TenantDatacenters]
       summary: Grant tenant access to datacenter (create or replace)
@@ -466,6 +528,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantDatacenterGrant'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     patch:
       tags: [TenantDatacenters]
       summary: Partially update tenant datacenter grant
@@ -485,6 +551,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantDatacenterGrant'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     delete:
       tags: [TenantDatacenters]
       summary: Revoke tenant access to datacenter
@@ -494,6 +564,8 @@ paths:
       responses:
         '204':
           description: Revoked
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
 
   /tenants/{tenantId}/datacenters/{datacenterId}/effective:
     parameters:

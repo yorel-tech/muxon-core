@@ -21,46 +21,23 @@ components:
 
   schemas:
     Tenant:
-      type: object
-      required:
-        - id
-        - name
-        - status
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: "c9b1f1f4-1a2b-4c3d-9e01-0123456789ab"
-        name:
-          type: string
-          example: "acme-corp"
-        displayName:
-          type: string
-          example: "ACME Corporation"
-        status:
-          type: string
-          description: Tenant lifecycle status
-          enum:
-            - active
-            - inactive
-            - suspended
-          example: active
-        metadata:
-          type: object
-          additionalProperties:
-            type: string
-          description: Arbitrary key/value metadata
-          example:
-            region: "eu-west-1"
-            billing_account: "BA-12345"
-        createdAt:
-          type: string
-          format: date-time
-          example: "2025-10-01T12:34:56Z"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2025-10-20T09:10:11Z"
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required:
+            - status
+          properties:
+            displayName:
+              type: string
+              example: "ACME Corporation"
+            status:
+              type: string
+              description: Tenant lifecycle status
+              enum:
+                - active
+                - inactive
+                - suspended
+              example: active
 
     TenantCreate:
       type: object
@@ -412,6 +389,63 @@ paths:
             application/json:
               schema:
                 $ref: './tenant_settings.yaml#/TenantSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/metadata:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+    get:
+      tags:
+        - Metadata
+      summary: Get tenant metadata
+      operationId: getTenantMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenant metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                region: "eu-west-1"
+                billing_account: "BA-12345"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update tenant metadata
+      operationId: updateTenantMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+            example:
+              region: "eu-west-1"
+              billing_account: "BA-12345"
+      responses:
+        '200':
+          description: Updated tenant metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+              example:
+                region: "eu-west-1"
+                billing_account: "BA-12345"
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
