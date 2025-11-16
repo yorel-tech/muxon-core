@@ -37,10 +37,6 @@ public class ProjectEntity {
 
     private String description;
 
-    @Type(value = JsonBinaryType.class)
-    @Column(columnDefinition = "jsonb")
-    private Map<String, String> labels; // JSONB as String
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "project_status default 'active'")
     private ProjectStatus status;
@@ -110,14 +106,6 @@ public class ProjectEntity {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public Map<String, String> getLabels() {
-        return labels;
-    }
-
-    public void setLabels(Map<String, String> labels) {
-        this.labels = labels;
     }
 
     public ProjectStatus getStatus() {

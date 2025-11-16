@@ -34,7 +34,6 @@ public class ProjectService {
         entityProject.setName(projectCreate.getName());
         entityProject.setDisplayName(projectCreate.getDisplayName());
         entityProject.setDescription(projectCreate.getDescription());
-        entityProject.setLabels(projectCreate.getLabels());
         entityProject.setStatus(com.onetattva.infron.db.ProjectStatus.ACTIVE);
         if (projectCreate.getOwner() != null) {
             TenantUserEntity owner = tenantUserRepository
@@ -69,7 +68,6 @@ public class ProjectService {
         api.setName(entity.getName());
         api.setDisplayName(entity.getDisplayName());
         api.setDescription(entity.getDescription());
-        api.setLabels(entity.getLabels());
         api.setStatus(Project.StatusEnum.fromValue(entity.getStatus().toString().toLowerCase()));
         if (entity.getOwner() != null) {
             api.setOwner(

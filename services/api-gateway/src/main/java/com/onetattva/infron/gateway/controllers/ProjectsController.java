@@ -84,8 +84,6 @@ public class ProjectsController implements ProjectsApi {
             project.setDisplayName(projectUpdate.getDisplayName());
         if (projectUpdate.getDescription() != null)
             project.setDescription(projectUpdate.getDescription());
-        if (projectUpdate.getLabels() != null)
-            project.setLabels(projectUpdate.getLabels());
         if (projectUpdate.getOwner() != null) {
             project.setOwner(new EntityReference().id(projectUpdate.getOwner().getId())
                     .name(projectUpdate.getOwner().getName()));
@@ -106,8 +104,6 @@ public class ProjectsController implements ProjectsApi {
             project.setDisplayName(projectUpdate.getDisplayName());
         if (projectUpdate.getDescription() != null)
             project.setDescription(projectUpdate.getDescription());
-        if (projectUpdate.getLabels() != null)
-            project.setLabels(projectUpdate.getLabels());
         if (projectUpdate.getOwner() != null) {
             project.setOwner(new EntityReference().id(projectUpdate.getOwner().getId())
                     .name(projectUpdate.getOwner().getName()));
