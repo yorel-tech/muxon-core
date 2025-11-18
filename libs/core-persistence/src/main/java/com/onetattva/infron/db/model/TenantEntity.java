@@ -3,10 +3,13 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.TenantSettings;
 import com.onetattva.infron.db.TenantStatus;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -30,12 +33,13 @@ public class TenantEntity {
     @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
     private TenantStatus status;
 
+    @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, String> metadata;
+
     @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private Map<String, String> metadata; // JSONB as String
-
-    @Column(columnDefinition = "jsonb")
-    private String settings; // JSONB as String
+    private TenantSettings settings;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -93,11 +97,11 @@ public class TenantEntity {
         this.metadata = metadata;
     }
 
-    public String getSettings() {
+    public TenantSettings getSettings() {
         return settings;
     }
 
-    public void setSettings(String settings) {
+    public void setSettings(TenantSettings settings) {
         this.settings = settings;
     }
 

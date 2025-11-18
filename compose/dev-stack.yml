@@ -26,7 +26,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
       - ./keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
-    ports: ["8085:8080"]
+    ports: ["8085:8085"]
 
   grafana:
     image: grafana/grafana:12.3.0-18546308611

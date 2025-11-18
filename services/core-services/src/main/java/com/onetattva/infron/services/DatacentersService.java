@@ -26,7 +26,7 @@ public class DatacentersService {
         entity.setId(UUID.randomUUID());
         entity.setName(datacenterCreate.getName());
         entity.setDescription(datacenterCreate.getDescription());
-        // TODO: Handle capacity and settings mapping
+        entity.setSettings(datacenterCreate.getSettings());
         Instant now = Instant.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
@@ -72,6 +72,7 @@ public class DatacentersService {
                 .orElseThrow(() -> new RuntimeException("Datacenter not found"));
         entity.setName(datacenterUpdate.getName());
         entity.setDescription(datacenterUpdate.getDescription());
+        entity.setSettings(datacenterUpdate.getSettings());
         // TODO: Handle capacity and settings updates
         entity.setUpdatedAt(Instant.now());
         DatacenterEntity saved = datacenterRepository.save(entity);
@@ -96,6 +97,9 @@ public class DatacentersService {
         if (datacenterUpdate.getDescription() != null) {
             entity.setDescription(datacenterUpdate.getDescription());
         }
+        if (datacenterUpdate.getSettings() != null) {
+            entity.setSettings(datacenterUpdate.getSettings());
+        }
         // TODO: Handle partial capacity and settings updates
         entity.setUpdatedAt(Instant.now());
         DatacenterEntity saved = datacenterRepository.save(entity);
@@ -116,7 +120,8 @@ public class DatacentersService {
         api.setId(entity.getId());
         api.setName(entity.getName());
         api.setDescription(entity.getDescription());
-        // TODO: Parse capacity and settings JSON
+        api.setCapacity(entity.getCapacity());
+        api.setSettings(entity.getSettings());
         if (entity.getCreatedAt() != null) {
             api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         }

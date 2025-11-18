@@ -56,11 +56,9 @@ tasks.register<NpmTask>("validateOpenApi") {
     npmCommand = (listOf(
         "exec",
         "--",
-        "@redocly/openapi-cli",
-        "bundle",
+        "@redocly/cli",
+        "lint",
         openApiInput.asFile.absolutePath,
-        "--output",
-        bundledOpenApi.get().asFile.absolutePath
     ))
     // declare inputs so Gradle can consider changes
     inputs.file(openApiInput)

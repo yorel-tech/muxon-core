@@ -27,21 +27,6 @@ CREATE TABLE IF NOT EXISTS provider (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- PROVIDER: Datacenter
-CREATE TABLE datacenter (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  description TEXT,
-  node_cluster_id UUID NOT NULL REFERENCES node_cluster(id)
-  capacity JSONB,          -- capacity shape flexible
-  settings JSONB,          -- DatacenterSettings (JSON)
-  metadata JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE UNIQUE INDEX ux_datacenter_name ON datacenter(name);
-
 -- Provider: NodeCluster (group of hypervisors)
 CREATE TABLE node_cluster (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -49,7 +34,6 @@ CREATE TABLE node_cluster (
   description TEXT,
   provider_id UUID NOT NULL REFERENCES provider(id) ON DELETE CASCADE,
   external_id TEXT NULL,  -- id reported by provider (cluster id)
-  name TEXT NOT NULL,
   capacity JSONB NULL,    -- e.g. {"cpu_total":32000, "mem_mb":262144}
   capabilities JSONB NULL,
   metadata JSONB,
@@ -84,6 +68,21 @@ CREATE TABLE node (
 CREATE INDEX IF NOT EXISTS idx_nodes_provider ON node(provider_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_cluster ON node(cluster_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_name ON node(name);
+
+-- PROVIDER: Datacenter
+CREATE TABLE datacenter (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  node_cluster_id UUID NOT NULL REFERENCES node_cluster(id),
+  capacity JSONB,          -- capacity shape flexible
+  settings JSONB,          -- DatacenterSettings (JSON)
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX ux_datacenter_name ON datacenter(name);
 
 -- TENANT model
 CREATE TABLE tenant (

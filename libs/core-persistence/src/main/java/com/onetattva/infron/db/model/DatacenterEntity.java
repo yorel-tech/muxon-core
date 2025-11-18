@@ -3,7 +3,11 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.DatacenterCapacity;
+import com.onetattva.infron.api.model.DatacenterSettings;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,11 +25,13 @@ public class DatacenterEntity {
 
     private String description;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String capacity; // JSONB as String
+    private DatacenterCapacity capacity;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String settings; // JSONB as String
+    private DatacenterSettings settings;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -67,19 +73,19 @@ public class DatacenterEntity {
         this.description = description;
     }
 
-    public String getCapacity() {
+    public DatacenterCapacity getCapacity() {
         return capacity;
     }
 
-    public void setCapacity(String capacity) {
+    public void setCapacity(DatacenterCapacity capacity) {
         this.capacity = capacity;
     }
 
-    public String getSettings() {
+    public DatacenterSettings getSettings() {
         return settings;
     }
 
-    public void setSettings(String settings) {
+    public void setSettings(DatacenterSettings settings) {
         this.settings = settings;
     }
 

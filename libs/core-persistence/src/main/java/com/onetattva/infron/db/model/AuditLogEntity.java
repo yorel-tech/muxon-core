@@ -3,7 +3,10 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Type;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,6 +29,7 @@ public class AuditLogEntity {
     @Column(nullable = false)
     private String action;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
     private String payload; // JSONB as String
 

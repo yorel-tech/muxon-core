@@ -3,8 +3,16 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.DatacenterSettings;
+import com.onetattva.infron.api.model.ResourceLimits;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -26,14 +34,17 @@ public class TenantDatacenterGrantEntity {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean access;
 
+    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private String limits; // JSONB as String
+    private ResourceLimits limits; // JSONB as String
 
-    @Column(name = "enabled_features")
-    private String[] enabledFeatures; // TEXT[]
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "enabled_features", columnDefinition = "text[]")
+    private List<String> enabledFeatures; // TEXT[]
 
+    @Type(value = JsonBinaryType.class)
     @Column(name = "override_settings", columnDefinition = "jsonb")
-    private String overrideSettings; // JSONB as String
+    private DatacenterSettings overrideSettings;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -78,27 +89,27 @@ public class TenantDatacenterGrantEntity {
         this.access = access;
     }
 
-    public String getLimits() {
+    public ResourceLimits getLimits() {
         return limits;
     }
 
-    public void setLimits(String limits) {
+    public void setLimits(ResourceLimits limits) {
         this.limits = limits;
     }
 
-    public String[] getEnabledFeatures() {
+    public List<String> getEnabledFeatures() {
         return enabledFeatures;
     }
 
-    public void setEnabledFeatures(String[] enabledFeatures) {
+    public void setEnabledFeatures(List<String> enabledFeatures) {
         this.enabledFeatures = enabledFeatures;
     }
 
-    public String getOverrideSettings() {
+    public DatacenterSettings getOverrideSettings() {
         return overrideSettings;
     }
 
-    public void setOverrideSettings(String overrideSettings) {
+    public void setOverrideSettings(DatacenterSettings overrideSettings) {
         this.overrideSettings = overrideSettings;
     }
 

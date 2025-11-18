@@ -5,6 +5,7 @@ package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.ResourceLimits;
 import com.onetattva.infron.db.ProjectStatus;
+import com.vladmihalcea.hibernate.type.array.StringArrayType;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
@@ -47,7 +48,7 @@ public class ProjectEntity {
 
     @Type(value = JsonBinaryType.class)
     @Column(name = "resource_limits", columnDefinition = "jsonb")
-    private ResourceLimits resourceLimits; // JSONB as String
+    private ResourceLimits resourceLimits;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

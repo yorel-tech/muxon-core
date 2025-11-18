@@ -98,8 +98,7 @@ public class TenantsService {
     public TenantSettings getTenantSettings(UUID tenantId) {
         TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
-        // TODO: Parse settings JSON and return proper TenantSettings object
-        return new TenantSettings();
+        return entity.getSettings();
     }
 
     public TenantSettings replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {

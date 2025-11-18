@@ -3,9 +3,10 @@
  */
 package com.onetattva.infron.db.model;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -48,15 +49,16 @@ public class NodeEntity {
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
-    @Type(value = JsonBinaryType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Map<String, String> credentials; // JSONB as String
+    private Map<String, String> credentials;
 
-    @Column(name = "ip_addresses")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "ip_addresses", columnDefinition = "text[]")
     private java.util.List<String> ipAddresses; // TEXT[] - but API uses List<String>
 
-    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)

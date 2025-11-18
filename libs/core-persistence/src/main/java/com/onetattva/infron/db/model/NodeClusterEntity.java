@@ -5,7 +5,9 @@ package com.onetattva.infron.db.model;
 
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -28,8 +30,8 @@ public class NodeClusterEntity {
 
     private String description;
 
-    @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)

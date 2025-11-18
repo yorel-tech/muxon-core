@@ -3,8 +3,14 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -29,7 +35,8 @@ public class TenantUserEntity {
     private String displayName;
 
     @Column(columnDefinition = "jsonb")
-    private String metadata; // JSONB as String
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -95,11 +102,11 @@ public class TenantUserEntity {
         this.displayName = displayName;
     }
 
-    public String getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(String metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 
