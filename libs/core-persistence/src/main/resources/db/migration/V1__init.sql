@@ -6,9 +6,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Enums
-CREATE TYPE tenant_status AS ENUM ('active','inactive','suspended');
-CREATE TYPE project_status AS ENUM ('active','suspended','archived');
-CREATE TYPE provider_type AS ENUM ('proxmox', 'libvirt', 'kubernetes');
+CREATE TYPE tenant_status AS ENUM ('ACTIVE','INACTIVE','SUSPENDED');
+CREATE TYPE project_status AS ENUM ('ACTIVE','SUSPENDED','ARCHIVED');
+CREATE TYPE provider_type AS ENUM ('PROXMOX', 'LIBVIRT', 'KUBERNETES');
 
 -- Common audit fields function (optional)
 -- We'll add created_at / updated_at timestamp columns with default now().
@@ -89,7 +89,7 @@ CREATE TABLE tenant (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,            -- canonical name
   display_name TEXT,
-  status tenant_status NOT NULL DEFAULT 'active',
+  status tenant_status NOT NULL DEFAULT 'ACTIVE',
   metadata JSONB,
   settings JSONB,                -- TenantSettings JSON
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -141,7 +141,7 @@ CREATE TABLE project (
   name TEXT NOT NULL,
   display_name TEXT,
   description TEXT,
-  status project_status NOT NULL DEFAULT 'active',
+  status project_status NOT NULL DEFAULT 'ACTIVE',
   owner UUID REFERENCES tenant_user(id), -- owner user id
   resource_limits JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

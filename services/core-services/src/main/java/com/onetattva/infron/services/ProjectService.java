@@ -8,11 +8,14 @@ import com.onetattva.infron.db.repository.ProjectRepository;
 import com.onetattva.infron.db.repository.TenantRepository;
 import com.onetattva.infron.db.repository.TenantUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectService {
@@ -80,5 +83,29 @@ public class ProjectService {
 
     private com.onetattva.infron.db.ProjectStatus mapApiStatus(Project.StatusEnum status) {
         return com.onetattva.infron.db.ProjectStatus.valueOf(status.name());
+    }
+
+    public ProjectList listProjects(UUID tenantId, Integer page, Integer perPage) {
+        if (page == null) {
+            page = 1;
+        }
+        if (perPage == null) {
+            perPage = 20;
+        }
+        // Clamp perPage to be between 1 and 200
+        if (perPage < 1) {
+            perPage = 1;
+        }
+        if (perPage > 200) {
+            perPage = 200;
+        }
+        Pageable pageable = PageRequest.of(page - 1, perPage);
+        var entities = projectRepository.findByTenant_Id(tenantId, pageable);
+        ProjectList result = new ProjectList();
+        result.setTotal((int) entities.getTotalElements());
+        result.setPage(page);
+        result.setPerPage(perPage);
+        result.setItems(entities.getContent().stream().map(this::mapEntityToApi).collect(Collectors.toList()));
+        return result;
     }
 }

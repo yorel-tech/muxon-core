@@ -43,6 +43,7 @@ gradle-app.setting
 .gradle/
 **/build/
 **/bin/
+**/bin/*
 **/out/
 bundled.yaml
 # Avoid including local Gradle properties (contains machine paths, credentials, etc.)

@@ -1,5 +1,6 @@
 server:
   port: 8080
+  forward-headers-strategy: native
 management:
   endpoints:
     web:
@@ -26,6 +27,10 @@ spring:
           issuer-uri: http://localhost:8085/realms/infron-dev
           # Optional: if you want to enforce audience (recommended)
           # We'll add a custom validator in SecurityConfig
+springdoc:
+  writer-with-order-by-keys: true
+  swagger-ui:
+    try-it-out-enabled: true
 logging:
   level:
     root: INFO

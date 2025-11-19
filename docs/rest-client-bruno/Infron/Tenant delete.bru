@@ -1,0 +1,16 @@
+meta {
+  name: Tenant delete
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{url}}/tenants/ea1-20dc-42d5-af5b-d880da58d34c
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

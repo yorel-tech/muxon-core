@@ -5,10 +5,11 @@ package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.ResourceLimits;
 import com.onetattva.infron.db.ProjectStatus;
-import com.vladmihalcea.hibernate.type.array.StringArrayType;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.Type;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
 import java.util.Map;
@@ -39,6 +40,7 @@ public class ProjectEntity {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(nullable = false, columnDefinition = "project_status default 'active'")
     private ProjectStatus status;
 

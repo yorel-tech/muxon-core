@@ -57,14 +57,7 @@ public class ProjectsController implements ProjectsApi {
 
     @Override
     public ResponseEntity<ProjectList> listProjects(UUID tenantId, Integer page, Integer perPage) {
-        // TODO: Implement list projects logic
-        ProjectList projectList = new ProjectList();
-        projectList.setTotal(1);
-        Project project = new Project();
-        project.setId(UUID.randomUUID());
-        project.setName("Dummy Project");
-        project.setStatus(Project.StatusEnum.ACTIVE);
-        projectList.setItems(List.of(project));
+        ProjectList projectList = projectService.listProjects(tenantId, page, perPage);;
         return ResponseEntity.ok(projectList);
     }
 

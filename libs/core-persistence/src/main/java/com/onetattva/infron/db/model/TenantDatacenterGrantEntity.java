@@ -5,7 +5,7 @@ package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.DatacenterSettings;
 import com.onetattva.infron.api.model.ResourceLimits;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;

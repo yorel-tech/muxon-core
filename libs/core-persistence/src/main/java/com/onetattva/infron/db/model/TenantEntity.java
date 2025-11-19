@@ -5,10 +5,12 @@ package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.TenantSettings;
 import com.onetattva.infron.db.TenantStatus;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -30,6 +32,7 @@ public class TenantEntity {
     private String displayName;
 
     @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
     private TenantStatus status;
 
