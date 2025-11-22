@@ -1,5 +1,5 @@
 /**
- * Entity for role table.
+ * Entity for permission table.
  */
 package com.onetattva.infron.db.model;
 
@@ -12,34 +12,28 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "role", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
-public class RoleEntity {
+@Table(name = "permission", uniqueConstraints = @UniqueConstraint(columnNames = "action"))
+public class PermissionEntity {
 
     @Id
     @Column(name = "id")
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private String name;
+    private String action;
 
     private String description;
 
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "scope_type", nullable = false, columnDefinition = "role_scope default 'SYSTEM'")
-    private RoleScopeType scopeType;
-
-    @Column(name = "scope_id")
-    private UUID scopeId;
-
-    @Column(nullable = false, columnDefinition = "boolean default false")
-    private Boolean immutable;
+    @Column(nullable = false, columnDefinition = "role_scope default 'SYSTEM'")
+    private RoleScopeType scope;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     // Constructors
-    public RoleEntity() {
+    public PermissionEntity() {
     }
 
     // Getters and setters
@@ -51,12 +45,12 @@ public class RoleEntity {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    public String getAction() {
+        return action;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setAction(String action) {
+        this.action = action;
     }
 
     public String getDescription() {
@@ -67,28 +61,12 @@ public class RoleEntity {
         this.description = description;
     }
 
-    public RoleScopeType getScopeType() {
-        return scopeType;
+    public RoleScopeType getScope() {
+        return scope;
     }
 
-    public void setScopeType(RoleScopeType scopeType) {
-        this.scopeType = scopeType;
-    }
-
-    public UUID getScopeId() {
-        return scopeId;
-    }
-
-    public void setScopeId(UUID scopeId) {
-        this.scopeId = scopeId;
-    }
-
-    public Boolean getImmutable() {
-        return immutable;
-    }
-
-    public void setImmutable(Boolean immutable) {
-        this.immutable = immutable;
+    public void setScope(RoleScopeType scope) {
+        this.scope = scope;
     }
 
     public Instant getCreatedAt() {
