@@ -96,6 +96,14 @@ tasks.named<GenerateTask>("openApiGenerate") {
     modelPackage.set("com.onetattva.infron.api.model")
     invokerPackage.set("com.onetattva.infron.api.invoker")
 
+//    globalProperties.set(
+//        mapOf(
+//            // pick the actual debug flag you want, e.g.:
+//            "debugOperations" to "true",
+//            // or "debugModels" to "true",
+//            // or "debugSupportingFiles" to "true"
+//        )
+//    )
     // ✅ Correct options for Spring Boot 3 + Jakarta
     additionalProperties.set(
         mapOf(
@@ -112,7 +120,8 @@ tasks.named<GenerateTask>("openApiGenerate") {
             "useFullyQualifiedNames" to "true",
             "oas3" to "true",
             "openApiNullable" to "false",   // ← disables JsonNullable usage
-            "openApiSpec" to "3.0.3"
+            "openApiSpec" to "3.0.3",
+            "logToStdout" to "true"
         )
     )
 
