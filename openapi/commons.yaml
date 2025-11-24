@@ -144,7 +144,18 @@ components:
                 code: TENANT_NOT_FOUND
                 message: Tenant with id 'c9b1f1f4-...' not found
     Unauthorized:
-      description: Missing or invalid auth
+      description: Missing or invalid authorization
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              value:
+                code: UNAUTHORIZED
+                message: Missing or invalid token
+    Forbidden:
+      description: Missing or invalid authentication
       content:
         application/json:
           schema:

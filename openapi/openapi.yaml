@@ -29,6 +29,12 @@ tags:
     description: Individual infrastructure node management
   - name: Health
     description: Health endpoints
+  - name: Roles
+    description: Role operations for platform and tenant admins
+  - name: Permissions
+    description: Permissions endpoints
+  - name: Bindings
+    description: Role Bindings endpoints
 
 components:
   schemas:
@@ -143,4 +149,23 @@ paths:
   /api/v1/datacenters/{datacenterId}/metadata:
     $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1metadata'
 
+  # Roles
+  /api/v1/roles:
+    $ref: './core_rbac.yaml#/paths/~1roles'
+  /api/v1/roles/{roleId}:
+    $ref: './core_rbac.yaml#/paths/~1roles~1{roleId}'
+  /api/v1/roles/{roleId}/bindings:
+    $ref: './core_rbac.yaml#/paths/~1roles~1{roleId}~1bindings'
+  /api/v1/tenants/{tenantId}/roles:
+    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles'
+  /api/v1/tenants/{tenantId}/roles/{roleId}:
+    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles~1{roleId}'
+  /api/v1/tenants/{tenantId}/roles/{roleId}/bindings:
+    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles~1{roleId}~1bindings'
+  /api/v1/permissions:
+    $ref: './core_rbac.yaml#/paths/~1permissions'
+  /api/v1/role-bindings:
+    $ref: './core_rbac.yaml#/paths/~1role-bindings'
+  /api/v1/users/{userId}/bindings:
+    $ref: './core_rbac.yaml#/paths/~1users~1{userId}~1bindings'
 
