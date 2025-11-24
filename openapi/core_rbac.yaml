@@ -492,24 +492,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                bindings:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/RoleBindingCreateItem"
+              $ref: "#/components/schemas/RoleBindingBulkCreate"
       responses:
         '201':
           description: Created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  created:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/RoleBinding"
+                $ref: "#/components/schemas/RoleBindingList"
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
 
@@ -552,24 +542,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                bindings:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/RoleBindingCreateItem"
+              $ref: "#/components/schemas/RoleBindingBulkCreate"
       responses:
         '201':
           description: Created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  created:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/RoleBinding"
+                $ref: "#/components/schemas/RoleBindingList"
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
 
@@ -591,14 +571,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  created_count:
-                    type: integer
-                  errors:
-                    type: array
-                    items:
-                      $ref: "./commons.yaml#/components/schemas/Error"
+                $ref: "#/components/schemas/RoleBindingList"
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
@@ -623,11 +596,6 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/RoleBinding"
+                $ref: "#/components/schemas/RoleBindingList"
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
