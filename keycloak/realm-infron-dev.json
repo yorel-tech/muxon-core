@@ -3,12 +3,12 @@
   "enabled": true,
   "roles": {
     "realm": [
-      {
-        "name": "admin"
-      },
-      {
-        "name": "member"
-      }
+      { "name": "admin" },
+      { "name": "member" },
+      { "name": "tenantadmin" },
+      { "name": "projectadmin" },
+      { "name": "workload-operator" },
+      { "name": "workload-user" }
     ]
   },
   "users": [
@@ -21,9 +21,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "admin"
-      ],
+      "realmRoles": ["admin"],
       "enabled": true
     },
     {
@@ -35,9 +33,55 @@
           "temporary": false
         }
       ],
-      "realmRoles": [
-        "member"
+      "realmRoles": ["member"],
+      "enabled": true
+    },
+    {
+      "username": "tenantadmin@infron.dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Tenant123!",
+          "temporary": false
+        }
       ],
+      "realmRoles": ["tenantadmin"],
+      "enabled": true
+    },
+    {
+      "username": "projectadmin@infron.dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Project123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["projectadmin"],
+      "enabled": true
+    },
+    {
+      "username": "workload-operator@infron.dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Operator123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["workload-operator"],
+      "enabled": true
+    },
+    {
+      "username": "workload-user@infron.dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "User123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["workload-user"],
       "enabled": true
     }
   ],
@@ -51,13 +95,54 @@
       "webOrigins": [
         "http://localhost:4000"
       ],
-      "protocol": "openid-connect"
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "audience-infron-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "infron-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "aud",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "infron-api",
       "publicClient": false,
       "serviceAccountsEnabled": true,
       "protocol": "openid-connect"
+    },
+    {
+      "clientId": "infron-test",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8081"
+      ],
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "audience-infron-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "infron-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "aud",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ]
 }
