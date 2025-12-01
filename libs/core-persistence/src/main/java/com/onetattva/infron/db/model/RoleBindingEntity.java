@@ -3,7 +3,11 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.db.RoleBindingSubjectType;
+import com.onetattva.infron.db.RoleScopeType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,14 +24,18 @@ public class RoleBindingEntity {
     @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "fk_role_binding_role", value = ConstraintMode.CONSTRAINT))
     private RoleEntity role;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "subject_type", nullable = false)
-    private String subjectType;
+    private RoleBindingSubjectType subjectType;
 
     @Column(name = "subject_id", nullable = false)
     private String subjectId;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "scope_type", nullable = false)
-    private String scopeType;
+    private RoleScopeType scopeType;
 
     @Column(name = "scope_id")
     private UUID scopeId;
@@ -62,11 +70,11 @@ public class RoleBindingEntity {
         this.role = role;
     }
 
-    public String getSubjectType() {
+    public RoleBindingSubjectType getSubjectType() {
         return subjectType;
     }
 
-    public void setSubjectType(String subjectType) {
+    public void setSubjectType(RoleBindingSubjectType subjectType) {
         this.subjectType = subjectType;
     }
 
@@ -78,11 +86,11 @@ public class RoleBindingEntity {
         this.subjectId = subjectId;
     }
 
-    public String getScopeType() {
+    public RoleScopeType getScopeType() {
         return scopeType;
     }
 
-    public void setScopeType(String scopeType) {
+    public void setScopeType(RoleScopeType scopeType) {
         this.scopeType = scopeType;
     }
 

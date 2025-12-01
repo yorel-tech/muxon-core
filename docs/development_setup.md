@@ -37,7 +37,7 @@ Intellij:
 3. Import existing project
 2. chmod +x gradlew
 3. Add following to ~/.profile
-\# env vars
+# env vars
 export JAVA_HOME=/home/krishnac/.jdks/temurin-25.0.1
 export PATH="$JAVA_HOME/bin:$PATH"
 4. 
@@ -98,3 +98,12 @@ Error:
 - install redocly
   npm i @redocly/cli@latest
   npx @redocly/cli lint openapi/openapi.yaml
+
+
+  ### bruno configuration
+  ![alt text](bruno_screenshot.png)
+  Keycloak client config:
+  - Valid redirect urls: http://localhost:4000/*
+  - Client Authentication: On
+
+  

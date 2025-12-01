@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+spring:
+  application:
+    name: core-services
+
+# DB + JPA
+  datasource:
+    url: jdbc:postgresql://localhost:5432/infron
+    username: infron
+    password: infron
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Security: re-validate tokens at the core (defense in depth)
+  # You may reuse issuer-uri or configure a JWT decoder bean to validate the same tokens.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085/realms/infron-dev
+  #    client:
+  #      registration:
+  #        default:
+  #          client-secret: dummy-secret
+  # flyway
+  flyway:
+    enabled: true
+
+# Redis config
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# API docs for service
+springdoc:
+  writer-with-order-by-keys: true
+  swagger-ui:
+    try-it-out-enabled: true
+
+# Logging - file writes for core business logs
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+  file:
+    name: logs/infron-core.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

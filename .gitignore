@@ -156,3 +156,4 @@ storybook-static/
 
 # (Commit a template instead)
 # .env.example
+/services/core-services/src/main/resources/application.yaml

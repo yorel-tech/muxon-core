@@ -11,6 +11,7 @@
 -- IMPORTANT: This migration is Core-only and contains no Nexus schema.
 -- =====================================================================
 CREATE TYPE role_scope AS ENUM ('SYSTEM','TENANT','TENANT_GLOBAL', 'PROJECT');
+CREATE TYPE subject_type AS ENUM ('USER','GROUP','SERVICE_ACCOUNT');
 -----------------------------------------------------------------------
 -- 1. Permissions (canonical)
 -----------------------------------------------------------------------
@@ -25,8 +26,6 @@ CREATE TABLE IF NOT EXISTS permission (
 -----------------------------------------------------------------------
 -- 2. Roles
 -----------------------------------------------------------------------
-DROP TABLE role CASCADE;
-
 CREATE TABLE IF NOT EXISTS role (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,        -- e.g. "system:admin", "tenant:admin"
@@ -67,9 +66,9 @@ ALTER TABLE role_permission
 CREATE TABLE IF NOT EXISTS role_binding (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id UUID NOT NULL REFERENCES role(id) ON DELETE CASCADE,
-    subject_type TEXT NOT NULL,    -- 'user' | 'group' | 'service_account'
+    subject_type subject_type NOT NULL DEFAULT 'USER',    -- 'user' | 'group' | 'service_account'
     subject_id TEXT NOT NULL,      -- user UUID OR external group ID (string)
-    scope_type TEXT NOT NULL,      -- 'system' | 'tenant' | 'project'
+    scope_type role_scope NOT NULL DEFAULT 'SYSTEM', -- 'system' | 'tenant' | 'project'
     scope_id UUID,                 -- null for system scope
     expires_at TIMESTAMPTZ,        -- optional time-limited grant
     created_by UUID,
@@ -147,7 +146,7 @@ END$$;
 
 -- SYSTEM ADMIN
 INSERT INTO role (name, description, scope_type, scope_id, immutable)
-VALUES ('system:admin', 'Platform Administrator', 'SYSTEM', NULL, TRUE)
+VALUES ('system:admin', 'Platform Administrator', 'SYSTEM', '215012d9-8b1e-5dc5-b54f-89022875fe1e', TRUE)
 ON CONFLICT (name) DO NOTHING;
 
 

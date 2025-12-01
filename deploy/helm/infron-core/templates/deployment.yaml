@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-gateway
+  name: core-services
 spec:
   replicas: 1
   selector:
-    matchLabels: { app: api-gateway }
+    matchLabels: { app: core-services }
   template:
     metadata:
-      labels: { app: api-gateway }
+      labels: { app: core-services }
     spec:
       containers:
-        - name: api-gateway
+        - name: core-services
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports: [{ containerPort: 8080 }]

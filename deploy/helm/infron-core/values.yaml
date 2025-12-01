@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/onetattva/infron-core/api-gateway
+  repository: ghcr.io/onetattva/infron-core/core-services
   tag: "0.1.0"
 
 service:

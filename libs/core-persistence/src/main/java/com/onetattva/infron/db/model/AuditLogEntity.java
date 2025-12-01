@@ -24,7 +24,7 @@ public class AuditLogEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_user_id")
-    private TenantUserEntity actorUser;
+    private IdpUserEntity actorUser;
 
     @Column(nullable = false)
     private String action;
@@ -57,11 +57,11 @@ public class AuditLogEntity {
         this.tenant = tenant;
     }
 
-    public TenantUserEntity getActorUser() {
+    public IdpUserEntity getActorUser() {
         return actorUser;
     }
 
-    public void setActorUser(TenantUserEntity actorUser) {
+    public void setActorUser(IdpUserEntity actorUser) {
         this.actorUser = actorUser;
     }
 

@@ -19,4 +19,8 @@ public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
 
     Page<RoleEntity> findByScopeTypeIn(Set<RoleScopeType> scopeTypes, Pageable pageable);
 
+    RoleEntity findByNameAndScopeId(String name, UUID scopeId);
+
+    RoleEntity findByNameAndScopeIdIsNull(String name);
+
 }

@@ -12,7 +12,6 @@ import org.hibernate.annotations.Type;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -46,7 +45,7 @@ public class ProjectEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner")
-    private TenantUserEntity owner;
+    private IdpUserEntity owner;
 
     @Type(value = JsonBinaryType.class)
     @Column(name = "resource_limits", columnDefinition = "jsonb")
@@ -119,11 +118,11 @@ public class ProjectEntity {
         this.status = status;
     }
 
-    public TenantUserEntity getOwner() {
+    public IdpUserEntity getOwner() {
         return owner;
     }
 
-    public void setOwner(TenantUserEntity owner) {
+    public void setOwner(IdpUserEntity owner) {
         this.owner = owner;
     }
 

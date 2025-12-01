@@ -3,11 +3,10 @@
  */
 package com.onetattva.infron.db.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import com.onetattva.infron.db.ProviderType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.Type;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 

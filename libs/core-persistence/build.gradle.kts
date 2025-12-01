@@ -7,4 +7,5 @@ dependencies {
     compileOnly(libs.swagger.annotations)
     implementation(libs.vladmihalcea.hibernate.types)
     implementation(project(":libs:core-api"))
+    implementation(libs.jackson.databind)
 }

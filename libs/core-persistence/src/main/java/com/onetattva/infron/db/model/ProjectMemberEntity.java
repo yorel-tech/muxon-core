@@ -22,7 +22,7 @@ public class ProjectMemberEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private TenantUserEntity user;
+    private IdpUserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
@@ -52,11 +52,11 @@ public class ProjectMemberEntity {
         this.project = project;
     }
 
-    public TenantUserEntity getUser() {
+    public IdpUserEntity getUser() {
         return user;
     }
 
-    public void setUser(TenantUserEntity user) {
+    public void setUser(IdpUserEntity user) {
         this.user = user;
     }
 

@@ -7,13 +7,13 @@ include(
     "libs:core-auth",
     "libs:core-spi",
     "libs:core-commons",
-    "services:api-gateway",
+    "services:auth-api",
+    "services:bootstrap-initializer",
     "services:core-services",
     "services:orchestrator",
     "services:usage-billing",
     "services:agent",
     "services:console-proxy",
-    "providers:vsphere",
     "providers:libvirt",
     "providers:proxmox"
 )

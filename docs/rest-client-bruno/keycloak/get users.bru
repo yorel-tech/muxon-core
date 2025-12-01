@@ -1,0 +1,15 @@
+meta {
+  name: get users
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:8085/admin/realms/infron-dev/users
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

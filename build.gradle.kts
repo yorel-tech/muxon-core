@@ -9,6 +9,7 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven { url = uri("https://libvirt.org/maven2") }
     }
 
     tasks.withType<JavaCompile> {

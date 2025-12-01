@@ -1,2 +1,6 @@
 plugins { `java-library` }
-dependencies { }
+
+dependencies {
+    api(libs.spring.web)
+    implementation(libs.jackson.databind)
+}
