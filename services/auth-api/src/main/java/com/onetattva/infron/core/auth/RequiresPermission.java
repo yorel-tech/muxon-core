@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequiresPermission {
-    String action(); // e.g. "vm:create"
+    Permission value(); // e.g. Permission.VM_READ
 }

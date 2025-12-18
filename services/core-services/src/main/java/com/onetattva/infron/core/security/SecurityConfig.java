@@ -24,10 +24,14 @@ public class SecurityConfig {
 
     private final IdentityProviderService idpService;
     private final JwtDecoderFactory jwtDecoderFactory;
+    private final JwtUserPrincipalConverter jwtUserPrincipalConverter;
 
-    public SecurityConfig(IdentityProviderService idpService, JwtDecoderFactory jwtDecoderFactory) {
+    public SecurityConfig(IdentityProviderService idpService,
+                         JwtDecoderFactory jwtDecoderFactory,
+                         JwtUserPrincipalConverter jwtUserPrincipalConverter) {
         this.idpService = idpService;
         this.jwtDecoderFactory = jwtDecoderFactory;
+        this.jwtUserPrincipalConverter = jwtUserPrincipalConverter;
     }
 
     @Bean
@@ -63,8 +67,8 @@ public class SecurityConfig {
             JwtDecoder jwtDecoder = jwtDecoderFactory.getOrCreateDecoder(key, issuer, jwksUri);
 
             JwtAuthenticationProvider jwtAuthProvider = new JwtAuthenticationProvider(jwtDecoder);
-            // Optionally set JwtAuthenticationConverter to map claims->authorities
-            //jwtAuthProvider.setJwtAuthenticationConverter(new JwtGrantedAuthoritiesConverter()); // or custom converter
+            // Set custom converter to create UserPrincipal
+            jwtAuthProvider.setJwtAuthenticationConverter(jwtUserPrincipalConverter);
 
             return authentication -> jwtAuthProvider.authenticate(authentication);
         };

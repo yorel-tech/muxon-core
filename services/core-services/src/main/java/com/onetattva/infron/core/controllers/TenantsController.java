@@ -3,6 +3,8 @@ package com.onetattva.infron.core.controllers;
 import com.onetattva.infron.api.TenantsApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.TenantsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,24 +18,28 @@ public class TenantsController implements TenantsApi {
     @Autowired
     private TenantsService tenantsService;
 
+    @RequiresPermission(Permission.TENANT_MANAGE)
     public ResponseEntity<Tenant> createTenant(TenantCreate tenantCreate) {
         Tenant tenant = tenantsService.createTenant(tenantCreate);
         return ResponseEntity.status(201).body(tenant);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_MANAGE)
     public ResponseEntity<Void> deleteTenant(UUID tenantId) {
         tenantsService.deleteTenant(tenantId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_READ)
     public ResponseEntity<Tenant> getTenant(UUID tenantId) {
         Tenant tenant = tenantsService.getTenant(tenantId);
         return ResponseEntity.ok(tenant);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_READ)
     public ResponseEntity<TenantList> listTenants(Integer page, Integer perPage, String sort, String name,
                                                   String status) {
         TenantList tenantList = tenantsService.listTenants(page, perPage, sort, name, status);
@@ -41,30 +47,35 @@ public class TenantsController implements TenantsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_EDIT)
     public ResponseEntity<Tenant> patchTenant(UUID tenantId, TenantUpdate tenantUpdate) {
         Tenant tenant = tenantsService.patchTenant(tenantId, tenantUpdate);
         return ResponseEntity.ok(tenant);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_EDIT)
     public ResponseEntity<Tenant> updateTenant(UUID tenantId, TenantUpdate tenantUpdate) {
         Tenant tenant = tenantsService.updateTenant(tenantId, tenantUpdate);
         return ResponseEntity.ok(tenant);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_SETTINGS)
     public ResponseEntity<TenantSettings> getTenantSettings(UUID tenantId) {
         TenantSettings settings = tenantsService.getTenantSettings(tenantId);
         return ResponseEntity.ok(settings);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_SETTINGS)
     public ResponseEntity<TenantSettings> replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
         TenantSettings settings = tenantsService.replaceTenantSettings(tenantId, tenantSettings);
         return ResponseEntity.ok(settings);
     }
 
     @Override
+    @RequiresPermission(Permission.TENANT_SETTINGS)
     public ResponseEntity<TenantSettings> updateTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
         TenantSettings settings = tenantsService.updateTenantSettings(tenantId, tenantSettings);
         return ResponseEntity.ok(settings);

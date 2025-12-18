@@ -3,6 +3,8 @@ package com.onetattva.infron.core.controllers;
 import com.onetattva.infron.api.ProjectsApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ public class ProjectsController implements ProjectsApi {
     private ProjectService projectService;
 
     @Override
+    @RequiresPermission(Permission.PROJECT_MANAGE)
     public ResponseEntity<ProjectMember> addProjectMember(UUID tenantId, UUID projectId, ProjectMember projectMember) {
         // TODO: Implement add project member logic
         ProjectMember newMember = new ProjectMember();
@@ -27,24 +30,28 @@ public class ProjectsController implements ProjectsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_MANAGE)
     public ResponseEntity<Project> createProject(UUID tenantId, ProjectCreate projectCreate) {
         Project project = projectService.createProject(tenantId, projectCreate);
         return ResponseEntity.status(201).body(project);
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_MANAGE)
     public ResponseEntity<Void> deleteProject(UUID tenantId, UUID projectId) {
         projectService.deleteProject(tenantId, projectId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_READ)
     public ResponseEntity<Project> getProject(UUID tenantId, UUID projectId) {
         Project project = projectService.getProject(tenantId, projectId);
         return ResponseEntity.ok(project);
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_READ)
     public ResponseEntity<ListProjectMembers200Response> listProjectMembers(UUID tenantId, UUID projectId) {
         // TODO: Implement list project members logic
         ListProjectMembers200Response response = new ListProjectMembers200Response();
@@ -57,18 +64,21 @@ public class ProjectsController implements ProjectsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_READ)
     public ResponseEntity<ProjectList> listProjects(UUID tenantId, Integer page, Integer perPage) {
         ProjectList projectList = projectService.listProjects(tenantId, page, perPage);;
         return ResponseEntity.ok(projectList);
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_MANAGE)
     public ResponseEntity<Void> removeProjectMember(UUID tenantId, UUID projectId, UUID userId) {
         // TODO: Implement remove project member logic
         return ResponseEntity.noContent().build();
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_EDIT)
     public ResponseEntity<Project> replaceProject(UUID tenantId, UUID projectId, ProjectUpdate projectUpdate) {
         // TODO: Implement replace project logic
         Project project = new Project();
@@ -89,6 +99,7 @@ public class ProjectsController implements ProjectsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.PROJECT_EDIT)
     public ResponseEntity<Project> updateProject(UUID tenantId, UUID projectId, ProjectUpdate projectUpdate) {
         // TODO: Implement update project logic
         Project project = new Project();
