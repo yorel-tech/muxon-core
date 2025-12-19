@@ -13,7 +13,6 @@ public class Constants {
     // Default role names
     public static final String ROLE_SYSTEM_ADMIN = "system:admin";
     public static final String ROLE_TENANT_ADMIN = "tenant:admin";
-    public static final String ROLE_PROJECT_ADMIN = "project:admin";
     public static final String ROLE_WORKLOAD_OPERATOR = "workload:operator";
     public static final String ROLE_WORKLOAD_USER = "workload:user";
 }

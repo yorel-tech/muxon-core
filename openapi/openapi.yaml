@@ -21,8 +21,6 @@ tags:
     description: Tenant access grants, per-datacenter quota & feature binding
   - name: Tenants
     description: Tenant / Organization lifecycle operations
-  - name: Projects
-    description: Project lifecycle operations
   - name: NodeClusters
     description: Node cluster grouping and management
   - name: Nodes
@@ -109,16 +107,6 @@ paths:
   /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/effective:
     $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1effective'
 
-  # Projects
-  /api/v1/tenants/{tenantId}/projects:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects'
-  /api/v1/tenants/{tenantId}/projects/{projectId}:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}'
-  /api/v1/tenants/{tenantId}/projects/{projectId}/members:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members'
-  /api/v1/tenants/{tenantId}/projects/{projectId}/members/{userId}:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1members~1{userId}'
-
   # Nodes
   /api/v1/api/nodes:
     $ref: './nodes.yaml#/paths/~1api~1nodes'
@@ -140,8 +128,6 @@ paths:
   # Metadata paths
   /api/v1/tenants/{tenantId}/metadata:
     $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}~1metadata'
-  /api/v1/tenants/{tenantId}/projects/{projectId}/metadata:
-    $ref: './projects.yaml#/paths/~1tenants~1{tenantId}~1projects~1{projectId}~1metadata'
   /api/v1/nodes/{nodeId}/metadata:
     $ref: './nodes.yaml#/paths/~1api~1nodes~1{nodeId}~1metadata'
   /api/v1/node-clusters/{clusterId}/metadata:

@@ -1,5 +1,5 @@
 -- V1__init.sql
--- Infron initial schema: provider objects + tenant/project/user model
+-- Infron initial schema: provider objects + tenant/user model
 -- Postgres 18 assumed. All ids are UUID.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -7,7 +7,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Enums
 CREATE TYPE tenant_status AS ENUM ('ACTIVE','INACTIVE','SUSPENDED');
-CREATE TYPE project_status AS ENUM ('ACTIVE','SUSPENDED','ARCHIVED');
 CREATE TYPE provider_type AS ENUM ('PROXMOX', 'LIBVIRT', 'KUBERNETES');
 CREATE TYPE node_status AS ENUM ('UNKNOWN', 'READY', 'DOWN', 'MAINTENANCE');
 

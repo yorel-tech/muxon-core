@@ -20,13 +20,8 @@ public enum Permission {
     DATACENTER_EDIT("datacenter:edit"),
     DATACENTER_MANAGE("datacenter:manage"),
 
-    // Tenant/Project-level permissions
+    // Tenant-level permissions
     TENANT_SETTINGS("tenant:settings"),
-
-    PROJECT_SETTINGS("project:settings"),
-    PROJECT_READ("project:read"),
-    PROJECT_EDIT("project:edit"),
-    PROJECT_MANAGE("project:manage"),
 
     VM_READ("vm:read"),
     VM_EDIT("vm:edit"),

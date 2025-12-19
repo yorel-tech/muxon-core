@@ -14,14 +14,6 @@ components:
         type: string
         format: uuid
       description: Tenant UUID
-    projectId:
-      name: projectId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Project UUID
     page:
       name: page
       in: query
@@ -96,8 +88,8 @@ components:
     ResourceLimits:
       type: object
       description: >
-        Resource limits for a tenant or project. Server must validate that
-        project limits do not exceed tenant/datacenter grants.
+        Resource limits for a tenant. Server must validate that
+        tenant limits do not exceed datacenter grants.
       properties:
         maxCpus:
           type: integer

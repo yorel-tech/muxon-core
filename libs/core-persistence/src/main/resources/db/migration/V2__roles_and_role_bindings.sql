@@ -10,7 +10,7 @@
 --
 -- IMPORTANT: This migration is Core-only and contains no Nexus schema.
 -- =====================================================================
-CREATE TYPE role_scope AS ENUM ('SYSTEM','TENANT','TENANT_GLOBAL', 'PROJECT');
+CREATE TYPE role_scope AS ENUM ('SYSTEM','TENANT','TENANT_GLOBAL');
 CREATE TYPE subject_type AS ENUM ('USER','GROUP','SERVICE_ACCOUNT');
 -----------------------------------------------------------------------
 -- 1. Permissions (canonical)
@@ -40,7 +40,6 @@ CREATE TABLE IF NOT EXISTS role (
 -- scope_type = 'system' — system-only roles (Core/system operators). scope_id MUST be NULL.
 -- scope_type = 'tenant_global' — tenant-global roles that are available to all tenants (e.g. tenant:admin seeded by sysadmin); scope_id MUST be NULL.
 -- scope_type = 'tenant' — tenant-scoped roles created by a tenant admin for a specific tenant; scope_id = that tenant's UUID.
--- scope_type = 'project' — project-scoped roles; scope_id = project UUID.
 -----------------------------------------------------------------------
 -----------------------------------------------------------------------
 -- 3. Role → Permission mapping
@@ -68,7 +67,7 @@ CREATE TABLE IF NOT EXISTS role_binding (
     role_id UUID NOT NULL REFERENCES role(id) ON DELETE CASCADE,
     subject_type subject_type NOT NULL DEFAULT 'USER',    -- 'user' | 'group' | 'service_account'
     subject_id TEXT NOT NULL,      -- user UUID OR external group ID (string)
-    scope_type role_scope NOT NULL DEFAULT 'SYSTEM', -- 'system' | 'tenant' | 'project'
+    scope_type role_scope NOT NULL DEFAULT 'SYSTEM', -- 'system' | 'tenant'
     scope_id UUID,                 -- null for system scope
     expires_at TIMESTAMPTZ,        -- optional time-limited grant
     created_by UUID,
@@ -114,9 +113,9 @@ BEGIN
             (uuid_generate_v5(ns, 'provider:read'), 'provider:read',     'Read provider', 'SYSTEM'),
             (uuid_generate_v5(ns, 'provider:edit'), 'provider:edit',    'Edit provider', 'SYSTEM'),
             (uuid_generate_v5(ns, 'provider:manage'), 'provider:manage',  'Manage provider', 'SYSTEM'),
-            (uuid_generate_v5(ns, 'user:read'), 'user:read',     'Read user', 'PROJECT'),
-            (uuid_generate_v5(ns, 'user:edit'), 'user:edit',    'Edit user', 'PROJECT'),
-            (uuid_generate_v5(ns, 'user:manage'), 'user:manage',  'Manage user', 'PROJECT'),
+            (uuid_generate_v5(ns, 'user:read'), 'user:read',     'Read user', 'TENANT'),
+            (uuid_generate_v5(ns, 'user:edit'), 'user:edit',    'Edit user', 'TENANT'),
+            (uuid_generate_v5(ns, 'user:manage'), 'user:manage',  'Manage user', 'TENANT'),
             (uuid_generate_v5(ns, 'tenant:read'), 'tenant:read',     'Read tenant', 'SYSTEM'),
             (uuid_generate_v5(ns, 'tenant:edit'), 'tenant:edit',    'Edit tenant', 'SYSTEM'),
             (uuid_generate_v5(ns, 'tenant:manage'), 'tenant:manage',  'Manage tenant', 'SYSTEM'),
@@ -125,18 +124,14 @@ BEGIN
             (uuid_generate_v5(ns, 'datacenter:manage'), 'datacenter:manage',  'Manage datacenter', 'SYSTEM')
     ON CONFLICT (action) DO NOTHING;
 
-    -- TENANT/PROJECT-LEVEL permissions
+    -- TENANT-LEVEL permissions
     INSERT INTO permission (id, action, description, scope)
         VALUES
             (uuid_generate_v5(ns, 'tenant:settings'), 'tenant:settings', 'Update tenant settings', 'TENANT'),
-            (uuid_generate_v5(ns, 'project:settings'), 'project:settings', 'Update project settings', 'PROJECT'),
-            (uuid_generate_v5(ns, 'project:read'), 'project:read',     'Read project', 'TENANT'),
-            (uuid_generate_v5(ns, 'project:edit'), 'project:edit',    'Edit project', 'TENANT'),
-            (uuid_generate_v5(ns, 'project:manage'), 'project:manage',  'Manage project', 'TENANT'),
-            (uuid_generate_v5(ns, 'vm:read'), 'vm:read',     'Read vm', 'PROJECT'),
-            (uuid_generate_v5(ns, 'vm:edit'), 'vm:edit',    'Edit vm', 'PROJECT'),
-            (uuid_generate_v5(ns, 'vm:manage'), 'vm:manage',  'Manage vm', 'PROJECT'),
-            (uuid_generate_v5(ns, 'vm:console'), 'vm:console',  'View vm console', 'PROJECT')
+            (uuid_generate_v5(ns, 'vm:read'), 'vm:read',     'Read vm', 'TENANT'),
+            (uuid_generate_v5(ns, 'vm:edit'), 'vm:edit',    'Edit vm', 'TENANT'),
+            (uuid_generate_v5(ns, 'vm:manage'), 'vm:manage',  'Manage vm', 'TENANT'),
+            (uuid_generate_v5(ns, 'vm:console'), 'vm:console',  'View vm console', 'TENANT')
     ON CONFLICT (action) DO NOTHING;
 END$$;
 
@@ -165,19 +160,7 @@ INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM role r, permission p
 WHERE r.name = 'tenant:admin'
-  AND p.scope IN ('TENANT', 'PROJECT')
-ON CONFLICT DO NOTHING;
-
--- PROJECT ADMIN
-INSERT INTO role (name, description, scope_type, scope_id, immutable)
-VALUES ('project:admin', 'Project Administrator', 'TENANT_GLOBAL', NULL, TRUE)
-ON CONFLICT (name) DO NOTHING;
-
-INSERT INTO role_permission (role_id, permission_id)
-SELECT r.id, p.id
-FROM role r, permission p
-WHERE r.name = 'project:admin'
-  AND p.scope = 'PROJECT'
+  AND p.scope IN ('TENANT')
 ON CONFLICT DO NOTHING;
 
 -- WORKLOAD OPERATOR

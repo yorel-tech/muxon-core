@@ -81,24 +81,6 @@ CREATE TABLE audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Project
-CREATE TABLE project (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
-  tenant_datacenter_grant_id UUID REFERENCES tenant_datacenter_grant(id) ON DELETE SET NULL,
-  name TEXT NOT NULL,
-  display_name TEXT,
-  description TEXT,
-  status project_status NOT NULL DEFAULT 'ACTIVE',
-  owner UUID REFERENCES idp_user(id), -- owner user id
-  resource_limits JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (tenant_id, name)
-);
-
-CREATE INDEX ix_project_tenant ON project (tenant_id);
-
 -- System init table
 CREATE TABLE IF NOT EXISTS system_init (
     primary_key TEXT PRIMARY KEY,
@@ -114,5 +96,3 @@ CREATE TRIGGER trg_identity_provider_updated BEFORE UPDATE ON identity_provider 
 
 -- Add updated_at trigger for idp_user
 CREATE TRIGGER trg_idp_user_updated BEFORE UPDATE ON idp_user FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-
-CREATE TRIGGER trg_project_updated BEFORE UPDATE ON project FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();

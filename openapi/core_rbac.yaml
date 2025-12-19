@@ -25,7 +25,7 @@ components:
           example: "Manage VMs, Pods, Containers in the scope"
         scope_type:
           type: string
-          description: "system | tenant_global | tenant | project"
+          description: "system | tenant_global | tenant"
           example: "tenant"
         scope_id:
           type: string
@@ -51,7 +51,7 @@ components:
           type: string
         scope_type:
           type: string
-          description: "one of: system | tenant_global | tenant | project"
+          description: "one of: system | tenant_global | tenant"
         scope_id:
           type: string
           format: uuid
@@ -134,7 +134,7 @@ components:
           type: string
         scope_type:
           type: string
-          enum: [system, tenant, project]
+          enum: [system, tenant]
         scope_id:
           type: string
           format: uuid
@@ -438,7 +438,7 @@ paths:
           in: query
           schema:
             type: string
-            description: "system | tenant | project | tenant_global"
+            description: "system | tenant | tenant_global"
         - name: q
           in: query
           description: "search text for action or description"
