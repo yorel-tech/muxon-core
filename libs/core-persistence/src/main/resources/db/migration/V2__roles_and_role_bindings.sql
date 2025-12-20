@@ -121,7 +121,10 @@ BEGIN
             (uuid_generate_v5(ns, 'tenant:manage'), 'tenant:manage',  'Manage tenant', 'SYSTEM'),
             (uuid_generate_v5(ns, 'datacenter:read'), 'datacenter:read',     'Read datacenter', 'SYSTEM'),
             (uuid_generate_v5(ns, 'datacenter:edit'), 'datacenter:edit',    'Edit datacenter', 'SYSTEM'),
-            (uuid_generate_v5(ns, 'datacenter:manage'), 'datacenter:manage',  'Manage datacenter', 'SYSTEM')
+            (uuid_generate_v5(ns, 'datacenter:manage'), 'datacenter:manage',  'Manage datacenter', 'SYSTEM'),
+            (uuid_generate_v5(ns, 'role_binding:read'), 'role_binding:read',     'Read role bindings', 'SYSTEM'),
+            (uuid_generate_v5(ns, 'role_binding:edit'), 'role_binding:edit',    'Edit role bindings', 'SYSTEM'),
+            (uuid_generate_v5(ns, 'role_binding:manage'), 'role_binding:manage',  'Manage role bindings', 'SYSTEM')
     ON CONFLICT (action) DO NOTHING;
 
     -- TENANT-LEVEL permissions
@@ -149,6 +152,7 @@ INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM role r, permission p
 WHERE r.name = 'system:admin'
+  AND p.scope = 'SYSTEM'
 ON CONFLICT DO NOTHING;
 
 -- TENANT ADMIN

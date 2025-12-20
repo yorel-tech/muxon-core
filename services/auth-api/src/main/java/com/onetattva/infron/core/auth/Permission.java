@@ -20,6 +20,11 @@ public enum Permission {
     DATACENTER_EDIT("datacenter:edit"),
     DATACENTER_MANAGE("datacenter:manage"),
 
+    // Role binding permissions
+    ROLE_BINDING_READ("role_binding:read"),
+    ROLE_BINDING_EDIT("role_binding:edit"),
+    ROLE_BINDING_MANAGE("role_binding:manage"),
+
     // Tenant-level permissions
     TENANT_SETTINGS("tenant:settings"),
 

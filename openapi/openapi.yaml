@@ -152,6 +152,7 @@ paths:
     $ref: './core_rbac.yaml#/paths/~1permissions'
   /api/v1/role-bindings:
     $ref: './core_rbac.yaml#/paths/~1role-bindings'
+  /api/v1/role-bindings/{bindingId}:
+    $ref: './core_rbac.yaml#/paths/~1role-bindings~1{bindingId}'
   /api/v1/users/{userId}/bindings:
     $ref: './core_rbac.yaml#/paths/~1users~1{userId}~1bindings'
-

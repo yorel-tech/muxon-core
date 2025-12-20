@@ -154,6 +154,16 @@ components:
           items:
             $ref: "#/components/schemas/RoleBindingCreateItem"
 
+    RoleBindingUpdate:
+      type: object
+      required:
+        - role_id
+      properties:
+        role_id:
+          type: string
+          format: uuid
+          description: "The new role ID to assign to the subject. This is the only field that can be updated in a role binding."
+
     RoleList:
       type: object
       properties:
@@ -599,3 +609,64 @@ paths:
                 $ref: "#/components/schemas/RoleBindingList"
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  # -------------------------
+  # Individual Role Binding operations
+  # -------------------------
+  /role-bindings/{bindingId}:
+    parameters:
+      - name: bindingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getRoleBinding
+      tags: [Bindings]
+      summary: Get a specific role binding
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleBinding"
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      operationId: updateRoleBinding
+      tags: [Bindings]
+      summary: Update a role binding
+      description: "Update the role assigned to the subject in this role binding. Only the role can be changed."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleBindingUpdate"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleBinding"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      operationId: deleteRoleBinding
+      tags: [Bindings]
+      summary: Delete a role binding
+      description: "Remove a role binding. This revokes the role assignment."
+      responses:
+        '204':
+          description: No content
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
