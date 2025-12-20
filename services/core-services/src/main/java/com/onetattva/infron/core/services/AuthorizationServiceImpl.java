@@ -8,6 +8,7 @@ import com.onetattva.infron.db.repository.PermissionRepository;
 import com.onetattva.infron.db.repository.RolePermissionRepository;
 import com.onetattva.infron.db.repository.UserRoleBindingViewRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -87,7 +88,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         redis.delete(cacheKey(externalId));
     }
 
-    // cache user permissions via Spring Cache and Redis
+    // cache user permissions via Spring Cache with TTL
     @Cacheable(cacheNames = "userPermissions", key = "#user.id")
     public List<String> getCachedPermissions(UserPrincipal user) {
         // Query database for user's role bindings to get role IDs with proper tenant scoping
@@ -110,6 +111,16 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                 .collect(Collectors.toList());
 
         return permissions;
+    }
+
+    @CacheEvict(cacheNames = "userPermissions", key = "#userId")
+    public void evictCacheForUser(String userId) {
+        // Spring Cache handles eviction
+    }
+
+    @CacheEvict(cacheNames = "userPermissions", allEntries = true)
+    public void evictAllUserPermissions() {
+        // Spring Cache handles eviction
     }
 
     @Override

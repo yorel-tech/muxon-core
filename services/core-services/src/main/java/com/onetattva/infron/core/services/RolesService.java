@@ -4,6 +4,7 @@ import com.onetattva.infron.api.model.Role;
 import com.onetattva.infron.api.model.RoleCreate;
 import com.onetattva.infron.api.model.RoleList;
 import com.onetattva.infron.api.model.RoleUpdate;
+import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.db.model.RoleEntity;
 import com.onetattva.infron.db.repository.RoleRepository;
 import com.onetattva.infron.db.RoleScopeType;
@@ -28,6 +29,9 @@ public class RolesService {
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     public Role createRole(RoleCreate roleCreate) {
         RoleEntity entity = new RoleEntity();
@@ -59,6 +63,7 @@ public class RolesService {
 
     public void deleteRole(UUID roleId) {
         roleRepository.deleteById(roleId);
+        authorizationService.evictAllUserPermissions();
     }
 
     public void deleteTenantRole(UUID tenantId, UUID roleId) {
@@ -67,6 +72,7 @@ public class RolesService {
             throw new RuntimeException("Role not found in tenant scope");
         }
         roleRepository.delete(role);
+        authorizationService.evictAllUserPermissions();
     }
 
     public Role getRole(UUID roleId) {
@@ -142,6 +148,7 @@ public class RolesService {
             entity.setImmutable(roleUpdate.getImmutable());
         }
         RoleEntity saved = roleRepository.save(entity);
+        authorizationService.evictAllUserPermissions();
         return mapEntityToApi(saved);
     }
 
@@ -160,6 +167,7 @@ public class RolesService {
             entity.setImmutable(roleUpdate.getImmutable());
         }
         RoleEntity saved = roleRepository.save(entity);
+        authorizationService.evictAllUserPermissions();
         return mapEntityToApi(saved);
     }
 

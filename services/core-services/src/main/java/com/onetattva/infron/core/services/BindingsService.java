@@ -4,6 +4,7 @@ import com.onetattva.infron.api.model.RoleBinding;
 import com.onetattva.infron.api.model.RoleBindingBulkCreate;
 import com.onetattva.infron.api.model.RoleBindingCreateItem;
 import com.onetattva.infron.api.model.RoleBindingList;
+import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.UuidUtils;
@@ -44,6 +45,9 @@ public class BindingsService {
 
     @Autowired
     private StringRedisTemplate redis;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     // Rate limiting: max 10 role binding changes per minute per user
     private static final int MAX_CHANGES_PER_MINUTE = 10;
@@ -140,6 +144,14 @@ public class BindingsService {
         result.setItems(saved.stream()
                 .map(this::mapEntityToApi)
                 .collect(Collectors.toList()));
+
+        // Evict permission cache for affected users
+        for (RoleBindingEntity entity : saved) {
+            if (entity.getSubjectType() == RoleBindingSubjectType.USER) {
+                authorizationService.evictCacheForUser(entity.getSubjectId());
+            }
+        }
+
         return result;
     }
 
@@ -175,6 +187,14 @@ public class BindingsService {
         result.setItems(saved.stream()
                 .map(this::mapEntityToApi)
                 .collect(Collectors.toList()));
+
+        // Evict permission cache for affected users
+        for (RoleBindingEntity entity : saved) {
+            if (entity.getSubjectType() == RoleBindingSubjectType.USER) {
+                authorizationService.evictCacheForUser(entity.getSubjectId());
+            }
+        }
+
         return result;
     }
 
@@ -215,6 +235,14 @@ public class BindingsService {
         result.setItems(saved.stream()
                 .map(this::mapEntityToApi)
                 .collect(Collectors.toList()));
+
+        // Evict permission cache for affected users
+        for (RoleBindingEntity entity : saved) {
+            if (entity.getSubjectType() == RoleBindingSubjectType.USER) {
+                authorizationService.evictCacheForUser(entity.getSubjectId());
+            }
+        }
+
         return result;
     }
 
@@ -271,6 +299,9 @@ public class BindingsService {
         entity.setRole(newRole);
 
         RoleBindingEntity saved = roleBindingRepository.save(entity);
+        if (saved.getSubjectType() == RoleBindingSubjectType.USER) {
+            authorizationService.evictCacheForUser(saved.getSubjectId());
+        }
         return mapEntityToApi(saved);
     }
 
@@ -286,6 +317,9 @@ public class BindingsService {
             validateSystemScopeAccess();
         }
 
+        if (entity.getSubjectType() == RoleBindingSubjectType.USER) {
+            authorizationService.evictCacheForUser(entity.getSubjectId());
+        }
         roleBindingRepository.delete(entity);
     }
 
@@ -325,6 +359,9 @@ public class BindingsService {
         entity.setRole(newRole);
 
         RoleBindingEntity saved = roleBindingRepository.save(entity);
+        if (saved.getSubjectType() == RoleBindingSubjectType.USER) {
+            authorizationService.evictCacheForUser(saved.getSubjectId());
+        }
         return mapEntityToApi(saved);
     }
 
@@ -344,6 +381,9 @@ public class BindingsService {
             validateSystemScopeAccess();
         }
 
+        if (entity.getSubjectType() == RoleBindingSubjectType.USER) {
+            authorizationService.evictCacheForUser(entity.getSubjectId());
+        }
         roleBindingRepository.delete(entity);
     }
 

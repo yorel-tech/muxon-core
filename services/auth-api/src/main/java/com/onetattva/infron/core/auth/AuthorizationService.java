@@ -16,7 +16,17 @@ public interface AuthorizationService {
     boolean hasAccessToTenant(String externalId, String tenantId);
 
     /**
-     * Evict cache for a subject (call this on membership changes).
+     * Evict tenant cache for a subject (call this on membership changes).
      */
     void evictCacheForExternalId(String externalId);
+
+    /**
+     * Evict permission cache for a user.
+     */
+    void evictCacheForUser(String userId);
+
+    /**
+     * Evict all user permission caches.
+     */
+    void evictAllUserPermissions();
 }
