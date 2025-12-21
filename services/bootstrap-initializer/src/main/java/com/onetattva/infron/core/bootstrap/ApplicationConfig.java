@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuration class representing the application.yaml structure
+ * Configuration class representing the app-template.yaml structure
  */
 public class ApplicationConfig {
 

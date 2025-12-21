@@ -15,5 +15,6 @@ include(
     "services:agent",
     "services:console-proxy",
     "providers:libvirt",
-    "providers:proxmox"
+    "providers:proxmox",
+    "integration-tests"
 )

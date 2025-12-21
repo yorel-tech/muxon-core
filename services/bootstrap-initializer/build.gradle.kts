@@ -20,6 +20,6 @@ dependencies {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "com.onetattva.infron.bootstrap.BootstrapApplication"
+        attributes["Main-Class"] = "com.onetattva.infron.core.bootstrap.BootstrapApplication"
     }
 }

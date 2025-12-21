@@ -18,4 +18,3 @@ public class CoreServicesApplication {
         SpringApplication.run(CoreServicesApplication.class, args);
     }
 }
-

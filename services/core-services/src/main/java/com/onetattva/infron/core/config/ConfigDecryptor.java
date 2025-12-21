@@ -6,6 +6,9 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
@@ -18,9 +21,8 @@ import java.util.Map;
  */
 public class ConfigDecryptor implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
-    private static final String INFRON_PASSPHRASE = "infron-passphrase";
+    private static final String INFRON_PASSPHRASE_FILE = "/run/secrets/infron-passphrase";
     private static final String SPRING_DATASOURCE_PASSWORD = "spring.datasource.password";
-    private static final String SPRING_DATASOURCE_PASSWORD1 = "spring.datasource.password";
     private static final String DECRYPTED_PROPERTIES = "decrypted-properties";
 
     @Override
@@ -37,10 +39,11 @@ public class ConfigDecryptor implements ApplicationListener<ApplicationEnvironme
             instanceId = 1;
         }
 
-        // Generate encryption key from instance details and passphrase
-        // Note: In production, the passphrase should be provided via environment variable or secure vault
-        String passphrase = System.getenv(INFRON_PASSPHRASE);
-        if (passphrase == null || passphrase.isEmpty()) {
+        // Read passphrase from mounted file
+        String passphrase;
+        try {
+            passphrase = Files.readString(Paths.get(INFRON_PASSPHRASE_FILE)).trim();
+        } catch (IOException e) {
             // Fallback to a default for development - in production this should fail
             passphrase = "default-passphrase-change-in-production";
         }
@@ -50,12 +53,12 @@ public class ConfigDecryptor implements ApplicationListener<ApplicationEnvironme
 
         // Decrypt datasource password if it's encrypted
         String dbPassword = environment.getProperty(SPRING_DATASOURCE_PASSWORD);
-        if (dbPassword != null && isLikelyEncrypted(dbPassword)) {
+        if (dbPassword != null) {
             try {
                 String decryptedPassword = EncryptionUtil.decrypt(dbPassword);
-                // Add decrypted property to environment
+                // Add decrypted property to environment (override the encrypted one)
                 Map<String, Object> decryptedProperties = new HashMap<>();
-                decryptedProperties.put(SPRING_DATASOURCE_PASSWORD1, decryptedPassword);
+                decryptedProperties.put(SPRING_DATASOURCE_PASSWORD, decryptedPassword);
                 environment.getPropertySources().addFirst(
                     new MapPropertySource(DECRYPTED_PROPERTIES, decryptedProperties)
                 );
@@ -79,15 +82,5 @@ public class ConfigDecryptor implements ApplicationListener<ApplicationEnvironme
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Failed to generate encryption key", e);
         }
-    }
-
-    /**
-     * Simple heuristic to determine if a string value is likely encrypted
-     */
-    private boolean isLikelyEncrypted(String value) {
-        // Base64 strings are typically longer and contain specific characters
-        return value.length() > 20 &&
-               value.matches("^[A-Za-z0-9+/]+={0,2}$") &&
-               (value.contains("/") || value.contains("+"));
     }
 }

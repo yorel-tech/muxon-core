@@ -6,4 +6,4 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
-      - ${PWD}/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/realm-infron-dev.json:ro
+      - ${PWD}/compose/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/realm-infron-dev.json:ro

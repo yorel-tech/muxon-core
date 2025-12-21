@@ -12,7 +12,7 @@ infron:
         # OIDC placeholders
         issuerUri: "http://localhost:8085/realms/infron-dev"
         clientId: "infron-api"
-        clientSecret: "yOLpyss3IYlm2MadOdqAIfCpQne62Jdd"
+        clientSecret: "provide-in-secrets"
 
         # SAML placeholders
         # entityId: ""

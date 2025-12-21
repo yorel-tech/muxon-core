@@ -36,7 +36,7 @@ services:
     ports:
       - "8085:8080"
     volumes:
-      - ./keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
+      - ./compose/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
     depends_on:
       postgres:
         condition: service_healthy

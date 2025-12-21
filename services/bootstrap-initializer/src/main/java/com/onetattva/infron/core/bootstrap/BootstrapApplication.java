@@ -32,7 +32,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import static com.onetattva.infron.core.common.Constants.BOOTSTRAP_DONE_KEY;
@@ -63,10 +63,12 @@ public class BootstrapApplication implements CommandLineRunner {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         String configPath = null;
         String outputFolder = null;
         String passphrasePath = null;
+        String oidcSecretPath = null;
+        String dbPasswordPath = null;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -86,11 +88,27 @@ public class BootstrapApplication implements CommandLineRunner {
                         printUsageAndExit();
                     }
                     break;
-                case "--pass-phrase":
+                case "--infron-passphrase":
                     if (i + 1 < args.length) {
                         passphrasePath = args[++i];
                     } else {
-                        System.out.println("Missing value for --pass-phrase");
+                        System.out.println("Missing value for --infron-passphrase");
+                        printUsageAndExit();
+                    }
+                    break;
+                case "--infron-oidc-secret":
+                    if (i + 1 < args.length) {
+                        oidcSecretPath = args[++i];
+                    } else {
+                        System.out.println("Missing value for --infron-oidc-secret");
+                        printUsageAndExit();
+                    }
+                    break;
+                case "--infron-db-password":
+                    if (i + 1 < args.length) {
+                        dbPasswordPath = args[++i];
+                    } else {
+                        System.out.println("Missing value for --infron-db-password");
                         printUsageAndExit();
                     }
                     break;
@@ -100,18 +118,41 @@ public class BootstrapApplication implements CommandLineRunner {
             }
         }
 
-        if (configPath == null || outputFolder == null || passphrasePath == null) {
+        if (configPath == null || outputFolder == null || passphrasePath == null || oidcSecretPath == null || dbPasswordPath == null) {
             System.out.println("All arguments are required:");
             printUsageAndExit();
         }
 
+        // Load initial config to set system properties for Spring Boot
+        ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory())
+                .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        BootstrapConfig config;
+        try {
+            config = yamlMapper.readValue(new File(configPath), BootstrapConfig.class);
+        } catch (IOException e) {
+            System.err.println("Failed to load initial config: " + e.getMessage());
+            System.exit(1);
+            return;
+        }
+
+        String dbPassword = Files.readString(Paths.get(dbPasswordPath)).trim();
+
+        // Set system properties for Spring Boot DataSource configuration
+        System.setProperty("spring.datasource.url", config.getInfron().getDatasource().getUrl());
+        System.setProperty("spring.datasource.username", config.getInfron().getDatasource().getUsername());
+        System.setProperty("spring.datasource.password", dbPassword);
+        System.setProperty("spring.datasource.driver-class-name", config.getInfron().getDatasource().getDriverClassName());
+
+        // Disable web application type since we don't need a web server
+        System.setProperty("spring.main.web-application-type", "none");
+
         // Start Spring Boot application with arguments
         SpringApplication app = new SpringApplication(BootstrapApplication.class);
-        app.run("--configPath=" + configPath, "--outputFolder=" + outputFolder, "--passphrasePath=" + passphrasePath);
+        app.run("--configPath=" + configPath, "--outputFolder=" + outputFolder, "--passphrasePath=" + passphrasePath, "--oidcSecretPath=" + oidcSecretPath, "--dbPasswordPath=" + dbPasswordPath);
     }
 
     private static void printUsageAndExit() {
-        System.out.println("Usage: java -jar bootstrap-initializer.jar --initial-config <path> --output-folder <path> --pass-phrase <phrase>");
+        System.out.println("Usage: java -jar bootstrap-initializer.jar --initial-config <path> --output-folder <path> --infron-passphrase <path> --infron-oidc-secret <path> --infron-db-password <path>");
         System.exit(1);
     }
 
@@ -123,6 +164,8 @@ public class BootstrapApplication implements CommandLineRunner {
         String configPath = null;
         String outputFolder = null;
         String passphrasePath = null;
+        String oidcSecretPath = null;
+        String dbPasswordPath = null;
 
         for (String arg : args) {
             if (arg.startsWith("--configPath=")) {
@@ -131,11 +174,15 @@ public class BootstrapApplication implements CommandLineRunner {
                 outputFolder = arg.substring("--outputFolder=".length());
             } else if (arg.startsWith("--passphrasePath=")) {
                 passphrasePath = arg.substring("--passphrasePath=".length());
+            } else if (arg.startsWith("--oidcSecretPath=")) {
+                oidcSecretPath = arg.substring("--oidcSecretPath=".length());
+            } else if (arg.startsWith("--dbPasswordPath=")) {
+                dbPasswordPath = arg.substring("--dbPasswordPath=".length());
             }
         }
 
-        if (configPath == null || outputFolder == null || passphrasePath == null) {
-            throw new IllegalArgumentException("Missing required arguments: configPath, outputFolder, passphrasePath");
+        if (configPath == null || outputFolder == null || passphrasePath == null || oidcSecretPath == null || dbPasswordPath == null) {
+            throw new IllegalArgumentException("Missing required arguments: configPath, outputFolder, passphrasePath, oidcSecretPath, dbPasswordPath");
         }
 
         boolean lockAcquired = false;
@@ -151,7 +198,7 @@ public class BootstrapApplication implements CommandLineRunner {
                 return;
             }
 
-            performInitialization(configPath, outputFolder, passphrasePath);
+            performInitialization(configPath, outputFolder, passphrasePath, oidcSecretPath, dbPasswordPath);
 
             jdbcTemplate.update("INSERT INTO system_init (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", BOOTSTRAP_DONE_KEY, "true");
             System.out.println("Bootstrap initialization completed");
@@ -167,7 +214,7 @@ public class BootstrapApplication implements CommandLineRunner {
         System.exit(0);
     }
 
-    public void performInitialization(String configPath, String outputFolder, String passphrasePath) throws Exception {
+    public void performInitialization(String configPath, String outputFolder, String passphrasePath, String oidcSecretPath, String dbPasswordPath) throws Exception {
         try {
             // Load initial config
             BootstrapConfig config = loadConfig(configPath);
@@ -175,20 +222,23 @@ public class BootstrapApplication implements CommandLineRunner {
             // Read passphrase from file
             String passphrase = Files.readString(Paths.get(passphrasePath)).trim();
 
+            // Read db password from file
+            String dbPassword = Files.readString(Paths.get(dbPasswordPath)).trim();
+
             // Generate encryption key from instance details and passphrase
             String encryptionKey = generateEncryptionKey(config.getInfron().getInstanceName(),
                     config.getInfron().getInstanceId(),
                     passphrase);
             EncryptionUtil.setKey(encryptionKey);
 
-            // Generate application.yaml with encrypted password
-            generateApplicationYaml(config, outputFolder, encryptionKey);
+            // Generate app-template.yaml with encrypted password
+            generateApplicationYaml(config, outputFolder, encryptionKey, dbPassword);
 
             // Run flyway migrations
-            runFlywayMigrations(config);
+            runFlywayMigrations(config, dbPassword);
 
             // Insert bootstrap data using repositories
-            insertBootstrapData(config, encryptionKey);
+            insertBootstrapData(config, encryptionKey, oidcSecretPath);
 
             System.out.println("Bootstrap initialization completed successfully");
 
@@ -234,18 +284,18 @@ public class BootstrapApplication implements CommandLineRunner {
         return yamlMapper.readValue(new File(configPath), BootstrapConfig.class);
     }
 
-    private static void generateApplicationYaml(BootstrapConfig config, String outputFolder, String encryptionKey) throws IOException {
-        // Load the base application.yaml from classpath (included in the JAR)
+    private static void generateApplicationYaml(BootstrapConfig config, String outputFolder, String encryptionKey, String dbPassword) throws IOException {
+        // Load the base app-template.yaml from classpath (included in the JAR)
         ApplicationConfig appConfig;
-        try (var inputStream = BootstrapApplication.class.getClassLoader().getResourceAsStream("application.yaml")) {
+        try (var inputStream = BootstrapApplication.class.getClassLoader().getResourceAsStream("app-template.yaml")) {
             if (inputStream == null) {
-                throw new IOException("application.yaml not found in classpath");
+                throw new IOException("app-template.yaml not found in classpath");
             }
             appConfig = yamlMapper.readValue(inputStream, ApplicationConfig.class);
         }
 
         // Encrypt the database password and update datasource configuration
-        String encryptedPassword = EncryptionUtil.encrypt(config.getInfron().getDatasource().getPassword());
+        String encryptedPassword = EncryptionUtil.encrypt(dbPassword);
         if (appConfig.getSpring() != null && appConfig.getSpring().getDatasource() != null) {
             appConfig.getSpring().getDatasource().setUrl(config.getInfron().getDatasource().getUrl());
             appConfig.getSpring().getDatasource().setUsername(config.getInfron().getDatasource().getUsername());
@@ -268,12 +318,12 @@ public class BootstrapApplication implements CommandLineRunner {
         System.out.println("Generated application.yaml in " + outputFolder);
     }
 
-    private static void runFlywayMigrations(BootstrapConfig config) {
+    private static void runFlywayMigrations(BootstrapConfig config, String dbPassword) {
         // Configure Flyway
         Flyway flyway = Flyway.configure()
             .dataSource(config.getInfron().getDatasource().getUrl(),
                        config.getInfron().getDatasource().getUsername(),
-                       config.getInfron().getDatasource().getPassword())
+                       dbPassword)
             .locations("classpath:db/migration")
             .load();
 
@@ -282,16 +332,16 @@ public class BootstrapApplication implements CommandLineRunner {
         System.out.println("Flyway migrations completed");
     }
 
-    private void insertBootstrapData(BootstrapConfig config, String encryptionKey) {
+    private void insertBootstrapData(BootstrapConfig config, String encryptionKey, String oidcSecretPath) throws IOException {
         // Insert IDP using repository
-        IdentityProviderEntity idpEntity = insertIdentityProvider(config);
+        IdentityProviderEntity idpEntity = insertIdentityProvider(config, oidcSecretPath);
 
         // Insert system admin
-        insertSystemAdmin(config, idpEntity.getId());
+        insertSystemAdmin(config, idpEntity.getId(), oidcSecretPath);
 
         // Insert tenants and tenant admins
         for (BootstrapConfig.TenantConfig tenant : config.getInfron().getTenants()) {
-            insertTenantAndAdmin(tenant, config, idpEntity.getId());
+            insertTenantAndAdmin(tenant, config, idpEntity.getId(), oidcSecretPath);
         }
 
         // Mark bootstrap as done - for now using JDBC since system_init might not have a repository
@@ -322,7 +372,7 @@ public class BootstrapApplication implements CommandLineRunner {
                            "encryption_key", key);
     }
 
-    private IdentityProviderEntity insertIdentityProvider(BootstrapConfig config) {
+    private IdentityProviderEntity insertIdentityProvider(BootstrapConfig config, String oidcSecretPath) throws IOException {
         UUID idpId = UUID.fromString(Constants.DEFAULT_IDP_ID);
         Optional<IdentityProviderEntity> existing = identityProviderRepository.findById(idpId);
         IdentityProviderEntity idpEntity;
@@ -363,7 +413,9 @@ public class BootstrapApplication implements CommandLineRunner {
             Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
             oidcMetadata.setIssuerUri((String) rawMetadata.get("issuerUri"));
             oidcMetadata.setClientId((String) rawMetadata.get("clientId"));
-            oidcMetadata.setClientSecret(EncryptionUtil.encrypt((String) rawMetadata.get("clientSecret")));
+            // Read client secret from file instead of config
+            String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
+            oidcMetadata.setClientSecret(EncryptionUtil.encrypt(clientSecret));
             metadata = oidcMetadata;
         } else if (IdentityProviderProtocol.SAML2.equals(protocolEnum)) {
             Saml2Metadata saml2Metadata = new Saml2Metadata();
@@ -398,7 +450,7 @@ public class BootstrapApplication implements CommandLineRunner {
         return savedEntity;
     }
 
-    private void insertSystemAdmin(BootstrapConfig config, java.util.UUID idpId) {
+    private void insertSystemAdmin(BootstrapConfig config, java.util.UUID idpId, String oidcSecretPath) throws IOException {
         // Find system admin role using repository
         RoleEntity systemAdminRole = roleRepository.findByNameAndScopeId(Constants.ROLE_SYSTEM_ADMIN, UUID.fromString(Constants.SYSTEM_ID));
         if (systemAdminRole == null) {
@@ -408,7 +460,8 @@ public class BootstrapApplication implements CommandLineRunner {
         // Get OIDC connection details
         String issuerUri = (String) config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
         String clientId = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
-        String clientSecret = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientSecret");
+        // Read client secret from file instead of config
+        String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
 
         // Add user and assign role
         IdpUserEntity savedUser = addUserToIdp(config.getInfron().getSystem().getSystemAdminUserName(),
@@ -422,7 +475,7 @@ public class BootstrapApplication implements CommandLineRunner {
         System.out.println("Inserted system admin user: " + savedUser.getUsername());
     }
 
-    private void insertTenantAndAdmin(BootstrapConfig.TenantConfig tenantConfig, BootstrapConfig config, java.util.UUID idpId) {
+    private void insertTenantAndAdmin(BootstrapConfig.TenantConfig tenantConfig, BootstrapConfig config, java.util.UUID idpId, String oidcSecretPath) throws IOException {
         // Check if tenant already exists
         Optional<TenantEntity> existingTenant = tenantRepository.findAll().stream()
             .filter(t -> t.getName().equals(tenantConfig.getName()))
@@ -457,7 +510,8 @@ public class BootstrapApplication implements CommandLineRunner {
         // Get OIDC connection details
         String issuerUri = (String) config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
         String clientId = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
-        String clientSecret = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientSecret");
+        // Read client secret from file instead of config
+        String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
 
         // Add user and assign role
         IdpUserEntity savedUser = addUserToIdp(tenantConfig.getTenantAdminUserName(),

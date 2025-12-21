@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    alias(libs.plugins.spring.boot)
 }
 
 dependencies {

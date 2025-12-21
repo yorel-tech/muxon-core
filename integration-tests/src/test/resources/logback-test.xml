@@ -1,0 +1,8 @@
+<configuration>
+    <logger name="org.testcontainers" level="DEBUG"/>
+    <logger name="com.github.dockerjava" level="DEBUG"/>
+    <logger name="org.testcontainers.images.builder" level="DEBUG"/>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
