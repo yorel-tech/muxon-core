@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.onetattva.infron.core.config",
+        "com.onetattva.infron.core.security",
         "com.onetattva.infron.core.controllers",
         "com.onetattva.infron.core.services",
         "com.onetattva.infron.db.repository"})

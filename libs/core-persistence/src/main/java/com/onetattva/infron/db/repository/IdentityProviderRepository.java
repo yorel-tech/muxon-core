@@ -4,6 +4,7 @@ import com.onetattva.infron.db.model.IdentityProviderEntity;
 import com.onetattva.infron.db.model.IdentityProviderProtocol;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,5 +23,5 @@ public interface IdentityProviderRepository extends JpaRepository<IdentityProvid
      * Find enabled identity providers by protocol
      */
     @Query("SELECT i FROM IdentityProviderEntity i WHERE i.protocol = :protocol AND i.enabled = true")
-    List<IdentityProviderEntity> findEnabledByProtocol(IdentityProviderProtocol protocol);
+    List<IdentityProviderEntity> findEnabledByProtocol(@Param("protocol") IdentityProviderProtocol protocol);
 }

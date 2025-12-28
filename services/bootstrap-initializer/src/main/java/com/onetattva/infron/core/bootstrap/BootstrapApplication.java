@@ -407,23 +407,12 @@ public class BootstrapApplication implements CommandLineRunner {
         idpEntity.setProtocol(protocolEnum);
 
         // Create proper metadata object based on protocol
-        Object metadata;
         if (IdentityProviderProtocol.OIDC.equals(protocolEnum)) {
-            OidcMetadata oidcMetadata = new OidcMetadata();
-            Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
-            oidcMetadata.setIssuerUri((String) rawMetadata.get("issuerUri"));
-            oidcMetadata.setClientId((String) rawMetadata.get("clientId"));
-            // Read client secret from file instead of config
-            String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
-            oidcMetadata.setClientSecret(EncryptionUtil.encrypt(clientSecret));
-            metadata = oidcMetadata;
+            OidcMetadata oidcMetadata = getOidcMetadata(config, oidcSecretPath);
+            ((OidcIdentityProviderEntity)idpEntity).setOidcMetadata(oidcMetadata);
         } else if (IdentityProviderProtocol.SAML2.equals(protocolEnum)) {
-            Saml2Metadata saml2Metadata = new Saml2Metadata();
-            Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
-            saml2Metadata.setEntityId((String) rawMetadata.get("entityId"));
-            saml2Metadata.setSingleSignOnServiceUrl((String) rawMetadata.get("singleSignOnServiceUrl"));
-            saml2Metadata.setPrivateKey(EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
-            metadata = saml2Metadata;
+            Saml2Metadata saml2Metadata = getSaml2Metadata(config);
+            ((Saml2IdentityProviderEntity)idpEntity).setSaml2Metadata(saml2Metadata);
         } else {
             // Fallback to raw metadata map with encrypted secrets
             Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
@@ -433,14 +422,7 @@ public class BootstrapApplication implements CommandLineRunner {
             if (rawMetadata.containsKey("privateKey")) {
                 rawMetadata.put("privateKey", EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
             }
-            metadata = rawMetadata;
-        }
-
-        // Serialize metadata and set it
-        try {
-            idpEntity.setMetadata(Map.of("data", yamlMapper.writeValueAsString(metadata)));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize IDP metadata", e);
+            idpEntity.setMetadata(rawMetadata);
         }
 
         // Save using repository
@@ -448,6 +430,26 @@ public class BootstrapApplication implements CommandLineRunner {
 
         System.out.println("Identity provider processed: " + savedEntity.getName());
         return savedEntity;
+    }
+
+    private static Saml2Metadata getSaml2Metadata(BootstrapConfig config) {
+        Saml2Metadata saml2Metadata = new Saml2Metadata();
+        Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
+        saml2Metadata.setEntityId((String) rawMetadata.get("entityId"));
+        saml2Metadata.setSingleSignOnServiceUrl((String) rawMetadata.get("singleSignOnServiceUrl"));
+        saml2Metadata.setPrivateKey(EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
+        return saml2Metadata;
+    }
+
+    private static OidcMetadata getOidcMetadata(BootstrapConfig config, String oidcSecretPath) throws IOException {
+        OidcMetadata oidcMetadata = new OidcMetadata();
+        Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
+        oidcMetadata.setIssuerUri((String) rawMetadata.get("issuerUri"));
+        oidcMetadata.setClientId((String) rawMetadata.get("clientId"));
+        // Read client secret from file instead of config
+        String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
+        oidcMetadata.setClientSecret(EncryptionUtil.encrypt(clientSecret));
+        return oidcMetadata;
     }
 
     private void insertSystemAdmin(BootstrapConfig config, java.util.UUID idpId, String oidcSecretPath) throws IOException {

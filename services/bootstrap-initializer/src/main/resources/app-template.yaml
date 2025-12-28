@@ -23,18 +23,6 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  # Security: re-validate tokens at the core (defense in depth)
-  # You may reuse issuer-uri or configure a JWT decoder bean to validate the same tokens.
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8085/realms/infron-dev
-  #    client:
-  #      registration:
-  #        default:
-  #          client-secret: dummy-secret
   # flyway
   flyway:
     enabled: true
