@@ -20,6 +20,18 @@ public class RolesController implements RolesApi {
     private RolesService rolesService;
 
     @Override
+    public ResponseEntity<RolePermissionList> addRolePermissions(UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        RolePermissionList result = rolesService.addRolePermissions(roleId, rolePermissionsUpdate);
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
+    public ResponseEntity<RolePermissionList> addTenantRolePermissions(UUID tenantId, UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        RolePermissionList result = rolesService.addTenantRolePermissions(tenantId, roleId, rolePermissionsUpdate);
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
     public ResponseEntity<Role> createRole(RoleCreate roleCreate) {
         Role role = rolesService.createRole(roleCreate);
         return ResponseEntity.status(201).body(role);
@@ -56,15 +68,39 @@ public class RolesController implements RolesApi {
     }
 
     @Override
+    public ResponseEntity<RolePermissionList> listRolePermissions(UUID roleId, Integer page, Integer perPage) {
+        RolePermissionList result = rolesService.listRolePermissions(roleId, page, perPage);
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
     public ResponseEntity<RoleList> listRoles(String scopeType, UUID scopeId, Integer page, Integer perPage) {
         RoleList roleList = rolesService.listRoles(scopeType, scopeId, page, perPage);
         return ResponseEntity.ok(roleList);
     }
 
     @Override
+    public ResponseEntity<RolePermissionList> listTenantRolePermissions(UUID tenantId, UUID roleId, Integer page, Integer perPage) {
+        RolePermissionList result = rolesService.listTenantRolePermissions(tenantId, roleId, page, perPage);
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
     public ResponseEntity<RoleList> listTenantRoles(UUID tenantId, Integer page, Integer perPage) {
         RoleList roleList = rolesService.listTenantRoles(tenantId, page, perPage);
         return ResponseEntity.ok(roleList);
+    }
+
+    @Override
+    public ResponseEntity<RolePermissionList> removeRolePermissions(UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        RolePermissionList result = rolesService.removeRolePermissions(roleId, rolePermissionsUpdate);
+        return ResponseEntity.ok(result);
+    }
+
+    @Override
+    public ResponseEntity<RolePermissionList> removeTenantRolePermissions(UUID tenantId, UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        RolePermissionList result = rolesService.removeTenantRolePermissions(tenantId, roleId, rolePermissionsUpdate);
+        return ResponseEntity.ok(result);
     }
 
     @Override

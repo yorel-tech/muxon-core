@@ -59,6 +59,11 @@ components:
         immutable:
           type: boolean
           default: false
+        permissions:
+          type: array
+          items:
+            type: string
+          description: "Optional list of permission action strings (e.g., 'system:settings', 'vm:read') to assign to the role upon creation"
 
     RoleUpdate:
       type: object
@@ -205,6 +210,31 @@ components:
           type: integer
         perPage:
           type: integer
+
+    RolePermissionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+
+    RolePermissionsUpdate:
+      type: object
+      required:
+        - permissions
+      properties:
+        permissions:
+          type: array
+          items:
+            type: string
+          description: "List of permission action strings (e.g., 'system:settings', 'vm:read') to add or remove from the role"
 
 paths:
 
@@ -668,5 +698,158 @@ paths:
           description: No content
         '403':
           $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # -------------------------
+  # Role Permissions (CRUD operations on permissions of a role)
+  # -------------------------
+  /roles/{roleId}/permissions:
+    parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listRolePermissions
+      tags: [Roles]
+      summary: List permissions assigned to a role
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      operationId: addRolePermissions
+      tags: [Roles]
+      summary: Assign permissions to a role
+      description: "Add a list of permissions to the role. Duplicates are ignored."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolePermissionsUpdate"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      operationId: removeRolePermissions
+      tags: [Roles]
+      summary: Remove permissions from a role
+      description: "Remove a list of permissions from the role."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolePermissionsUpdate"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/roles/{roleId}/permissions:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listTenantRolePermissions
+      tags: [Roles]
+      summary: List permissions assigned to a tenant role
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      operationId: addTenantRolePermissions
+      tags: [Roles]
+      summary: Assign permissions to a tenant role
+      description: "Add a list of permissions to the role. Duplicates are ignored."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolePermissionsUpdate"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      operationId: removeTenantRolePermissions
+      tags: [Roles]
+      summary: Remove permissions from a tenant role
+      description: "Remove a list of permissions from the role."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolePermissionsUpdate"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePermissionList"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'

@@ -26,6 +26,20 @@
       "enabled": true
     },
     {
+      "username": "limited-admin@infron.dev",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "enabled": true
+    },
+    {
       "username": "dev@infron.dev",
       "credentials": [
         {

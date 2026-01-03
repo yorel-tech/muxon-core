@@ -1,5 +1,7 @@
 package com.onetattva.infron.core.common;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.impl.NameBasedGenerator;
 import java.util.UUID;
 
 public class UuidUtils {
@@ -19,5 +21,16 @@ public class UuidUtils {
             // The string is not a valid UUID format
             return false;
         }
+    }
+
+    /**
+     * Generates a UUID v5 based on the given namespace and name.
+     * @param namespace The namespace UUID.
+     * @param name The name string.
+     * @return The generated UUID v5.
+     */
+    public static UUID generateUuid5(UUID namespace, String name) {
+        NameBasedGenerator gen = Generators.nameBasedGenerator(namespace);
+        return gen.generate(name);
     }
 }

@@ -1,14 +1,18 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.api.model.Role;
-import com.onetattva.infron.api.model.RoleCreate;
-import com.onetattva.infron.api.model.RoleList;
-import com.onetattva.infron.api.model.RoleUpdate;
+import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.auth.AuthorizationService;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.db.model.PermissionEntity;
 import com.onetattva.infron.db.model.RoleEntity;
+import com.onetattva.infron.db.model.RolePermissionEntity;
+import com.onetattva.infron.db.repository.PermissionRepository;
+import com.onetattva.infron.db.repository.RolePermissionRepository;
 import com.onetattva.infron.db.repository.RoleRepository;
 import com.onetattva.infron.db.RoleScopeType;
 import com.onetattva.infron.db.repository.TenantRepository;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,6 +34,12 @@ public class RolesService {
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
 
     @Autowired
     private AuthorizationService authorizationService;
@@ -171,6 +182,167 @@ public class RolesService {
         return mapEntityToApi(saved);
     }
 
+    public RolePermissionList listRolePermissions(UUID roleId, Integer page, Integer perPage) {
+        // Validate role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+
+        if (page == null) page = 1;
+        if (perPage == null || perPage < 1) perPage = 20;
+        if (perPage > 200) perPage = 200;
+
+        // Get all role permissions for this role
+        List<UUID> rolePermissions = rolePermissionRepository.findPermissionIdsByRoleIds(List.of(roleId));
+
+        // Extract permission IDs and convert to Permission enum
+        List<Permission> permissions = rolePermissions.stream()
+                .map(Permission::fromId)
+                .filter(java.util.Objects::nonNull) // Filter out nulls in case of unknown permissions
+                .toList();
+
+        // Calculate pagination
+        int total = permissions.size();
+        int startIndex = (page - 1) * perPage;
+        int endIndex = Math.min(startIndex + perPage, total);
+
+        // Get paginated permissions
+        List<Permission> paginatedPermissions = permissions.subList(Math.min(startIndex, total), endIndex);
+
+        RolePermissionList result = new RolePermissionList();
+        result.setTotal(total);
+        result.setPage(page);
+        result.setPerPage(perPage);
+        result.setItems(paginatedPermissions.stream().map(this::mapPermissionEnumToApi).collect(Collectors.toList()));
+        return result;
+    }
+
+    public RolePermissionList listTenantRolePermissions(UUID tenantId, UUID roleId, Integer page, Integer perPage) {
+        // Validate tenant role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+        if (!role.getScopeType().equals(RoleScopeType.TENANT) || !role.getScopeId().equals(tenantId)) {
+            throw new RuntimeException("Role not found in tenant scope");
+        }
+
+        // Reuse the same logic as listRolePermissions
+        return listRolePermissions(roleId, page, perPage);
+    }
+
+    public RolePermissionList addRolePermissions(UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        // Validate role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+
+        List<String> permissionActions = rolePermissionsUpdate.getPermissions();
+        if (permissionActions == null || permissionActions.isEmpty()) {
+            throw new IllegalArgumentException("Permissions list cannot be empty");
+        }
+
+        // Convert permission actions to Permission enum and then to entities
+        List<PermissionEntity> permissions = permissionActions.stream()
+                .map(Permission::fromAction)
+                .filter(java.util.Objects::nonNull)
+                .map(permEnum -> {
+                    PermissionEntity entity = new PermissionEntity();
+                    entity.setId(permEnum.getId());
+                    entity.setAction(permEnum.getAction());
+                    entity.setDescription(permEnum.getDescription());
+                    entity.setScope(RoleScopeType.valueOf(permEnum.getScope().name()));
+                    return entity;
+                })
+                .distinct() // Remove duplicates in input
+                .toList();
+
+        if (permissions.size() != permissionActions.stream().distinct().count()) {
+            throw new IllegalArgumentException("One or more permissions do not exist");
+        }
+
+        // Get existing permission IDs for the role
+        List<UUID> existingPermissionIds = rolePermissionRepository.findPermissionIdsByRoleIds(List.of(roleId));
+
+        // Filter out permissions already assigned to the role
+        List<PermissionEntity> newPermissions = permissions.stream()
+                .filter(perm -> !existingPermissionIds.contains(perm.getId()))
+                .toList();
+
+        // Create role-permission associations
+        List<RolePermissionEntity> rolePermissionsToSave = newPermissions.stream()
+                .map(permission -> {
+                    RolePermissionEntity rolePermission = new RolePermissionEntity();
+                    rolePermission.setId(UUID.randomUUID());
+                    rolePermission.setRole(role);
+                    rolePermission.setPermission(permission);
+                    rolePermission.setCreatedAt(Instant.now());
+                    return rolePermission;
+                })
+                .collect(Collectors.toList());
+
+        // Save all in a single batch
+        if (!rolePermissionsToSave.isEmpty()) {
+            rolePermissionRepository.saveAll(rolePermissionsToSave);
+        }
+
+        // Evict user permissions cache
+        authorizationService.evictAllUserPermissions();
+
+        // Return updated list
+        return listRolePermissions(roleId, null, null);
+    }
+
+    public RolePermissionList addTenantRolePermissions(UUID tenantId, UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        // Validate tenant role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+        if (!role.getScopeType().equals(RoleScopeType.TENANT) || !role.getScopeId().equals(tenantId)) {
+            throw new RuntimeException("Role not found in tenant scope");
+        }
+
+        // Reuse the same logic as addRolePermissions
+        return addRolePermissions(roleId, rolePermissionsUpdate);
+    }
+
+    public RolePermissionList removeRolePermissions(UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        // Validate role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+
+        List<String> permissionActions = rolePermissionsUpdate.getPermissions();
+        if (permissionActions == null || permissionActions.isEmpty()) {
+            throw new IllegalArgumentException("Permissions list cannot be empty");
+        }
+
+        // Convert permission actions to IDs
+        List<UUID> permissionIds = permissionActions.stream()
+                .map(action -> Permission.fromAction(action))
+                .filter(java.util.Objects::nonNull)
+                .map(Permission::getId)
+                .collect(Collectors.toList());
+
+        if (permissionIds.size() != permissionActions.size()) {
+            throw new IllegalArgumentException("One or more permissions do not exist");
+        }
+
+        // Find and delete role-permission associations
+        List<RolePermissionEntity> rolePermissions = rolePermissionRepository.findByRoleIds(List.of(roleId));
+        List<RolePermissionEntity> toDelete = rolePermissions.stream()
+                .filter(rp -> permissionIds.contains(rp.getPermission().getId()))
+                .collect(Collectors.toList());
+
+        rolePermissionRepository.deleteAll(toDelete);
+
+        // Evict user permissions cache
+        authorizationService.evictAllUserPermissions();
+
+        // Return updated list
+        return listRolePermissions(roleId, null, null);
+    }
+
+    public RolePermissionList removeTenantRolePermissions(UUID tenantId, UUID roleId, RolePermissionsUpdate rolePermissionsUpdate) {
+        // Validate tenant role exists
+        RoleEntity role = roleRepository.findById(roleId).orElseThrow();
+        if (!role.getScopeType().equals(RoleScopeType.TENANT) || !role.getScopeId().equals(tenantId)) {
+            throw new RuntimeException("Role not found in tenant scope");
+        }
+
+        // Reuse the same logic as removeRolePermissions
+        return removeRolePermissions(roleId, rolePermissionsUpdate);
+    }
+
     private Role mapEntityToApi(RoleEntity entity) {
         Role role = new Role();
         role.setId(entity.getId());
@@ -181,5 +353,15 @@ public class RolesService {
         role.setImmutable(entity.getImmutable());
         role.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         return role;
+    }
+
+
+    private com.onetattva.infron.api.model.Permission mapPermissionEnumToApi(Permission permissionEnum) {
+        com.onetattva.infron.api.model.Permission permission = new com.onetattva.infron.api.model.Permission();
+        permission.setId(permissionEnum.getId());
+        permission.setAction(permissionEnum.getAction());
+        permission.setDescription(permissionEnum.getDescription());
+        permission.setScope(permissionEnum.getScope().toString().toLowerCase());
+        return permission;
     }
 }
