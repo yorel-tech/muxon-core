@@ -1,5 +1,6 @@
 package com.onetattva.infron.tests;
 
+import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -38,7 +39,7 @@ public class InfronEnvironment {
     // Database constants
     private static final String DB_NAME = "infron";
     private static final String DB_USERNAME = "infron";
-    private static final String DB_PASSWORD = "Infr0n@1234";
+    public static final String DB_PASSWORD = "Infr0n@1234";
 
     // File paths
     private static final String KEYCLOAK_REALM_PATH = "../compose/keycloak/realm-infron-dev.json";
@@ -163,6 +164,8 @@ public class InfronEnvironment {
                     "KEYCLOAK_ADMIN", KEYCLOAK_ADMIN_USER,
                     "KEYCLOAK_ADMIN_PASSWORD", DB_PASSWORD,
                     "KC_HEALTH_ENABLED", "true",
+                    "KC_HOSTNAME_STRICT", "false",
+                    "KC_HOSTNAME_STRICT_BACKCHANNEL", "false",
                     "INFRON_API_CLIENT_SECRET", "yOLpyss3IYlm2MadOdqAIfCpQne62Jdd"
                 ))
                 .withExposedPorts(8085)
@@ -183,6 +186,17 @@ public class InfronEnvironment {
 
     private void startCoreServices() throws IOException {
         System.out.println("Starting infron-its-core-services...");
+
+        // Read the initial config file and replace issuerUri with Keycloak URL
+        Path initialConfigPath = Path.of(INITIAL_CONFIG_PATH);
+        String configContent = Files.readString(initialConfigPath);
+        String keycloakBaseUrl = getKeycloakUrlWithoutInitialization();
+        configContent = configContent.replace("http://keycloak:8085", keycloakBaseUrl);
+
+        // Create a temporary config file with updated content
+        Path tempConfigFile = Files.createTempFile("initial-config", ".yaml");
+        Files.writeString(tempConfigFile, configContent);
+
         // Create a temporary file with the passphrase for podman secret simulation
         Path passphraseFile = Files.createTempFile("passphrase", ".txt");
         Files.writeString(passphraseFile, DB_PASSWORD);
@@ -204,7 +218,7 @@ public class InfronEnvironment {
                 "SPRING_CONFIG_LOCATION", SPRING_CONFIG_LOCATION,
                 "REDIS_HOST", REDIS_ALIAS
             ))
-            .withFileSystemBind(INITIAL_CONFIG_PATH, CONTAINER_CONFIG_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
+            .withFileSystemBind(tempConfigFile.toString(), CONTAINER_CONFIG_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(passphraseFile.toString(), PASSPHRASE_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(oidcSecretFile.toString(), OIDC_SECRET_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(dbPasswordFile.toString(), DB_PASSWORD_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
@@ -235,11 +249,15 @@ public class InfronEnvironment {
 
     public String getCoreServicesUrl() {
         waitForInitialization();
-        return "http://" + coreServices.getHost() + ":" + coreServices.getMappedPort(8080);
+        return "http://" + coreServices.getHost() + ":" + coreServices.getMappedPort(8080) + "/api/v1";
     }
 
     public String getKeycloakUrl() {
         waitForInitialization();
+        return getKeycloakUrlWithoutInitialization();
+    }
+
+    private @NotNull String getKeycloakUrlWithoutInitialization() {
         return "http://" + keycloak.getHost() + ":" + keycloak.getMappedPort(8085);
     }
 

@@ -29,7 +29,7 @@ public class RoleTestUtil {
                     "name": "%s",
                     "description": "%s",
                     "scope_type": "%s",
-                    "scope_id": "%s",
+                    "scope_id": %s,
                     "permissions": %s
                 }
                 """.formatted(name, description, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null,

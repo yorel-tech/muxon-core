@@ -13,8 +13,9 @@ public abstract class BaseIntegrationTest {
     protected static InfronEnvironment environment;
 
     @BeforeAll
-    public static void setupBase() {
+    public static void setupBase() throws Exception {
         environment = InfronEnvironment.getInstance();
+        environment.startInfrastructure();
         baseUrl = environment.getCoreServicesUrl();
         RestAssured.baseURI = baseUrl;
     }

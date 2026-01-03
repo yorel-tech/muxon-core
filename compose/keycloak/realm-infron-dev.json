@@ -13,6 +13,10 @@
   "users": [
     {
       "username": "admin@infron.dev",
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -27,6 +31,10 @@
     },
     {
       "username": "limited-admin@infron.dev",
+      "firstName": "Limited",
+      "lastName": "Admin",
+      "email": "limited-admin@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -41,6 +49,10 @@
     },
     {
       "username": "dev@infron.dev",
+      "firstName": "Dev",
+      "lastName": "User",
+      "email": "dev@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -55,6 +67,10 @@
     },
     {
       "username": "tenantadmin@infron.dev",
+      "firstName": "Tenant",
+      "lastName": "Admin",
+      "email": "tenantadmin@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -67,6 +83,10 @@
     },
     {
       "username": "workload-operator@infron.dev",
+      "firstName": "Workload",
+      "lastName": "Operator",
+      "email": "workload-operator@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -79,6 +99,10 @@
     },
     {
       "username": "workload-user@infron.dev",
+      "firstName": "Workload",
+      "lastName": "User",
+      "email": "workload-user@infron.dev",
+      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
@@ -105,6 +129,8 @@
     {
       "clientId": "infron-web",
       "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
       "redirectUris": [
         "http://localhost:4000/*"
       ],
