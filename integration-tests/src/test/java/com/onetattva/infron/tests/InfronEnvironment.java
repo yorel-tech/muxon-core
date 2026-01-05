@@ -1,18 +1,25 @@
 package com.onetattva.infron.tests;
 
 import org.jetbrains.annotations.NotNull;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class InfronEnvironment {
 
@@ -161,12 +168,14 @@ public class InfronEnvironment {
         keycloak = new GenericContainer<>(DockerImageName.parse(KEYCLOAK_IMAGE))
                 .withCommand(KEYCLOAK_START_CMD, KEYCLOAK_HTTP_PORT, KEYCLOAK_IMPORT_REALM)
                 .withEnv(Map.of(
-                    "KEYCLOAK_ADMIN", KEYCLOAK_ADMIN_USER,
-                    "KEYCLOAK_ADMIN_PASSWORD", DB_PASSWORD,
-                    "KC_HEALTH_ENABLED", "true",
-                    "KC_HOSTNAME_STRICT", "false",
-                    "KC_HOSTNAME_STRICT_BACKCHANNEL", "false",
-                    "INFRON_API_CLIENT_SECRET", "yOLpyss3IYlm2MadOdqAIfCpQne62Jdd"
+                        "KEYCLOAK_ADMIN", KEYCLOAK_ADMIN_USER,
+                        "KEYCLOAK_ADMIN_PASSWORD", DB_PASSWORD,
+                        "KC_HEALTH_ENABLED", "true",
+                        "KC_HOSTNAME", "keycloak",
+                        "KC_HOSTNAME_PORT", "8085",
+                        "KC_HOSTNAME_STRICT", "false",
+                        "KC_HOSTNAME_STRICT_BACKCHANNEL", "false",
+                        "INFRON_API_CLIENT_SECRET", "yOLpyss3IYlm2MadOdqAIfCpQne62Jdd"
                 ))
                 .withExposedPorts(8085)
                 .withNetwork(network)
@@ -186,17 +195,6 @@ public class InfronEnvironment {
 
     private void startCoreServices() throws IOException {
         System.out.println("Starting infron-its-core-services...");
-
-        // Read the initial config file and replace issuerUri with Keycloak URL
-        Path initialConfigPath = Path.of(INITIAL_CONFIG_PATH);
-        String configContent = Files.readString(initialConfigPath);
-        String keycloakBaseUrl = getKeycloakUrlWithoutInitialization();
-        configContent = configContent.replace("http://keycloak:8085", keycloakBaseUrl);
-
-        // Create a temporary config file with updated content
-        Path tempConfigFile = Files.createTempFile("initial-config", ".yaml");
-        Files.writeString(tempConfigFile, configContent);
-
         // Create a temporary file with the passphrase for podman secret simulation
         Path passphraseFile = Files.createTempFile("passphrase", ".txt");
         Files.writeString(passphraseFile, DB_PASSWORD);
@@ -218,7 +216,7 @@ public class InfronEnvironment {
                 "SPRING_CONFIG_LOCATION", SPRING_CONFIG_LOCATION,
                 "REDIS_HOST", REDIS_ALIAS
             ))
-            .withFileSystemBind(tempConfigFile.toString(), CONTAINER_CONFIG_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
+            .withFileSystemBind(INITIAL_CONFIG_PATH, CONTAINER_CONFIG_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(passphraseFile.toString(), PASSPHRASE_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(oidcSecretFile.toString(), OIDC_SECRET_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(dbPasswordFile.toString(), DB_PASSWORD_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
@@ -226,6 +224,18 @@ public class InfronEnvironment {
         try {
             coreServices.start();
             System.out.println("infron-its-core-services started.");
+
+            // Install curl for testing purposes
+            try {
+                Container.ExecResult installResult = coreServices.execInContainer("apk", "add", "--no-cache", "curl");
+                if (installResult.getExitCode() != 0) {
+                    System.out.println("Failed to install curl: " + installResult.getStderr());
+                } else {
+                    System.out.println("curl installed successfully in core-services container.");
+                }
+            } catch (Exception e) {
+                System.out.println("Exception installing curl: " + e.getMessage());
+            }
         } catch (Exception e) {
             System.out.println("Failed to start infron-its-core-services. Logs:");
             System.out.println(coreServices.getLogs());
@@ -279,6 +289,33 @@ public class InfronEnvironment {
     public boolean isCoreServicesRunning() {
         waitForInitialization();
         return coreServices != null && coreServices.isRunning();
+    }
+
+    public GenericContainer<?> getCoreServices() {
+        waitForInitialization();
+        return coreServices;
+    }
+
+    public void collectCoreServicesLogs() throws IOException {
+        if (coreServices == null) {
+            return;
+        }
+        Path logsDir = Paths.get("logs");
+        Files.createDirectories(logsDir);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String logFileName = "core-services.log";
+        Path logFile = logsDir.resolve(logFileName);
+        String logs = coreServices.getLogs();
+        Files.writeString(logFile, logs);
+        String zipFileName = "core-services-logs-" + timestamp + ".zip";
+        Path zipFile = logsDir.resolve(zipFileName);
+        try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(zipFile)))) {
+            ZipEntry entry = new ZipEntry(logFileName);
+            zos.putNextEntry(entry);
+            zos.write(logs.getBytes());
+            zos.closeEntry();
+        }
+        System.out.println("Core services logs collected and saved to " + zipFile.toString());
     }
 
     public void stopInfrastructure() {

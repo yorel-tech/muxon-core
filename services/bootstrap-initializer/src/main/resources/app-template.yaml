@@ -44,7 +44,11 @@ logging:
   level:
     root: INFO
     org.springframework: INFO
+    org.hibernate: INFO
+    com.onetattva.infron.core: DEBUG
+
   file:
     name: logs/infron-core.log
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

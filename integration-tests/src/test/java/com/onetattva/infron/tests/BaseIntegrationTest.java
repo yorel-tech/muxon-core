@@ -3,6 +3,9 @@ package com.onetattva.infron.tests;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
+import org.testcontainers.containers.Container;
+
+import java.io.IOException;
 
 import static io.restassured.RestAssured.given;
 
@@ -27,18 +30,30 @@ public abstract class BaseIntegrationTest {
      * @return the access token
      */
     protected static String getAccessToken(String username, String password) {
-        String keycloakUrl = environment.getKeycloakUrl();
-        Response response = given()
-            .contentType(RestConstants.CONTENT_TYPE_FORM_URLENCODED)
-            .formParam("grant_type", RestConstants.GRANT_TYPE)
-            .formParam("client_id", RestConstants.CLIENT_ID)
-            .formParam("username", username)
-            .formParam("password", password)
-            .when()
-            .post(keycloakUrl + RestConstants.REALM_PATH);
+        String tokenUrl = "http://keycloak:8085/realms/infron-dev/protocol/openid-connect/token";
+        String[] command = {
+            "curl", "-s", "-X", "POST", tokenUrl,
+            "-H", "Content-Type: " + RestConstants.CONTENT_TYPE_FORM_URLENCODED,
+            "-d", "grant_type=" + RestConstants.GRANT_TYPE,
+            "-d", "client_id=" + RestConstants.CLIENT_ID,
+            "-d", "username=" + username,
+            "-d", "password=" + password
+        };
 
-        response.then().statusCode(200);
-        return response.jsonPath().getString("access_token");
+        Container.ExecResult result = null;
+        try {
+            result = environment.getCoreServices().execInContainer(command);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        if (result.getExitCode() != 0) {
+            throw new RuntimeException("Failed to get access token: " + result.getStderr());
+        }
+
+        String output = result.getStdout();
+        int start = output.indexOf("\"access_token\":\"") + 16;
+        int end = output.indexOf("\"", start);
+        return output.substring(start, end);
     }
 
     /**
@@ -47,5 +62,19 @@ public abstract class BaseIntegrationTest {
      */
     protected static String getAccessToken() {
         return getAccessToken(RestConstants.DEFAULT_USERNAME, RestConstants.DEFAULT_PASSWORD);
+    }
+
+    /**
+     * Assert that the response has the expected status code, printing the response body on failure.
+     * @param response the response to check
+     * @param expectedStatusCode the expected status code
+     */
+    protected static void assertStatusCode(Response response, int expectedStatusCode) {
+        try {
+            response.then().statusCode(expectedStatusCode);
+        } catch (AssertionError e) {
+            System.err.println("Server error response: " + response.getBody().asString());
+            throw e;
+        }
     }
 }

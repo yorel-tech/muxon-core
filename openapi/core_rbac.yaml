@@ -139,7 +139,7 @@ components:
           type: string
         scope_type:
           type: string
-          enum: [system, tenant]
+          enum: [system, tenant, tenant_global]
         scope_id:
           type: string
           format: uuid

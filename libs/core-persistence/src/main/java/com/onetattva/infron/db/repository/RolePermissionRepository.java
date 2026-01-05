@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface RolePermissionRepository extends JpaRepository<RolePermissionEntity, UUID> {
 
-    @Query("SELECT rp FROM RolePermissionEntity rp WHERE rp.role.id IN :roleIds")
+    @Query("SELECT rp FROM RolePermissionEntity rp JOIN FETCH rp.permission WHERE rp.role.id IN :roleIds")
     List<RolePermissionEntity> findByRoleIds(@Param("roleIds") List<UUID> roleIds);
 
     @Query("SELECT rp.permission.id FROM RolePermissionEntity rp WHERE rp.role.id IN :roleIds")

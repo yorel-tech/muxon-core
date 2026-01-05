@@ -1,6 +1,5 @@
 package com.onetattva.infron.core.auth;
 
-import com.onetattva.infron.core.services.AuthorizationServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class PermissionInterceptor implements HandlerInterceptor {
 
     @Autowired
-    private AuthorizationServiceImpl authorizationService;
+    private AuthorizationService authorizationService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -23,6 +22,21 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         RequiresPermission annotation = handlerMethod.getMethodAnnotation(RequiresPermission.class);
+        if (annotation == null) {
+            // Check interface methods if annotation not found on implementation
+            Class<?>[] interfaces = handlerMethod.getMethod().getDeclaringClass().getInterfaces();
+            for (Class<?> interfaceClass : interfaces) {
+                try {
+                    java.lang.reflect.Method interfaceMethod = interfaceClass.getMethod(handlerMethod.getMethod().getName(), handlerMethod.getMethod().getParameterTypes());
+                    annotation = interfaceMethod.getAnnotation(RequiresPermission.class);
+                    if (annotation != null) {
+                        break;
+                    }
+                } catch (NoSuchMethodException | SecurityException e) {
+                    // Continue checking other interfaces
+                }
+            }
+        }
         if (annotation == null) {
             return true; // no permission required
         }

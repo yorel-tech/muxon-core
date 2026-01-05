@@ -1,5 +1,10 @@
 package com.onetattva.infron.tests.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onetattva.infron.api.model.RoleBindingBulkCreate;
+import com.onetattva.infron.api.model.RoleBindingCreateItem;
+import com.onetattva.infron.api.model.RoleBindingCreateItem;
+import com.onetattva.infron.api.model.RoleBindingUpdate;
 import com.onetattva.infron.tests.InfronEnvironment;
 import io.restassured.response.Response;
 
@@ -10,6 +15,7 @@ import static io.restassured.RestAssured.given;
 
 public class RoleBindingTestUtil {
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static InfronEnvironment environment;
     private static String baseUrl;
     private static String accessToken;
@@ -21,82 +27,82 @@ public class RoleBindingTestUtil {
     }
 
     public static Response createRoleBindings(String roleId, List<String> userIds, String scopeType, String scopeId) {
-        String bindings = userIds.stream()
-            .map(userId -> """
-                {
-                    "role_id": "%s",
-                    "subject_type": "user",
-                    "subject_id": "%s",
-                    "scope_type": "%s",
-                    "scope_id": %s
-                }
-                """.formatted(roleId, userId, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null))
-            .reduce((a, b) -> a + "," + b)
-            .orElse("");
-
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "bindings": [%s]
-                }
-                """.formatted(bindings))
-            .when()
-            .post(baseUrl + "/roles/" + roleId + "/bindings");
+        try {
+            RoleBindingBulkCreate bulkCreate = new RoleBindingBulkCreate();
+            List<RoleBindingCreateItem> bindings = userIds.stream()
+                .map(userId -> {
+                    RoleBindingCreateItem binding = new RoleBindingCreateItem();
+                    binding.setRoleId(UUID.fromString(roleId));
+                    binding.setSubjectType(RoleBindingCreateItem.SubjectTypeEnum.USER);
+                    binding.setSubjectId(userId);
+                    binding.setScopeType(RoleBindingCreateItem.ScopeTypeEnum.fromValue(scopeType));
+                    binding.setScopeId(scopeId == null ? null : UUID.fromString(scopeId));
+                    return binding;
+                })
+                .toList();
+            bulkCreate.setBindings(bindings);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(bulkCreate))
+                .when()
+                .post(baseUrl + "/roles/" + roleId + "/bindings");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role bindings", e);
+        }
     }
 
     public static Response createTenantRoleBindings(String tenantId, String roleId, List<String> userIds, String scopeType, String scopeId) {
-        String bindings = userIds.stream()
-            .map(userId -> """
-                {
-                    "role_id": "%s",
-                    "subject_type": "user",
-                    "subject_id": "%s",
-                    "scope_type": "%s",
-                    "scope_id": %s
-                }
-                """.formatted(roleId, userId, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null))
-            .reduce((a, b) -> a + "," + b)
-            .orElse("");
-
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "bindings": [%s]
-                }
-                """.formatted(bindings))
-            .when()
-            .post(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/bindings");
+        try {
+            RoleBindingBulkCreate bulkCreate = new RoleBindingBulkCreate();
+            List<RoleBindingCreateItem> bindings = userIds.stream()
+                .map(userId -> {
+                    RoleBindingCreateItem binding = new RoleBindingCreateItem();
+                    binding.setRoleId(UUID.fromString(roleId));
+                    binding.setSubjectType(RoleBindingCreateItem.SubjectTypeEnum.USER);
+                    binding.setSubjectId(userId);
+                    binding.setScopeType(RoleBindingCreateItem.ScopeTypeEnum.fromValue(scopeType));
+                    binding.setScopeId(scopeId == null ? null : UUID.fromString(scopeId));
+                    return binding;
+                })
+                .toList();
+            bulkCreate.setBindings(bindings);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(bulkCreate))
+                .when()
+                .post(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/bindings");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize tenant role bindings", e);
+        }
     }
 
     public static Response bulkCreateRoleBindings(List<String> roleIds, List<String> userIds, String scopeType, String scopeId) {
-        String bindings = roleIds.stream()
-            .flatMap(roleId -> userIds.stream()
-                .map(userId -> """
-                    {
-                        "role_id": "%s",
-                        "subject_type": "user",
-                        "subject_id": "%s",
-                        "scope_type": "%s",
-                        "scope_id": %s
-                    }
-                    """.formatted(roleId, userId, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null)))
-            .reduce((a, b) -> a + "," + b)
-            .orElse("");
-
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "bindings": [%s]
-                }
-                """.formatted(bindings))
-            .when()
-            .post(baseUrl + "/role-bindings");
+        try {
+            RoleBindingBulkCreate bulkCreate = new RoleBindingBulkCreate();
+            List<RoleBindingCreateItem> bindings = roleIds.stream()
+                .flatMap(roleId -> userIds.stream()
+                    .map(userId -> {
+                        RoleBindingCreateItem binding = new RoleBindingCreateItem();
+                        binding.setRoleId(UUID.fromString(roleId));
+                        binding.setSubjectType(RoleBindingCreateItem.SubjectTypeEnum.USER);
+                        binding.setSubjectId(userId);
+                        binding.setScopeType(RoleBindingCreateItem.ScopeTypeEnum.fromValue(scopeType));
+                        binding.setScopeId(scopeId == null ? null : UUID.fromString(scopeId));
+                        return binding;
+                    }))
+                .toList();
+            bulkCreate.setBindings(bindings);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(bulkCreate))
+                .when()
+                .post(baseUrl + "/role-bindings");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize bulk role bindings", e);
+        }
     }
 
     public static Response listRoleBindings(String roleId) {
@@ -128,16 +134,18 @@ public class RoleBindingTestUtil {
     }
 
     public static Response updateRoleBinding(String bindingId, String newRoleId) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "role_id": "%s"
-                }
-                """.formatted(newRoleId))
-            .when()
-            .put(baseUrl + "/role-bindings/" + bindingId);
+        try {
+            RoleBindingUpdate update = new RoleBindingUpdate();
+            update.setRoleId(UUID.fromString(newRoleId));
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .put(baseUrl + "/role-bindings/" + bindingId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role binding update", e);
+        }
     }
 
     public static Response deleteRoleBinding(String bindingId) {
@@ -148,6 +156,6 @@ public class RoleBindingTestUtil {
     }
 
     public static String generateUniqueUserId() {
-        return "user-" + UUID.randomUUID().toString().substring(0, 8);
+        return UUID.randomUUID().toString();
     }
 }

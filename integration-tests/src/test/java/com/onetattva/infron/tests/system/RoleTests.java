@@ -1,5 +1,7 @@
 package com.onetattva.infron.tests.system;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.tests.BaseIntegrationTest;
 import com.onetattva.infron.tests.util.RoleBindingTestUtil;
 import com.onetattva.infron.tests.util.RoleTestUtil;
@@ -30,8 +32,8 @@ public class RoleTests extends BaseIntegrationTest {
         String roleName = RoleTestUtil.generateUniqueRoleName();
 
         Response response = RoleTestUtil.createRole(roleName, "Test system role", "system");
+        assertStatusCode(response, 201);
         response.then()
-            .statusCode(201)
             .body("name", equalTo(roleName))
             .body("description", equalTo("Test system role"))
             .body("scope_type", equalTo("system"))
@@ -41,7 +43,7 @@ public class RoleTests extends BaseIntegrationTest {
         String roleId = response.jsonPath().getString("id");
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -49,8 +51,8 @@ public class RoleTests extends BaseIntegrationTest {
         String roleName = RoleTestUtil.generateUniqueRoleName();
 
         Response response = RoleTestUtil.createRole(roleName, "Test tenant global role", "tenant_global");
+        assertStatusCode(response, 201);
         response.then()
-            .statusCode(201)
             .body("name", equalTo(roleName))
             .body("description", equalTo("Test tenant global role"))
             .body("scope_type", equalTo("tenant_global"))
@@ -60,7 +62,7 @@ public class RoleTests extends BaseIntegrationTest {
         String roleId = response.jsonPath().getString("id");
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -68,18 +70,18 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for listing", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // List roles
-        RoleTestUtil.listRoles()
-            .then()
-            .statusCode(200)
+        Response listResponse = RoleTestUtil.listRoles();
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
             .body("items", notNullValue())
             .body("items.find { it.id == '%s' }.name".formatted(roleId), equalTo(roleName));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -87,20 +89,20 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for get", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Get the role
-        RoleTestUtil.getRole(roleId)
-            .then()
-            .statusCode(200)
+        Response getResponse = RoleTestUtil.getRole(roleId);
+        assertStatusCode(getResponse, 200);
+        getResponse.then()
             .body("id", equalTo(roleId))
             .body("name", equalTo(roleName))
             .body("description", equalTo("Test role for get"))
             .body("scope_type", equalTo("system"));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -108,26 +110,26 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Original description", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Update the role
-        RoleTestUtil.updateRole(roleId, roleName + "-updated", "Updated description")
-            .then()
-            .statusCode(200)
+        Response updateResponse = RoleTestUtil.updateRole(roleId, roleName + "-updated", "Updated description");
+        assertStatusCode(updateResponse, 200);
+        updateResponse.then()
             .body("id", equalTo(roleId))
             .body("name", equalTo(roleName + "-updated"))
             .body("description", equalTo("Updated description"));
 
         // Verify update
-        RoleTestUtil.getRole(roleId)
-            .then()
-            .statusCode(200)
+        Response verifyResponse = RoleTestUtil.getRole(roleId);
+        assertStatusCode(verifyResponse, 200);
+        verifyResponse.then()
             .body("name", equalTo(roleName + "-updated"))
             .body("description", equalTo("Updated description"));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -135,18 +137,16 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for deletion", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Delete the role
-        RoleTestUtil.deleteRole(roleId)
-            .then()
-            .statusCode(204);
+        Response deleteResponse = RoleTestUtil.deleteRole(roleId);
+        assertStatusCode(deleteResponse, 204);
 
         // Verify it's deleted
-        RoleTestUtil.getRole(roleId)
-            .then()
-            .statusCode(404);
+        Response verifyResponse = RoleTestUtil.getRole(roleId);
+        assertStatusCode(verifyResponse, 404);
     }
 
     @Test
@@ -154,25 +154,31 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for permissions", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Use permission action strings directly
         List<String> permissionsToAdd = Arrays.asList("system:settings", "provider:read");
 
         // Add permissions to role
-        RoleTestUtil.addRolePermissions(roleId, permissionsToAdd)
-            .then()
-            .statusCode(200);
+        RolePermissionsUpdate update = new RolePermissionsUpdate();
+        update.setPermissions(permissionsToAdd);
+        Response addResponse = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType("application/json")
+            .body(update)
+            .when()
+            .post("/roles/" + roleId + "/permissions");
+        assertStatusCode(addResponse, 200);
 
         // Verify permissions were added
-        RoleTestUtil.listRolePermissions(roleId)
-            .then()
-            .statusCode(200)
+        Response listResponse = RoleTestUtil.listRolePermissions(roleId);
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
             .body("items.size()", greaterThan(0));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -182,22 +188,21 @@ public class RoleTests extends BaseIntegrationTest {
         List<String> permissionsToAdd = Arrays.asList("system:settings", "provider:read");
 
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for permission removal", "system", null, permissionsToAdd);
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Remove permissions from role
-        RoleTestUtil.removeRolePermissions(roleId, permissionsToAdd)
-            .then()
-            .statusCode(200);
+        Response removeResponse = RoleTestUtil.removeRolePermissions(roleId, permissionsToAdd);
+        assertStatusCode(removeResponse, 200);
 
         // Verify permissions were removed
-        RoleTestUtil.listRolePermissions(roleId)
-            .then()
-            .statusCode(200)
+        Response listResponse = RoleTestUtil.listRolePermissions(roleId);
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
             .body("items.size()", equalTo(0));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -205,7 +210,7 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for bindings", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Create role bindings
@@ -213,19 +218,19 @@ public class RoleTests extends BaseIntegrationTest {
         String userId2 = RoleBindingTestUtil.generateUniqueUserId();
         List<String> userIds = Arrays.asList(userId1, userId2);
 
-        RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null)
-            .then()
-            .statusCode(201)
+        Response bindingResponse = RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null);
+        assertStatusCode(bindingResponse, 201);
+        bindingResponse.then()
             .body("items.size()", equalTo(2));
 
         // Verify bindings were created
-        RoleBindingTestUtil.listRoleBindings(roleId)
-            .then()
-            .statusCode(200)
+        Response listResponse = RoleBindingTestUtil.listRoleBindings(roleId);
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
             .body("items.size()", equalTo(2));
 
         // Cleanup - delete role (should cascade delete bindings)
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -235,11 +240,11 @@ public class RoleTests extends BaseIntegrationTest {
         String roleName2 = RoleTestUtil.generateUniqueRoleName();
 
         Response createResponse1 = RoleTestUtil.createRole(roleName1, "Test role 1 for bulk bindings", "system");
-        createResponse1.then().statusCode(201);
+        assertStatusCode(createResponse1, 201);
         String roleId1 = createResponse1.jsonPath().getString("id");
 
         Response createResponse2 = RoleTestUtil.createRole(roleName2, "Test role 2 for bulk bindings", "system");
-        createResponse2.then().statusCode(201);
+        assertStatusCode(createResponse2, 201);
         String roleId2 = createResponse2.jsonPath().getString("id");
 
         List<String> roleIds = Arrays.asList(roleId1, roleId2);
@@ -249,14 +254,14 @@ public class RoleTests extends BaseIntegrationTest {
         String userId2 = RoleBindingTestUtil.generateUniqueUserId();
         List<String> userIds = Arrays.asList(userId1, userId2);
 
-        RoleBindingTestUtil.bulkCreateRoleBindings(roleIds, userIds, "system", null)
-            .then()
-            .statusCode(201)
+        Response bulkResponse = RoleBindingTestUtil.bulkCreateRoleBindings(roleIds, userIds, "system", null);
+        assertStatusCode(bulkResponse, 201);
+        bulkResponse.then()
             .body("items.size()", equalTo(4)); // 2 roles * 2 users
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId1).then().statusCode(204);
-        RoleTestUtil.deleteRole(roleId2).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId1), 204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId2), 204);
     }
 
     @Test
@@ -264,27 +269,26 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for user bindings", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Create role binding for a user
         String userId = RoleBindingTestUtil.generateUniqueUserId();
         List<String> userIds = Arrays.asList(userId);
 
-        RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null)
-            .then()
-            .statusCode(201);
+        Response bindingResponse = RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null);
+        assertStatusCode(bindingResponse, 201);
 
         // List user bindings
-        RoleBindingTestUtil.listUserBindings(userId)
-            .then()
-            .statusCode(200)
+        Response listResponse = RoleBindingTestUtil.listUserBindings(userId);
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
             .body("items.size()", equalTo(1))
             .body("items[0].role_id", equalTo(roleId))
             .body("items[0].subject_id", equalTo(userId));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 
     @Test
@@ -294,11 +298,11 @@ public class RoleTests extends BaseIntegrationTest {
         String roleName2 = RoleTestUtil.generateUniqueRoleName();
 
         Response createResponse1 = RoleTestUtil.createRole(roleName1, "Test role 1 for binding update", "system");
-        createResponse1.then().statusCode(201);
+        assertStatusCode(createResponse1, 201);
         String roleId1 = createResponse1.jsonPath().getString("id");
 
         Response createResponse2 = RoleTestUtil.createRole(roleName2, "Test role 2 for binding update", "system");
-        createResponse2.then().statusCode(201);
+        assertStatusCode(createResponse2, 201);
         String roleId2 = createResponse2.jsonPath().getString("id");
 
         // Create role binding
@@ -306,25 +310,25 @@ public class RoleTests extends BaseIntegrationTest {
         List<String> userIds = Arrays.asList(userId);
 
         Response bindingResponse = RoleBindingTestUtil.createRoleBindings(roleId1, userIds, "system", null);
-        bindingResponse.then().statusCode(201);
+        assertStatusCode(bindingResponse, 201);
         String bindingId = bindingResponse.jsonPath().getString("items[0].id");
 
         // Update the binding to use the second role
-        RoleBindingTestUtil.updateRoleBinding(bindingId, roleId2)
-            .then()
-            .statusCode(200)
+        Response updateResponse = RoleBindingTestUtil.updateRoleBinding(bindingId, roleId2);
+        assertStatusCode(updateResponse, 200);
+        updateResponse.then()
             .body("role_id", equalTo(roleId2))
             .body("subject_id", equalTo(userId));
 
         // Verify the update
-        RoleBindingTestUtil.getRoleBinding(bindingId)
-            .then()
-            .statusCode(200)
+        Response verifyResponse = RoleBindingTestUtil.getRoleBinding(bindingId);
+        assertStatusCode(verifyResponse, 200);
+        verifyResponse.then()
             .body("role_id", equalTo(roleId2));
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId1).then().statusCode(204);
-        RoleTestUtil.deleteRole(roleId2).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId1), 204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId2), 204);
     }
 
     @Test
@@ -332,7 +336,7 @@ public class RoleTests extends BaseIntegrationTest {
         // Create a role first
         String roleName = RoleTestUtil.generateUniqueRoleName();
         Response createResponse = RoleTestUtil.createRole(roleName, "Test role for binding deletion", "system");
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String roleId = createResponse.jsonPath().getString("id");
 
         // Create role binding
@@ -340,20 +344,18 @@ public class RoleTests extends BaseIntegrationTest {
         List<String> userIds = Arrays.asList(userId);
 
         Response bindingResponse = RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null);
-        bindingResponse.then().statusCode(201);
+        assertStatusCode(bindingResponse, 201);
         String bindingId = bindingResponse.jsonPath().getString("items[0].id");
 
         // Delete the binding
-        RoleBindingTestUtil.deleteRoleBinding(bindingId)
-            .then()
-            .statusCode(204);
+        Response deleteResponse = RoleBindingTestUtil.deleteRoleBinding(bindingId);
+        assertStatusCode(deleteResponse, 204);
 
         // Verify it's deleted
-        RoleBindingTestUtil.getRoleBinding(bindingId)
-            .then()
-            .statusCode(404);
+        Response verifyResponse = RoleBindingTestUtil.getRoleBinding(bindingId);
+        assertStatusCode(verifyResponse, 404);
 
         // Cleanup
-        RoleTestUtil.deleteRole(roleId).then().statusCode(204);
+        assertStatusCode(RoleTestUtil.deleteRole(roleId), 204);
     }
 }

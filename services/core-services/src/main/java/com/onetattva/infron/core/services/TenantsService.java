@@ -2,6 +2,7 @@ package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.db.TenantStatus;
 import com.onetattva.infron.db.model.TenantEntity;
 import com.onetattva.infron.db.repository.TenantRepository;
@@ -39,12 +40,15 @@ public class TenantsService {
     }
 
     public void deleteTenant(UUID tenantId) {
+        if (!tenantRepository.existsById(tenantId)) {
+            throw new EntityNotFoundException("Tenant not found: " + tenantId);
+        }
         tenantRepository.deleteById(tenantId);
     }
 
     public Tenant getTenant(UUID tenantId) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow();
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
         return mapEntityToApi(entity);
     }
 
@@ -66,9 +70,12 @@ public class TenantsService {
 
     public Tenant patchTenant(UUID tenantId, TenantUpdate tenantUpdate) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow();
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
         if (tenantUpdate.getDisplayName() != null) {
             entity.setDisplayName(tenantUpdate.getDisplayName());
+        }
+        if (tenantUpdate.getStatus() != null) {
+            entity.setStatus(mapUpdateStatus(tenantUpdate.getStatus()));
         }
         if (tenantUpdate.getMetadata() != null) {
             try {
@@ -84,8 +91,13 @@ public class TenantsService {
 
     public Tenant updateTenant(UUID tenantId, TenantUpdate tenantUpdate) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow();
-        entity.setDisplayName(tenantUpdate.getDisplayName());
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
+        if (tenantUpdate.getDisplayName() != null) {
+            entity.setDisplayName(tenantUpdate.getDisplayName());
+        }
+        if (tenantUpdate.getStatus() != null) {
+            entity.setStatus(mapUpdateStatus(tenantUpdate.getStatus()));
+        }
         try {
             entity.setMetadata(tenantUpdate.getMetadata());
         } catch (Exception e) {
@@ -98,13 +110,13 @@ public class TenantsService {
 
     public TenantSettings getTenantSettings(UUID tenantId) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
         return entity.getSettings();
     }
 
     public TenantSettings replaceTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
         // TODO: Serialize settings to JSON and save
         entity.setUpdatedAt(Instant.now());
         tenantRepository.save(entity);
@@ -113,7 +125,7 @@ public class TenantsService {
 
     public TenantSettings updateTenantSettings(UUID tenantId, TenantSettings tenantSettings) {
         TenantEntity entity = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
         // TODO: Merge settings JSON and save
         entity.setUpdatedAt(Instant.now());
         tenantRepository.save(entity);
@@ -141,6 +153,10 @@ public class TenantsService {
     }
 
     private TenantStatus mapApiStatus(Tenant.StatusEnum status) {
+        return TenantStatus.valueOf(status.name());
+    }
+
+    private TenantStatus mapUpdateStatus(TenantUpdate.StatusEnum status) {
         return TenantStatus.valueOf(status.name());
     }
 }

@@ -1,5 +1,7 @@
 package com.onetattva.infron.tests.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.tests.InfronEnvironment;
 import io.restassured.response.Response;
 
@@ -10,6 +12,7 @@ import static io.restassured.RestAssured.given;
 
 public class RoleTestUtil {
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static InfronEnvironment environment;
     private static String baseUrl;
     private static String accessToken;
@@ -21,21 +24,22 @@ public class RoleTestUtil {
     }
 
     public static Response createRole(String name, String description, String scopeType, String scopeId, List<String> permissionIds) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "description": "%s",
-                    "scope_type": "%s",
-                    "scope_id": %s,
-                    "permissions": %s
-                }
-                """.formatted(name, description, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null,
-                              permissionIds != null ? permissionIds.toString() : "[]"))
-            .when()
-            .post(baseUrl + "/roles");
+        try {
+            RoleCreate role = new RoleCreate();
+            role.setName(name);
+            role.setDescription(description);
+            role.setScopeType(scopeType);
+            role.setScopeId(scopeId == null ? null : UUID.fromString(scopeId));
+            role.setPermissions(permissionIds);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(role))
+                .when()
+                .post(baseUrl + "/roles");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role", e);
+        }
     }
 
     public static Response createRole(String name, String description, String scopeType) {
@@ -61,17 +65,19 @@ public class RoleTestUtil {
     }
 
     public static Response updateRole(String roleId, String name, String description) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "description": "%s"
-                }
-                """.formatted(name, description))
-            .when()
-            .put(baseUrl + "/roles/" + roleId);
+        try {
+            RoleUpdate update = new RoleUpdate();
+            update.setName(name);
+            update.setDescription(description);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .put(baseUrl + "/roles/" + roleId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role update", e);
+        }
     }
 
     public static Response deleteRole(String roleId) {
@@ -89,47 +95,52 @@ public class RoleTestUtil {
     }
 
     public static Response addRolePermissions(String roleId, List<String> permissionActions) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "permissions": %s
-                }
-                """.formatted(permissionActions.toString()))
-            .when()
-            .post(baseUrl + "/roles/" + roleId + "/permissions");
+        try {
+            RolePermissionsUpdate update = new RolePermissionsUpdate();
+            update.setPermissions(permissionActions);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .post(baseUrl + "/roles/" + roleId + "/permissions");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role permissions update", e);
+        }
     }
 
     public static Response removeRolePermissions(String roleId, List<String> permissionActions) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "permissions": %s
-                }
-                """.formatted(permissionActions.toString()))
-            .when()
-            .delete(baseUrl + "/roles/" + roleId + "/permissions");
+        try {
+            RolePermissionsUpdate update = new RolePermissionsUpdate();
+            update.setPermissions(permissionActions);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .delete(baseUrl + "/roles/" + roleId + "/permissions");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize role permissions update", e);
+        }
     }
 
     public static Response createTenantRole(String tenantId, String name, String description, String scopeType, String scopeId, List<String> permissionIds) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "description": "%s",
-                    "scope_type": "%s",
-                    "scope_id": "%s",
-                    "permissions": %s
-                }
-                """.formatted(name, description, scopeType, scopeId != null ? "\"" + scopeId + "\"" : null,
-                              permissionIds != null ? permissionIds.toString() : "[]"))
-            .when()
-            .post(baseUrl + "/tenants/" + tenantId + "/roles");
+        try {
+            RoleCreate role = new RoleCreate();
+            role.setName(name);
+            role.setDescription(description);
+            role.setScopeType(scopeType);
+            role.setScopeId(scopeId == null ? null : UUID.fromString(scopeId));
+            role.setPermissions(permissionIds);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(role))
+                .when()
+                .post(baseUrl + "/tenants/" + tenantId + "/roles");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize tenant role", e);
+        }
     }
 
     public static Response createTenantRole(String tenantId, String name, String description, String scopeType, String scopeId) {
@@ -151,17 +162,19 @@ public class RoleTestUtil {
     }
 
     public static Response updateTenantRole(String tenantId, String roleId, String name, String description) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "description": "%s"
-                }
-                """.formatted(name, description))
-            .when()
-            .put(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId);
+        try {
+            RoleUpdate update = new RoleUpdate();
+            update.setName(name);
+            update.setDescription(description);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .put(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize tenant role update", e);
+        }
     }
 
     public static Response deleteTenantRole(String tenantId, String roleId) {
@@ -179,29 +192,33 @@ public class RoleTestUtil {
     }
 
     public static Response addTenantRolePermissions(String tenantId, String roleId, List<String> permissionActions) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "permissions": %s
-                }
-                """.formatted(permissionActions.toString()))
-            .when()
-            .post(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/permissions");
+        try {
+            RolePermissionsUpdate update = new RolePermissionsUpdate();
+            update.setPermissions(permissionActions);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .post(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/permissions");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize tenant role permissions update", e);
+        }
     }
 
     public static Response removeTenantRolePermissions(String tenantId, String roleId, List<String> permissionActions) {
-        return given()
-            .header("Authorization", "Bearer " + accessToken)
-            .contentType("application/json")
-            .body("""
-                {
-                    "permissions": %s
-                }
-                """.formatted(permissionActions.toString()))
-            .when()
-            .delete(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/permissions");
+        try {
+            RolePermissionsUpdate update = new RolePermissionsUpdate();
+            update.setPermissions(permissionActions);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(update))
+                .when()
+                .delete(baseUrl + "/tenants/" + tenantId + "/roles/" + roleId + "/permissions");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize tenant role permissions update", e);
+        }
     }
 
     public static Response listPermissions() {

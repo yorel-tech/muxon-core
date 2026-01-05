@@ -1,5 +1,7 @@
 package com.onetattva.infron.tests.system;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.tests.BaseIntegrationTest;
 import com.onetattva.infron.tests.RestConstants;
 import com.onetattva.infron.tests.util.RoleBindingTestUtil;
@@ -33,7 +35,7 @@ public class TenantTests extends BaseIntegrationTest {
         String roleName = "limited-admin-role-" + UUID.randomUUID().toString().substring(0, 8);
         List<String> permissions = Arrays.asList("tenant:read", "tenant:edit");
         Response roleResponse = RoleTestUtil.createRole(roleName, "Limited Admin Role", "system", null, permissions);
-        roleResponse.then().statusCode(201);
+        assertStatusCode(roleResponse, 201);
         String roleId = roleResponse.jsonPath().getString("id");
 
         // Get limited-admin user ID by decoding their token
@@ -42,9 +44,8 @@ public class TenantTests extends BaseIntegrationTest {
 
         // Assign the role to the limited-admin user
         List<String> userIds = Arrays.asList(limitedAdminUserId);
-        RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null)
-            .then()
-            .statusCode(201);
+        Response bindingResponse = RoleBindingTestUtil.createRoleBindings(roleId, userIds, "system", null);
+        assertStatusCode(bindingResponse, 201);
 
         // Now get the limited-admin token (which should include the role permissions)
         limitedAdminToken = getAccessToken(RestConstants.LIMITED_ADMIN_USERNAME, RestConstants.LIMITED_ADMIN_PASSWORD);
@@ -80,19 +81,19 @@ public class TenantTests extends BaseIntegrationTest {
     public void testCreateTenant() {
         String tenantName = "test-tenant-" + UUID.randomUUID().toString().substring(0, 8);
 
-        given()
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("Test Tenant");
+
+        Response response = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant"
-                }
-                """.formatted(tenantName))
+            .body(tenant)
             .when()
-            .post("/tenants")
-            .then()
-            .statusCode(201)
+            .post("/tenants");
+
+        assertStatusCode(response, 201);
+        response.then()
             .body("name", equalTo(tenantName))
             .body("displayName", equalTo("Test Tenant"))
             .body("status", equalTo("active"));
@@ -100,12 +101,13 @@ public class TenantTests extends BaseIntegrationTest {
 
     @Test
     public void testListTenants() {
-        given()
+        Response response = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get("/tenants")
-            .then()
-            .statusCode(200)
+            .get("/tenants");
+
+        assertStatusCode(response, 200);
+        response.then()
             .body("items", notNullValue());
     }
 
@@ -114,28 +116,28 @@ public class TenantTests extends BaseIntegrationTest {
         // First create a tenant
         String tenantName = "test-tenant-get-" + UUID.randomUUID().toString().substring(0, 8);
 
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("Test Tenant for Get");
+
         Response createResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant for Get"
-                }
-                """.formatted(tenantName))
+            .body(tenant)
             .when()
             .post("/tenants");
 
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String tenantId = createResponse.jsonPath().getString("id");
 
         // Now get the tenant
-        given()
+        Response getResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get("/tenants/" + tenantId)
-            .then()
-            .statusCode(200)
+            .get("/tenants/" + tenantId);
+
+        assertStatusCode(getResponse, 200);
+        getResponse.then()
             .body("id", equalTo(tenantId))
             .body("name", equalTo(tenantName))
             .body("displayName", equalTo("Test Tenant for Get"));
@@ -146,35 +148,34 @@ public class TenantTests extends BaseIntegrationTest {
         // First create a tenant
         String tenantName = "test-tenant-update-" + UUID.randomUUID().toString().substring(0, 8);
 
+        TenantCreate createTenant = new TenantCreate();
+        createTenant.setName(tenantName);
+        createTenant.setDisplayName("Test Tenant for Update");
+
         Response createResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant for Update"
-                }
-                """.formatted(tenantName))
+            .body(createTenant)
             .when()
             .post("/tenants");
 
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String tenantId = createResponse.jsonPath().getString("id");
 
         // Now update the tenant
-        given()
+        TenantUpdate updateTenant = new TenantUpdate();
+        updateTenant.setDisplayName("Updated Test Tenant");
+        updateTenant.setStatus(TenantUpdate.StatusEnum.INACTIVE);
+
+        Response updateResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "displayName": "Updated Test Tenant",
-                    "status": "inactive"
-                }
-                """)
+            .body(updateTenant)
             .when()
-            .put("/tenants/" + tenantId)
-            .then()
-            .statusCode(200)
+            .put("/tenants/" + tenantId);
+
+        assertStatusCode(updateResponse, 200);
+        updateResponse.then()
             .body("id", equalTo(tenantId))
             .body("name", equalTo(tenantName))
             .body("displayName", equalTo("Updated Test Tenant"))
@@ -186,36 +187,35 @@ public class TenantTests extends BaseIntegrationTest {
         // First create a tenant
         String tenantName = "test-tenant-delete-" + UUID.randomUUID().toString().substring(0, 8);
 
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("Test Tenant for Delete");
+
         Response createResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant for Delete"
-                }
-                """.formatted(tenantName))
+            .body(tenant)
             .when()
             .post("/tenants");
 
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String tenantId = createResponse.jsonPath().getString("id");
 
         // Now delete the tenant
-        given()
+        Response deleteResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .delete("/tenants/" + tenantId)
-            .then()
-            .statusCode(204);
+            .delete("/tenants/" + tenantId);
+
+        assertStatusCode(deleteResponse, 204);
 
         // Verify it's deleted by trying to get it
-        given()
+        Response getResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get("/tenants/" + tenantId)
-            .then()
-            .statusCode(404);
+            .get("/tenants/" + tenantId);
+
+        assertStatusCode(getResponse, 404);
     }
 
     @Test
@@ -223,19 +223,18 @@ public class TenantTests extends BaseIntegrationTest {
         // Try to create tenant with limited-admin user (should fail due to missing tenant:manage permission)
         String tenantName = "test-tenant-limited-admin-" + UUID.randomUUID().toString().substring(0, 8);
 
-        given()
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("Test Tenant by Limited Admin");
+
+        Response response = given()
             .header("Authorization", "Bearer " + limitedAdminToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant by Limited Admin"
-                }
-                """.formatted(tenantName))
+            .body(tenant)
             .when()
-            .post("/tenants")
-            .then()
-            .statusCode(403); // Forbidden due to insufficient permissions
+            .post("/tenants");
+
+        assertStatusCode(response, 403); // Forbidden due to insufficient permissions
     }
 
     @Test
@@ -243,44 +242,44 @@ public class TenantTests extends BaseIntegrationTest {
         // First create a tenant with admin user
         String tenantName = "test-tenant-delete-limited-admin-" + UUID.randomUUID().toString().substring(0, 8);
 
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("Test Tenant for Limited Admin Delete Test");
+
         Response createResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
-            .body("""
-                {
-                    "name": "%s",
-                    "displayName": "Test Tenant for Limited Admin Delete Test"
-                }
-                """.formatted(tenantName))
+            .body(tenant)
             .when()
             .post("/tenants");
 
-        createResponse.then().statusCode(201);
+        assertStatusCode(createResponse, 201);
         String tenantId = createResponse.jsonPath().getString("id");
 
         // Try to delete tenant with limited-admin user (should fail due to missing tenant:manage permission)
-        given()
+        Response deleteResponse = given()
             .header("Authorization", "Bearer " + limitedAdminToken)
             .when()
-            .delete("/tenants/" + tenantId)
-            .then()
-            .statusCode(403); // Forbidden due to insufficient permissions
+            .delete("/tenants/" + tenantId);
+
+        assertStatusCode(deleteResponse, 403); // Forbidden due to insufficient permissions
 
         // Verify the tenant still exists (admin can still access it)
-        given()
+        Response getResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get("/tenants/" + tenantId)
-            .then()
-            .statusCode(200)
+            .get("/tenants/" + tenantId);
+
+        assertStatusCode(getResponse, 200);
+        getResponse.then()
             .body("name", equalTo(tenantName));
 
         // Cleanup - delete tenant with admin permissions
-        given()
+        Response cleanupResponse = given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .delete("/tenants/" + tenantId)
-            .then()
-            .statusCode(204);
+            .delete("/tenants/" + tenantId);
+
+        assertStatusCode(cleanupResponse, 204);
     }
 }

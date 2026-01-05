@@ -7,6 +7,7 @@ import com.onetattva.infron.api.model.RoleBindingList;
 import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.common.Constants;
+import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.core.common.UuidUtils;
 import com.onetattva.infron.db.RoleBindingSubjectType;
 import com.onetattva.infron.db.RoleScopeType;
@@ -15,6 +16,7 @@ import com.onetattva.infron.db.model.RoleEntity;
 import com.onetattva.infron.db.repository.RoleBindingRepository;
 import com.onetattva.infron.db.repository.RoleRepository;
 import com.onetattva.infron.db.repository.TenantRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
@@ -111,6 +113,7 @@ public class BindingsService {
         }
     }
 
+    @Transactional
     public RoleBindingList bulkCreateRoleBindings(RoleBindingBulkCreate request) {
         UserPrincipal currentUser = getCurrentUser();
         checkRateLimit(currentUser.id());
@@ -155,6 +158,7 @@ public class BindingsService {
         return result;
     }
 
+    @Transactional
     public RoleBindingList createRoleBindings(UUID roleId, RoleBindingBulkCreate request) {
         UserPrincipal currentUser = getCurrentUser();
         checkRateLimit(currentUser.id());
@@ -198,6 +202,7 @@ public class BindingsService {
         return result;
     }
 
+    @Transactional
     public RoleBindingList createTenantRoleBindings(UUID tenantId, UUID roleId, RoleBindingBulkCreate request) {
         UserPrincipal currentUser = getCurrentUser();
         checkRateLimit(currentUser.id());
@@ -256,7 +261,7 @@ public class BindingsService {
     }
 
     public RoleBindingList listTenantRoleBindings(UUID tenantId, UUID roleId) {
-        List<RoleBindingEntity> entities = roleBindingRepository.findByRole_IdAndScopeTypeAndScopeId(roleId, "tenant", tenantId);
+        List<RoleBindingEntity> entities = roleBindingRepository.findByRole_IdAndScopeTypeAndScopeId(roleId, RoleScopeType.TENANT, tenantId);
         RoleBindingList result = new RoleBindingList();
         result.setItems(entities.stream()
                 .map(this::mapEntityToApi)
@@ -275,7 +280,7 @@ public class BindingsService {
 
     public RoleBinding getRoleBinding(UUID bindingId) {
         RoleBindingEntity entity = roleBindingRepository.findById(bindingId)
-                .orElseThrow(() -> new RuntimeException("Role binding not found: " + bindingId));
+                .orElseThrow(() -> new EntityNotFoundException("Role binding not found: " + bindingId));
         return mapEntityToApi(entity);
     }
 
@@ -284,7 +289,7 @@ public class BindingsService {
         checkRateLimit(currentUser.id());
 
         RoleBindingEntity entity = roleBindingRepository.findById(bindingId)
-                .orElseThrow(() -> new RuntimeException("Role binding not found: " + bindingId));
+                .orElseThrow(() -> new EntityNotFoundException("Role binding not found: " + bindingId));
 
         // Check privilege escalation for system scope
         if ("SYSTEM".equals(entity.getScopeType().name())) {
@@ -310,7 +315,7 @@ public class BindingsService {
         checkRateLimit(currentUser.id());
 
         RoleBindingEntity entity = roleBindingRepository.findById(bindingId)
-                .orElseThrow(() -> new RuntimeException("Role binding not found: " + bindingId));
+                .orElseThrow(() -> new EntityNotFoundException("Role binding not found: " + bindingId));
 
         // Check privilege escalation for system scope
         if ("SYSTEM".equals(entity.getScopeType().name())) {
@@ -387,13 +392,29 @@ public class BindingsService {
         roleBindingRepository.delete(entity);
     }
 
+    private String convertSubjectTypeToApiValue(RoleBindingSubjectType subjectType) {
+        return switch (subjectType) {
+            case USER -> RoleBindingCreateItem.SubjectTypeEnum.USER.getValue();
+            case GROUP -> RoleBindingCreateItem.SubjectTypeEnum.GROUP.getValue();
+            case SERVICE_ACCOUNT -> RoleBindingCreateItem.SubjectTypeEnum.SERVICE_ACCOUNT.getValue();
+        };
+    }
+
+    private String convertScopeTypeToApiValue(RoleScopeType scopeType) {
+        return switch (scopeType) {
+            case SYSTEM -> RoleBindingCreateItem.ScopeTypeEnum.SYSTEM.getValue();
+            case TENANT -> RoleBindingCreateItem.ScopeTypeEnum.TENANT.getValue();
+            case TENANT_GLOBAL -> RoleBindingCreateItem.ScopeTypeEnum.TENANT_GLOBAL.getValue();
+        };
+    }
+
     private RoleBinding mapEntityToApi(RoleBindingEntity entity) {
         RoleBinding binding = new RoleBinding();
         binding.setId(entity.getId());
         binding.setRoleId(entity.getRole().getId());
-        binding.setSubjectType(entity.getSubjectType().name());
+        binding.setSubjectType(convertSubjectTypeToApiValue(entity.getSubjectType()));
         binding.setSubjectId(entity.getSubjectId());
-        binding.setScopeType(entity.getScopeType().name());
+        binding.setScopeType(convertScopeTypeToApiValue(entity.getScopeType()));
         binding.setScopeId(entity.getScopeId());
         binding.setExpiresAt(entity.getExpiresAt() != null ? entity.getExpiresAt().atOffset(ZoneOffset.UTC) : null);
         binding.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));

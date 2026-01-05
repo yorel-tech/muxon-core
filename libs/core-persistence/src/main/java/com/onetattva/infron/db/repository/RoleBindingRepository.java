@@ -1,6 +1,7 @@
 package com.onetattva.infron.db.repository;
 
 import com.onetattva.infron.db.RoleBindingSubjectType;
+import com.onetattva.infron.db.RoleScopeType;
 import com.onetattva.infron.db.model.RoleBindingEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -16,6 +17,6 @@ public interface RoleBindingRepository extends JpaRepository<RoleBindingEntity, 
 
     List<RoleBindingEntity> findBySubjectTypeAndSubjectId(RoleBindingSubjectType subjectType, String subjectId);
 
-    List<RoleBindingEntity> findByRole_IdAndScopeTypeAndScopeId(UUID roleId, String scopeType, UUID scopeId);
+    List<RoleBindingEntity> findByRole_IdAndScopeTypeAndScopeId(UUID roleId, RoleScopeType scopeType, UUID scopeId);
 
 }

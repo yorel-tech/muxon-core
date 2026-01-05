@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +16,9 @@ public interface PermissionRepository extends JpaRepository<PermissionEntity, UU
 
     Optional<PermissionEntity> findByAction(String action);
 
+    List<PermissionEntity> findByActionIn(List<String> actions);
+
     Page<PermissionEntity> findByScope(RoleScopeType scope, Pageable pageable);
 
+    List<PermissionEntity> findByIdIn(List<UUID> rolePermissionIds);
 }
