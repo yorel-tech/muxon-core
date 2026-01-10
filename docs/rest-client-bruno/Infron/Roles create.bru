@@ -1,0 +1,26 @@
+meta {
+  name: Roles create
+  type: http
+  seq: 9
+}
+
+post {
+  url: http://localhost:8080/api/v1/tenants
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "name": "tr",
+      "description": "tro",
+      "scope_type": "system",
+      "scope_id": null,
+      "permissions": ["tenant:read", "tenant-edit"]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

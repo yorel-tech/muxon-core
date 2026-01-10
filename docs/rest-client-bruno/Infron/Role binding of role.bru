@@ -1,0 +1,30 @@
+meta {
+  name: Role binding of role
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{url}}/role-bindings
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "bindings": [
+      {
+        "role_id": "e4174f6c-1d5f-49a4-8146-d016e84396c2",
+        "subject_type": "user",
+        "subject_id": "1d17fa85-8e99-4fd2-945a-c8b386207a5d",
+        "scope_type": "system",
+        "scope_id": null
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
