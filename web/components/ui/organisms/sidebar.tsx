@@ -43,7 +43,7 @@ const systemUserItems: SidebarItem[] = [
     id: 'dashboard',
     label: 'Dashboard',
     icon: <LayoutDashboard size={20} />,
-    href: '/dashboard',
+    href: '/system/dashboard',
   },
   {
     id: 'providers',
