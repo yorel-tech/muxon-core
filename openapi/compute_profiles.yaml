@@ -1,0 +1,614 @@
+components:
+  schemas:
+    ComputeProfile:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Compute profile unique identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$'
+          description: Compute profile name
+        description:
+          type: string
+          maxLength: 255
+          description: Compute profile description
+        tenantDatacenterGrantId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant datacenter grant ID (null for system profiles)
+        spec:
+          type: object
+          description: VM specification (CPU, memory, storage, network, OS)
+          properties:
+            cpu:
+              $ref: '#/components/schemas/CpuSpec'
+            memory:
+              $ref: '#/components/schemas/MemorySpec'
+            storage:
+              type: array
+              items:
+                $ref: '#/components/schemas/StorageSpec'
+            network:
+              type: array
+              items:
+                $ref: '#/components/schemas/NetworkSpec'
+            os:
+              $ref: '#/components/schemas/OsSpec'
+            providerExtensions:
+              type: object
+              description: Provider-specific extensions
+              additionalProperties: true
+        metadata:
+          type: object
+          description: Compute profile metadata
+          additionalProperties: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: Compute profile tags
+        isSystem:
+          type: boolean
+          description: Whether this is a system-level profile
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CpuSpec:
+      type: object
+      required:
+        - cores
+      properties:
+        cores:
+          type: integer
+          minimum: 1
+          maximum: 128
+          description: Number of CPU cores
+        sockets:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: Number of CPU sockets
+        threads:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: Number of threads per core
+        type:
+          type: string
+          enum: [EMULATED, HOST_PASSTHROUGH]
+          default: EMULATED
+          description: CPU virtualization type
+
+    MemorySpec:
+      type: object
+      required:
+        - sizeMb
+      properties:
+        sizeMb:
+          type: integer
+          minimum: 512
+          maximum: 1048576
+          description: Memory size in MB
+        overcommitRatio:
+          type: number
+          minimum: 1.0
+          maximum: 4.0
+          default: 1.0
+          description: Memory overcommit ratio
+
+    StorageSpec:
+      type: object
+      required:
+        - type
+        - sizeGb
+      properties:
+        type:
+          type: string
+          enum: [root, data, swap]
+          description: Storage type
+        sizeGb:
+          type: integer
+          minimum: 1
+          maximum: 10240
+          description: Storage size in GB
+        storageClass:
+          type: string
+          description: Storage class (ssd, hdd, nvme)
+        bootable:
+          type: boolean
+          default: false
+          description: Whether this is a bootable device
+        providerExtensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    NetworkSpec:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [primary, secondary]
+          description: Network type
+        network:
+          type: string
+          description: Network name or ID
+        ipAllocation:
+          type: string
+          enum: [dhcp, static, pool]
+          default: dhcp
+          description: IP allocation method
+        providerExtensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    OsSpec:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [linux, windows, bsd]
+          description: OS type
+        distribution:
+          type: string
+          description: OS distribution (ubuntu, centos, windows-server)
+        version:
+          type: string
+          description: OS version
+        providerExtensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    ComputeProfileCreate:
+      type: object
+      required:
+        - name
+        - spec
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$'
+          description: Compute profile name
+        description:
+          type: string
+          maxLength: 255
+          description: Compute profile description
+        tenantDatacenterGrantId:
+          type: string
+          format: uuid
+          description: Tenant datacenter grant ID
+        spec:
+          $ref: '#/components/schemas/ComputeProfile/properties/spec'
+        metadata:
+          type: object
+          description: Compute profile metadata
+          additionalProperties: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: Compute profile tags
+
+    ComputeProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$'
+          description: Compute profile name
+        description:
+          type: string
+          maxLength: 255
+          description: Compute profile description
+        spec:
+          $ref: '#/components/schemas/ComputeProfile/properties/spec'
+        metadata:
+          type: object
+          description: Compute profile metadata
+          additionalProperties: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: Compute profile tags
+
+    ComputeProfileList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComputeProfile'
+        total:
+          type: integer
+          description: Total number of compute profiles
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+        perPage:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Items per page
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          description: Error details
+          additionalProperties: true
+        requestId:
+          type: string
+          format: uuid
+          description: Request ID for tracing
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /api/v1/compute-profiles:
+    get:
+      tags:
+        - ComputeProfiles
+      summary: List compute profiles
+      operationId: listComputeProfiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: perPage
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, createdAt, updatedAt]
+            default: name
+        - name: tenantDatacenterGrantId
+          in: query
+          description: Filter by tenant datacenter grant
+          schema:
+            type: string
+            format: uuid
+        - name: name
+          in: query
+          description: Filter by name
+          schema:
+            type: string
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compute profile list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputeProfileList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - ComputeProfiles
+      summary: Create a compute profile
+      operationId: createComputeProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComputeProfileCreate'
+      responses:
+        '201':
+          description: Compute profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputeProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/compute-profiles/{profileId}:
+    get:
+      tags:
+        - ComputeProfiles
+      summary: Get compute profile details
+      operationId: getComputeProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compute profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputeProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - ComputeProfiles
+      summary: Update a compute profile
+      operationId: updateComputeProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComputeProfileUpdate'
+      responses:
+        '200':
+          description: Compute profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputeProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict (system profile cannot be modified)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - ComputeProfiles
+      summary: Partially update a compute profile
+      operationId: patchComputeProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComputeProfileUpdate'
+      responses:
+        '200':
+          description: Compute profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputeProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - ComputeProfiles
+      summary: Delete a compute profile
+      operationId: deleteComputeProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Compute profile deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict (system profile cannot be deleted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/compute-profiles/{profileId}/metadata:
+    get:
+      tags:
+        - ComputeProfiles
+      summary: Get compute profile metadata
+      operationId: getComputeProfileMetadata
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compute profile metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - ComputeProfiles
+      summary: Update compute profile metadata
+      operationId: updateComputeProfileMetadata
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: Compute profile ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Compute profile metadata updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'

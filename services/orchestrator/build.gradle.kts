@@ -6,6 +6,8 @@ dependencies {
     implementation(libs.quarkus.kafka.client)
     implementation(libs.quarkus.opentelemetry)
     implementation(libs.quarkus.arc)
+    implementation(project(":libs:core-persistence"))
+    implementation(project(":libs:core-spi"))
 }
 
 tasks.register("runDev") {

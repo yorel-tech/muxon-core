@@ -168,3 +168,14 @@ components:
               value:
                 code: BAD_REQUEST
                 message: Invalid data
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            tooManyRequests:
+              value:
+                code: TOO_MANY_REQUESTS
+                message: Rate limit exceeded

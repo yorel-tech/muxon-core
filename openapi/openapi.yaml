@@ -33,6 +33,16 @@ tags:
     description: Permissions endpoints
   - name: Bindings
     description: Role Bindings endpoints
+  - name: VMs
+    description: Virtual machine management operations
+  - name: ComputeProfiles
+    description: Compute profile (VM spec template) management
+  - name: System Settings
+    description: System and tenant settings management
+  - name: Tenant Settings
+    description: Tenant settings management
+  - name: VM Management
+    description: VM lifecycle management operations
 
 components:
   schemas:
@@ -135,6 +145,32 @@ paths:
   /api/v1/datacenters/{datacenterId}/metadata:
     $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1metadata'
 
+  # VMs
+  /api/v1/vms:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms'
+  /api/v1/vms/{vmId}:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}'
+  /api/v1/vms/{vmId}/start:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1start'
+  /api/v1/vms/{vmId}/stop:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1stop'
+  /api/v1/vms/{vmId}/restart:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1restart'
+  /api/v1/vms/{vmId}/suspend:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1suspend'
+  /api/v1/vms/{vmId}/resume:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1resume'
+  /api/v1/vms/{vmId}/console:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1console'
+
+  # Compute Profiles
+  /api/v1/compute-profiles:
+    $ref: './compute_profiles.yaml#/paths/~1api~1v1~1compute-profiles'
+  /api/v1/compute-profiles/{profileId}:
+    $ref: './compute_profiles.yaml#/paths/~1api~1v1~1compute-profiles~1{profileId}'
+  /api/v1/compute-profiles/{profileId}/metadata:
+    $ref: './compute_profiles.yaml#/paths/~1api~1v1~1compute-profiles~1{profileId}~1metadata'
+
   # Roles
   /api/v1/roles:
     $ref: './core_rbac.yaml#/paths/~1roles'
@@ -160,3 +196,31 @@ paths:
     $ref: './core_rbac.yaml#/paths/~1role-bindings~1{bindingId}'
   /api/v1/users/{userId}/bindings:
     $ref: './core_rbac.yaml#/paths/~1users~1{userId}~1bindings'
+
+  # System Settings
+  /api/v1/system-settings:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings'
+  /api/v1/system-settings/general:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1general'
+  /api/v1/system-settings/security:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1security'
+  /api/v1/system-settings/notifications:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1notifications'
+  /api/v1/system-settings/notifications/test-email:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1notifications~1test-email'
+  /api/v1/system-settings/idp:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1idp'
+  /api/v1/system-settings/idp/validate:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1idp~1validate'
+  /api/v1/system-settings/appearance:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1system-settings~1appearance'
+
+  # Tenant Settings
+  /api/v1/tenants/{tenantId}/settings/general:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1general'
+  /api/v1/tenants/{tenantId}/settings/security:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1security'
+  /api/v1/tenants/{tenantId}/settings/notifications:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1notifications'
+  /api/v1/tenants/{tenantId}/settings/appearance:
+    $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1appearance'

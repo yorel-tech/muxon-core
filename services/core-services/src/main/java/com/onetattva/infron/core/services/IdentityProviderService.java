@@ -22,4 +22,13 @@ public class IdentityProviderService {
     public Optional<IdentityProviderEntity> getDefaultProvider() {
         return idpRepository.findById(UUID.fromString(Constants.DEFAULT_IDP_ID));
     }
+
+    /**
+     * Return system-level identity provider (is_system = true).
+     * All tenants share this single OIDC provider.
+     */
+    public Optional<IdentityProviderEntity> getSystemProvider() {
+        List<IdentityProviderEntity> systemProviders = idpRepository.findSystemProvider();
+        return systemProviders.isEmpty() ? Optional.empty() : Optional.of(systemProviders.get(0));
+    }
 }

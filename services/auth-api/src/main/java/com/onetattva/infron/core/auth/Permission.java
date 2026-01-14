@@ -33,10 +33,18 @@ public enum Permission {
     // Tenant-level permissions
     TENANT_SETTINGS("tenant:settings", "Update tenant settings", Scope.TENANT),
 
+    // VM permissions
     VM_READ("vm:read", "Read vm", Scope.TENANT),
     VM_EDIT("vm:edit", "Edit vm", Scope.TENANT),
     VM_MANAGE("vm:manage", "Manage vm", Scope.TENANT),
-    VM_CONSOLE("vm:console", "View vm console", Scope.TENANT);
+    VM_CONSOLE("vm:console", "View vm console", Scope.TENANT),
+    VM_DELETE("vm:delete", "Delete vm", Scope.TENANT),
+
+    // Compute profile permissions
+    COMPUTE_PROFILE_CREATE("compute_profile:create", "Create compute profile", Scope.TENANT),
+    COMPUTE_PROFILE_READ("compute_profile:read", "Read compute profile", Scope.TENANT),
+    COMPUTE_PROFILE_EDIT("compute_profile:edit", "Edit compute profile", Scope.TENANT),
+    COMPUTE_PROFILE_MANAGE("compute_profile:manage", "Manage compute profile", Scope.TENANT);
 
     private static final UUID NAMESPACE = UUID.fromString("696e6672-6f6e-636f-7265-111111111111");
     private static final Map<UUID, Permission> PERMISSION_BY_ID = new HashMap<>();

@@ -1,0 +1,1260 @@
+openapi: 3.0.3
+info:
+  title: Infron System Settings API
+  version: 1.0.0
+  description: System and tenant settings management API for Infron-Core cloud management platform
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # General Settings
+    GeneralSettings:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Infron Cloud Platform"
+          maxLength: 255
+        description:
+          type: string
+          example: "Multi-tenant cloud management platform"
+          maxLength: 1000
+        contactEmail:
+          type: string
+          format: email
+          example: "admin@infron.example"
+        contactPhone:
+          type: string
+          pattern: "^[+]?[0-9\\s\\-()]+$"
+          example: "+1-555-123-4567"
+        defaultTimezone:
+          type: string
+          default: "UTC"
+          example: "UTC"
+        defaultLocale:
+          type: string
+          pattern: "^[a-z]{2}-[A-Z]{2}$"
+          default: "en-US"
+          example: "en-US"
+      additionalProperties: false
+
+    # Security Settings
+    SecuritySettings:
+      type: object
+      properties:
+        sessionTimeoutMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+          default: 60
+          example: 60
+        maxLoginAttempts:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+          example: 5
+        lockoutDurationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 30
+          example: 30
+        passwordMinLength:
+          type: integer
+          minimum: 6
+          maximum: 128
+          default: 8
+          example: 8
+        passwordRequireUppercase:
+          type: boolean
+          default: true
+          example: true
+        passwordRequireLowercase:
+          type: boolean
+          default: true
+          example: true
+        passwordRequireDigit:
+          type: boolean
+          default: true
+          example: true
+        passwordRequireSymbol:
+          type: boolean
+          default: false
+          example: false
+        passwordExpiryDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+          default: 90
+          example: 90
+        apiRateLimitPerMinute:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 100
+          example: 100
+      additionalProperties: false
+
+    # Notification Settings
+    NotificationSettings:
+      type: object
+      properties:
+        smtpEnabled:
+          type: boolean
+          default: false
+          example: false
+        smtpHost:
+          type: string
+          example: "smtp.gmail.com"
+        smtpPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          default: 587
+          example: 587
+        smtpUsername:
+          type: string
+          example: "noreply@infron.example"
+        smtpPassword:
+          type: string
+          writeOnly: true
+          example: "secret-password"
+        smtpFromEmail:
+          type: string
+          format: email
+          example: "noreply@infron.example"
+        smtpUseTls:
+          type: boolean
+          default: true
+          example: true
+        slackWebhookUrl:
+          type: string
+          format: uri
+          example: "https://hooks.slack.com/services/..."
+        webhookEnabled:
+          type: boolean
+          default: false
+          example: false
+      additionalProperties: false
+
+    # IdP Settings (Core - OIDC Only)
+    IdpSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+          example: false
+        type:
+          type: string
+          enum: [oidc]
+          default: oidc
+          example: oidc
+        name:
+          type: string
+          example: "Keycloak"
+        issuerUrl:
+          type: string
+          format: uri
+          example: "https://keycloak.example.com/realms/infron"
+        clientId:
+          type: string
+          example: "infron-client"
+        clientSecret:
+          type: string
+          writeOnly: true
+          example: "client-secret"
+        scopes:
+          type: string
+          default: "openid,profile,email"
+          example: "openid,profile,email"
+        autoProvisionUsers:
+          type: boolean
+          default: true
+          example: true
+        jwksUri:
+          type: string
+          format: uri
+          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/jwks"
+        userinfoEndpoint:
+          type: string
+          format: uri
+          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/userinfo"
+      additionalProperties: false
+
+    # Appearance Settings
+    AppearanceSettings:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, auto]
+          default: light
+          example: light
+        logoUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/logo.png"
+        faviconUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/favicon.ico"
+        primaryColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          default: "#3b82f6"
+          example: "#3b82f6"
+        secondaryColor:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          default: "#64748b"
+          example: "#64748b"
+        customCssUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/custom.css"
+      additionalProperties: false
+
+    # System Settings (Aggregate)
+    SystemSettings:
+      type: object
+      properties:
+        general:
+          $ref: '#/components/schemas/GeneralSettings'
+        security:
+          $ref: '#/components/schemas/SecuritySettings'
+        notifications:
+          $ref: '#/components/schemas/NotificationSettings'
+        idp:
+          $ref: '#/components/schemas/IdpSettings'
+        appearance:
+          $ref: '#/components/schemas/AppearanceSettings'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2025-10-01T12:34:56Z"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2025-10-01T12:34:56Z"
+        updatedBy:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+      additionalProperties: false
+
+    # Test Email Request
+    TestEmailRequest:
+      type: object
+      required:
+        - to
+      properties:
+        to:
+          type: string
+          format: email
+          example: "test@example.com"
+        subject:
+          type: string
+          maxLength: 200
+          example: "Infron Test Email"
+        body:
+          type: string
+          maxLength: 5000
+          example: "This is a test email from Infron"
+      additionalProperties: false
+
+    # IdP Validation Request
+    IdpValidationRequest:
+      type: object
+      required:
+        - issuerUrl
+      properties:
+        issuerUrl:
+          type: string
+          format: uri
+          example: "https://keycloak.example.com/realms/infron"
+        clientId:
+          type: string
+          example: "infron-client"
+        clientSecret:
+          type: string
+          example: "client-secret"
+      additionalProperties: false
+
+    # IdP Validation Response
+    IdpValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          example: true
+        issuer:
+          type: string
+          example: "https://keycloak.example.com/realms/infron"
+        jwksUri:
+          type: string
+          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/jwks"
+        userinfoEndpoint:
+          type: string
+          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/userinfo"
+        error:
+          type: string
+          example: ""
+      additionalProperties: false
+
+    # Error Response
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INVALID_IDP_TYPE
+        message:
+          type: string
+          example: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
+        details:
+          type: object
+          additionalProperties: true
+
+paths:
+  # System Settings Endpoints
+  /api/v1/system-settings:
+    get:
+      tags:
+        - System Settings
+      summary: Get all system settings
+      operationId: getSystemSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: System settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update all system settings
+      operationId: updateSystemSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettings'
+      responses:
+        '200':
+          description: System settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/general:
+    get:
+      tags:
+        - System Settings
+      summary: Get general settings
+      operationId: getGeneralSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: General settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update general settings
+      operationId: updateGeneralSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralSettings'
+      responses:
+        '200':
+          description: General settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - System Settings
+      summary: Partially update general settings
+      operationId: patchGeneralSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralSettings'
+      responses:
+        '200':
+          description: General settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/security:
+    get:
+      tags:
+        - System Settings
+      summary: Get security settings
+      operationId: getSecuritySettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Security settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update security settings
+      operationId: updateSecuritySettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettings'
+      responses:
+        '200':
+          description: Security settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - System Settings
+      summary: Partially update security settings
+      operationId: patchSecuritySettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettings'
+      responses:
+        '200':
+          description: Security settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/notifications:
+    get:
+      tags:
+        - System Settings
+      summary: Get notification settings
+      operationId: getNotificationSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notification settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update notification settings
+      operationId: updateNotificationSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - System Settings
+      summary: Partially update notification settings
+      operationId: patchNotificationSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/notifications/test-email:
+    post:
+      tags:
+        - System Settings
+      summary: Send test email
+      operationId: sendTestEmail
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestEmailRequest'
+      responses:
+        '200':
+          description: Test email sent
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/idp:
+    get:
+      tags:
+        - System Settings
+      summary: Get IdP settings
+      operationId: getIdpSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: IdP settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdpSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update IdP settings (enforces single OIDC)
+      operationId: updateIdpSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdpSettings'
+      responses:
+        '200':
+          description: IdP settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdpSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+          example:
+            code: INVALID_IDP_TYPE
+            message: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - System Settings
+      summary: Partially update IdP settings
+      operationId: patchIdpSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdpSettings'
+      responses:
+        '200':
+          description: IdP settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdpSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    delete:
+      tags:
+        - System Settings
+      summary: Disable/Remove IdP configuration
+      operationId: disableIdp
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: IdP disabled
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/idp/validate:
+    post:
+      tags:
+        - System Settings
+      summary: Validate IdP configuration
+      operationId: validateIdp
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdpValidationRequest'
+      responses:
+        '200':
+          description: IdP configuration validated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdpValidationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/system-settings/appearance:
+    get:
+      tags:
+        - System Settings
+      summary: Get appearance settings
+      operationId: getAppearanceSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Appearance settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - System Settings
+      summary: Update appearance settings
+      operationId: updateAppearanceSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppearanceSettings'
+      responses:
+        '200':
+          description: Appearance settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - System Settings
+      summary: Partially update appearance settings
+      operationId: patchAppearanceSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppearanceSettings'
+      responses:
+        '200':
+          description: Appearance settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  # Tenant Settings Endpoints
+  /api/v1/tenants/{tenantId}/settings:
+    get:
+      tags:
+        - Tenant Settings
+      summary: Get all tenant settings (merged with system defaults)
+      operationId: getTenantSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+          example:
+            code: NOT_FOUND
+            message: Tenant not found
+    put:
+      tags:
+        - Tenant Settings
+      summary: Update all tenant settings
+      operationId: updateTenantSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettings'
+      responses:
+        '200':
+          description: Tenant settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/tenants/{tenantId}/settings/general:
+    get:
+      tags:
+        - Tenant Settings
+      summary: Get tenant general settings
+      operationId: getTenantGeneralSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant general settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - Tenant Settings
+      summary: Update tenant general settings
+      operationId: updateTenantGeneralSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralSettings'
+      responses:
+        '200':
+          description: Tenant general settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - Tenant Settings
+      summary: Partially update tenant general settings
+      operationId: patchTenantGeneralSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralSettings'
+      responses:
+        '200':
+          description: Tenant general settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/tenants/{tenantId}/settings/security:
+    get:
+      tags:
+        - Tenant Settings
+      summary: Get tenant security settings
+      operationId: getTenantSecuritySettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant security settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - Tenant Settings
+      summary: Update tenant security settings
+      operationId: updateTenantSecuritySettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettings'
+      responses:
+        '200':
+          description: Tenant security settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - Tenant Settings
+      summary: Partially update tenant security settings
+      operationId: patchTenantSecuritySettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettings'
+      responses:
+        '200':
+          description: Tenant security settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/tenants/{tenantId}/settings/notifications:
+    get:
+      tags:
+        - Tenant Settings
+      summary: Get tenant notification settings
+      operationId: getTenantNotificationSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant notification settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - Tenant Settings
+      summary: Update tenant notification settings
+      operationId: updateTenantNotificationSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Tenant notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - Tenant Settings
+      summary: Partially update tenant notification settings
+      operationId: patchTenantNotificationSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Tenant notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/tenants/{tenantId}/settings/appearance:
+    get:
+      tags:
+        - Tenant Settings
+      summary: Get tenant appearance settings
+      operationId: getTenantAppearanceSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant appearance settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    put:
+      tags:
+        - Tenant Settings
+      summary: Update tenant appearance settings
+      operationId: updateTenantAppearanceSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppearanceSettings'
+      responses:
+        '200':
+          description: Tenant appearance settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    patch:
+      tags:
+        - Tenant Settings
+      summary: Partially update tenant appearance settings
+      operationId: patchTenantAppearanceSettings
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          description: UUID of tenant
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppearanceSettings'
+      responses:
+        '200':
+          description: Tenant appearance settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppearanceSettings'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'

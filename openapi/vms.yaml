@@ -1,0 +1,479 @@
+openapi: 3.0.3
+info:
+  title: VM Management API
+  version: 2025-01-12
+  description: VM lifecycle management operations for Infron Core
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+tags:
+  - VM Management
+
+paths:
+  /api/v1/vms:
+    $ref: './vms.yaml#/paths/~1vms'
+  /api/v1/vms/{vmId}:
+    $ref: './vms.yaml#/paths/~1vms~1{vmId}'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    VmStatus:
+      type: string
+      enum:
+        - PENDING
+        - PLANNED
+        - PROVISIONING
+        - ACTIVE
+        - STOPPED
+        - SUSPENDED
+        - ERROR
+        - DELETING
+        - DELETED
+        - MIGRATING
+        - RESIZING
+      description: Current lifecycle status of the VM
+
+    VmPowerState:
+      type: string
+      enum:
+        - UNKNOWN
+        - ON
+        - OFF
+        - SUSPENDED
+      description: Current power state of the VM
+
+    VmSpec:
+      type: object
+      required:
+        - cpu
+        - memory
+        - storage
+      properties:
+        cpu:
+          $ref: '#/components/schemas/CpuSpec'
+        memory:
+          $ref: '#/components/schemas/MemorySpec'
+          description: Memory specification
+        storage:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageSpec'
+          description: Storage specifications
+        network:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkSpec'
+          description: Network specifications
+        os:
+          $ref: '#/components/schemas/OsSpec'
+          description: OS specification
+        provider_extensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    CpuSpec:
+      type: object
+      required:
+        - cores
+      properties:
+        cores:
+          type: integer
+          minimum: 1
+          maximum: 128
+          description: Number of CPU cores
+        sockets:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: Number of CPU sockets
+        threads:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: Number of threads per core
+        type:
+          type: string
+          enum: [EMULATED, HOST_PASSTHROUGH]
+          default: EMULATED
+          description: CPU virtualization type
+
+    MemorySpec:
+      type: object
+      required:
+        - size_mb
+      properties:
+        size_mb:
+          type: integer
+          minimum: 512
+          maximum: 1048576
+          description: Memory size in MB
+        overcommit_ratio:
+          type: number
+          minimum: 1.0
+          maximum: 4.0
+          default: 1.0
+          description: Memory overcommit ratio
+
+    StorageSpec:
+      type: object
+      required:
+        - type
+        - size_gb
+      properties:
+        type:
+          type: string
+          enum: [root, data, swap]
+          description: Storage type
+        size_gb:
+          type: integer
+          minimum: 1
+          maximum: 10240
+          description: Storage size in GB
+        storage_class:
+          type: string
+          description: Storage class (ssd, hdd, nvme)
+        bootable:
+          type: boolean
+          default: false
+          description: Whether this is a bootable device
+        provider_extensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    NetworkSpec:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [primary, secondary]
+          description: Network type
+        network:
+          type: string
+          description: Network name or ID
+        ip_allocation:
+          type: string
+          enum: [dhcp, static, pool]
+          default: dhcp
+          description: IP allocation method
+        provider_extensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    OsSpec:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [linux, windows, bsd]
+          description: OS type
+        distribution:
+          type: string
+          description: OS distribution (ubuntu, centos, windows-server)
+        version:
+          type: string
+          description: OS version
+        provider_extensions:
+          type: object
+          description: Provider-specific extensions
+          additionalProperties: true
+
+    Vm:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - tenant_datacenter_grant_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: VM unique identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$'
+          description: VM name
+        description:
+          type: string
+          maxLength: 255
+          description: VM description
+        tenant_datacenter_grant_id:
+          type: string
+          format: uuid
+          description: Tenant datacenter grant ID
+        spec:
+          $ref: '#/components/schemas/VmSpec'
+          description: VM specification (immutable after creation)
+        status:
+          $ref: '#/components/schemas/VmStatus'
+          description: Current VM status
+        power_state:
+          $ref: '#/components/schemas/VmPowerState'
+          description: Current VM power state
+        provider_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Provider ID
+        node_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Node ID where VM is hosted
+        external_id:
+          type: string
+          nullable: true
+          description: Provider's VM ID
+        ip_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv4
+          description: VM IP addresses
+        hostname:
+          type: string
+          nullable: true
+          description: VM hostname
+        resource_usage:
+          $ref: '#/components/schemas/VmResourceUsage'
+          nullable: true
+          description: Current resource usage
+        metadata:
+          type: object
+          additionalProperties: true
+          description: VM metadata
+        tags:
+          type: array
+          items:
+            type: string
+          description: VM tags
+        created_at:
+          type: string
+          format: date-time
+          description: VM creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: VM last update timestamp
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When VM first became ACTIVE
+        stopped_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time VM was stopped
+
+    VmCreateRequest:
+      type: object
+      required:
+        - name
+        - spec
+        - tenant_datacenter_grant_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 63
+          description: VM name
+        spec:
+          $ref: '#/components/schemas/VmSpec'
+          description: VM specification
+        tenant_datacenter_grant_id:
+          type: string
+          format: uuid
+          description: Tenant datacenter grant ID
+        metadata:
+          type: object
+          additionalProperties: true
+          description: VM metadata
+        tags:
+          type: array
+          items:
+            type: string
+          description: VM tags
+
+    VmUpdateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 255
+          description: VM description
+        metadata:
+          type: object
+          additionalProperties: true
+          description: VM metadata
+        tags:
+          type: array
+          items:
+            type: string
+          description: VM tags
+
+    VmListResponse:
+      type: object
+      required:
+        - total
+        - page
+        - per_page
+        - total_pages
+        - items
+      properties:
+        total:
+          type: integer
+          description: Total number of VMs
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Items per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vm'
+          description: VM list
+
+    VmCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: VM ID
+        name:
+          type: string
+          description: VM name
+        status:
+          $ref: '#/components/schemas/VmStatus'
+          description: Initial VM status
+        message:
+          type: string
+          description: Status message
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    VmOperationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Operation message
+        operation_id:
+          type: string
+          format: uuid
+          description: Operation ID for tracking
+
+    VmConsoleResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Console URL
+        token:
+          type: string
+          description: Access token
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration time
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Error details
+        request_id:
+          type: string
+          format: uuid
+          description: Request ID for tracing
+
+    VmResourceUsage:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            utilized_cores:
+              type: number
+              description: CPU cores currently utilized
+            utilization_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: CPU utilization percentage
+        memory:
+          type: object
+          properties:
+            utilized_mb:
+              type: number
+              description: Memory currently utilized in MB
+            utilization_percent:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Memory utilization percentage
+        storage:
+          type: array
+          items:
+            type: object
+            properties:
+              device:
+                type: string
+                description: Storage device identifier
+              utilized_gb:
+                type: number
+                description: Storage currently utilized in GB
+              utilization_percent:
+                type: number
+                minimum: 0
+                maximum: 100
+                description: Storage utilization percentage
+        network:
+          type: array
+          items:
+            type: object
+            properties:
+              interface:
+                type: string
+                description: Network interface identifier
+              bytes_in:
+                type: number
+                description: Bytes received
+              bytes_out:
+                type: number
+                description: Bytes sent

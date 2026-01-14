@@ -14,6 +14,7 @@ include(
     "services:usage-billing",
     "services:agent",
     "services:console-proxy",
+    "providers:mock",
     "providers:libvirt",
     "providers:proxmox",
     "integration-tests"

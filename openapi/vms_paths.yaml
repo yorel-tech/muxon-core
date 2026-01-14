@@ -1,0 +1,416 @@
+paths:
+  /api/v1/vms:
+    post:
+      tags:
+        - VM Management
+      summary: Create a new VM
+      operationId: createVm
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './vms.yaml#/components/schemas/VmCreateRequest'
+      responses:
+        '202':
+          description: VM creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmCreateResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '429':
+          $ref: './commons.yaml#/components/responses/TooManyRequests'
+
+    get:
+      tags:
+        - VM Management
+      summary: List VMs
+      operationId: listVms
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          description: Filter by VM status
+          schema:
+            $ref: './vms.yaml#/components/schemas/VmStatus'
+        - name: tenant_datacenter_grant_id
+          in: query
+          description: Filter by tenant datacenter grant
+          schema:
+            type: string
+            format: uuid
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, created_at, updated_at, status]
+            default: created_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: VM list
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmListResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  /api/v1/vms/{vmId}:
+    get:
+      tags:
+        - VM Management
+      summary: Get VM details
+      operationId: getVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM details
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Vm'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - VM Management
+      summary: Update VM
+      operationId: patchVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './vms.yaml#/components/schemas/VmUpdateRequest'
+      responses:
+        '200':
+          description: VM updated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Vm'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          description: VM update conflict
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Error'
+
+    delete:
+      tags:
+        - VM Management
+      summary: Delete VM
+      operationId: deleteVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: VM deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/v1/vms/{vmId}/start:
+    post:
+      tags:
+        - VM Management
+      summary: Start VM
+      operationId: startVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM start initiated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          description: VM already running
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Error'
+
+  /api/v1/vms/{vmId}/stop:
+    post:
+      tags:
+        - VM Management
+      summary: Stop VM
+      operationId: stopVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM stop initiated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          description: VM already stopped
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Error'
+
+  /api/v1/vms/{vmId}/restart:
+    post:
+      tags:
+        - VM Management
+      summary: Restart VM
+      operationId: restartVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM restart initiated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/v1/vms/{vmId}/suspend:
+    post:
+      tags:
+        - VM Management
+      summary: Suspend VM
+      operationId: suspendVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM suspend initiated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          description: VM already suspended
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Error'
+
+  /api/v1/vms/{vmId}/resume:
+    post:
+      tags:
+        - VM Management
+      summary: Resume VM
+      operationId: resumeVm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: VM resume initiated
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          description: VM not suspended
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/Error'
+
+  /api/v1/vms/{vmId}/console:
+    get:
+      tags:
+        - VM Management
+      summary: Get VM console access
+      operationId: getVmConsole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vmId
+          in: path
+          required: true
+          description: VM ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Console access information
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmConsoleResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+

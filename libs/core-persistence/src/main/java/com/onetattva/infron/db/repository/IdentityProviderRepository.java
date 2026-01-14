@@ -24,4 +24,10 @@ public interface IdentityProviderRepository extends JpaRepository<IdentityProvid
      */
     @Query("SELECT i FROM IdentityProviderEntity i WHERE i.protocol = :protocol AND i.enabled = true")
     List<IdentityProviderEntity> findEnabledByProtocol(@Param("protocol") IdentityProviderProtocol protocol);
+
+    /**
+     * Find system-level identity provider (is_system = true)
+     */
+    @Query("SELECT i FROM IdentityProviderEntity i WHERE i.isSystem = true")
+    List<IdentityProviderEntity> findSystemProvider();
 }

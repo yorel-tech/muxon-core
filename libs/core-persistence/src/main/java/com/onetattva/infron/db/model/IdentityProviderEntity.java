@@ -1,6 +1,7 @@
 /**
  * Entity for identity_provider table.
  * Supports OIDC, OAuth2.0, and SAML 2.0 identity providers.
+ * The is_system flag indicates if this is a system-level provider shared by all tenants.
  */
 package com.onetattva.infron.db.model;
 
@@ -31,6 +32,9 @@ public class IdentityProviderEntity {
 
     @Column(name = "enabled", nullable = false)
     private Boolean enabled = true;
+
+    @Column(name = "is_system", nullable = false)
+    private Boolean isSystem = false;
 
     @Column(name = "metadata", columnDefinition = "jsonb", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
@@ -77,6 +81,14 @@ public class IdentityProviderEntity {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Boolean getIsSystem() {
+        return isSystem;
+    }
+
+    public void setIsSystem(Boolean isSystem) {
+        this.isSystem = isSystem;
     }
 
     public Map<String, Object> getMetadata() {
