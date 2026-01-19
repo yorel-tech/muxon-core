@@ -2,6 +2,11 @@ package com.onetattva.infron.core.orch;
 
 import com.onetattva.infron.core.providers.VmProvider;
 import com.onetattva.infron.core.providers.VmProviderRegistry;
+import com.onetattva.infron.db.enums.EntityType;
+import com.onetattva.infron.db.enums.QueueCategory;
+import com.onetattva.infron.db.enums.QueueStatus;
+import com.onetattva.infron.db.enums.VmPowerState;
+import com.onetattva.infron.db.enums.VmStatus;
 import com.onetattva.infron.db.model.*;
 import com.onetattva.infron.db.repository.VmRepository;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
@@ -12,7 +17,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +50,9 @@ public class VmOrchestrator {
     public void pollVmQueue() {
         try {
             List<QueueEntry> entries = queueEntryRepository.poll(
-                    EntityType.VM, null, POLL_BATCH_SIZE);
+                    EntityType.VM, null, POLL_BATCH_SIZE).stream()
+                    .limit(POLL_BATCH_SIZE)
+                    .toList();
 
             if (entries.isEmpty()) {
                 return;
@@ -69,7 +75,8 @@ public class VmOrchestrator {
     @Transactional
     public void checkStalledEntries() {
         try {
-            List<QueueEntry> stalled = queueEntryRepository.getStalledEntries(STALL_THRESHOLD_MINUTES);
+            Instant cutoff = Instant.now().minusSeconds(STALL_THRESHOLD_MINUTES * 60L);
+            List<QueueEntry> stalled = queueEntryRepository.getStalledEntries(cutoff);
             
             if (!stalled.isEmpty()) {
                 logger.warn("Found {} stalled queue entries", stalled.size());
@@ -110,12 +117,12 @@ public class VmOrchestrator {
                     break;
                 default:
                     logger.warn("Unknown queue type: {}", queueType);
-                    queueEntryRepository.markFailed(entry.getId(), "Unknown queue type");
+                    queueEntryRepository.markFailed(entry.getId(), "Unknown queue type", Instant.now());
                     return;
             }
         } catch (Exception e) {
             logger.error("Error processing queue entry {}: {}", entry.getId(), e);
-            queueEntryRepository.markFailed(entry.getId(), e.getMessage());
+            queueEntryRepository.markFailed(entry.getId(), e.getMessage(), Instant.now());
         }
     }
 
@@ -167,7 +174,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -182,8 +189,8 @@ public class VmOrchestrator {
         // Validate state
         if (vm.getStatus() != VmStatus.STOPPED && vm.getStatus() != VmStatus.SUSPENDED) {
             logger.warn("VM {} is not in a state that can be started: {}", vmId, vm.getStatus());
-            queueEntryRepository.markFailed(entry.getId(), 
-                    "VM is not in a valid state for start operation");
+            queueEntryRepository.markFailed(entry.getId(),
+                    "VM is not in a valid state for start operation", Instant.now());
             return;
         }
 
@@ -203,7 +210,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -218,8 +225,8 @@ public class VmOrchestrator {
         // Validate state
         if (vm.getStatus() != VmStatus.ACTIVE) {
             logger.warn("VM {} is not in a state that can be stopped: {}", vmId, vm.getStatus());
-            queueEntryRepository.markFailed(entry.getId(), 
-                    "VM is not in a valid state for stop operation");
+            queueEntryRepository.markFailed(entry.getId(),
+                    "VM is not in a valid state for stop operation", Instant.now());
             return;
         }
 
@@ -240,7 +247,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -255,8 +262,8 @@ public class VmOrchestrator {
         // Validate state
         if (vm.getStatus() != VmStatus.ACTIVE) {
             logger.warn("VM {} is not in a state that can be restarted: {}", vmId, vm.getStatus());
-            queueEntryRepository.markFailed(entry.getId(), 
-                    "VM is not in a valid state for restart operation");
+            queueEntryRepository.markFailed(entry.getId(),
+                    "VM is not in a valid state for restart operation", Instant.now());
             return;
         }
 
@@ -268,7 +275,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildOperationEvent(vmId, "VM_OPERATION_COMPLETED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -283,8 +290,8 @@ public class VmOrchestrator {
         // Validate state
         if (vm.getStatus() != VmStatus.ACTIVE) {
             logger.warn("VM {} is not in a state that can be suspended: {}", vmId, vm.getStatus());
-            queueEntryRepository.markFailed(entry.getId(), 
-                    "VM is not in a valid state for suspend operation");
+            queueEntryRepository.markFailed(entry.getId(),
+                    "VM is not in a valid state for suspend operation", Instant.now());
             return;
         }
 
@@ -304,7 +311,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -319,8 +326,8 @@ public class VmOrchestrator {
         // Validate state
         if (vm.getStatus() != VmStatus.SUSPENDED) {
             logger.warn("VM {} is not in a state that can be resumed: {}", vmId, vm.getStatus());
-            queueEntryRepository.markFailed(entry.getId(), 
-                    "VM is not in a valid state for resume operation");
+            queueEntryRepository.markFailed(entry.getId(),
+                    "VM is not in a valid state for resume operation", Instant.now());
             return;
         }
 
@@ -340,7 +347,7 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
@@ -366,40 +373,40 @@ public class VmOrchestrator {
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
         // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId());
+        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
     }
 
     /**
      * Build a status event queue entry
      */
     private QueueEntry buildStatusEvent(UUID vmId, String eventType, Map<String, Object> payload) {
-        return QueueEntry.builder()
-                .queueType(eventType)
-                .entityType(EntityType.VM)
-                .entityId(vmId)
-                .queueCategory(QueueCategory.STATUS)
-                .status(QueueStatus.PENDING)
-                .payload(payload)
-                .actorType("SYSTEM")
-                .source("orchestrator")
-                .createdAt(Instant.now())
-                .build();
+        QueueEntry entry = new QueueEntry();
+        entry.setQueueType(eventType);
+        entry.setEntityType(EntityType.VM);
+        entry.setEntityId(vmId);
+        entry.setQueueCategory(QueueCategory.STATUS);
+        entry.setStatus(QueueStatus.PENDING);
+        entry.setPayload(payload);
+        entry.setActorType("SYSTEM");
+        entry.setSource("orchestrator");
+        entry.setCreatedAt(Instant.now());
+        return entry;
     }
 
     /**
      * Build an operation event queue entry
      */
     private QueueEntry buildOperationEvent(UUID vmId, String eventType, Map<String, Object> payload) {
-        return QueueEntry.builder()
-                .queueType(eventType)
-                .entityType(EntityType.VM)
-                .entityId(vmId)
-                .queueCategory(QueueCategory.STATUS)
-                .status(QueueStatus.PENDING)
-                .payload(payload)
-                .actorType("SYSTEM")
-                .source("orchestrator")
-                .createdAt(Instant.now())
-                .build();
+        QueueEntry entry = new QueueEntry();
+        entry.setQueueType(eventType);
+        entry.setEntityType(EntityType.VM);
+        entry.setEntityId(vmId);
+        entry.setQueueCategory(QueueCategory.STATUS);
+        entry.setStatus(QueueStatus.PENDING);
+        entry.setPayload(payload);
+        entry.setActorType("SYSTEM");
+        entry.setSource("orchestrator");
+        entry.setCreatedAt(Instant.now());
+        return entry;
     }
 }

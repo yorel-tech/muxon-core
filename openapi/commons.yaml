@@ -52,6 +52,9 @@ components:
         name:
           type: string
           example: "entity-name"
+        description:
+          type: string
+          example: "entity-name"
         metadata:
           $ref: '#/components/schemas/Metadata'
         createdAt:

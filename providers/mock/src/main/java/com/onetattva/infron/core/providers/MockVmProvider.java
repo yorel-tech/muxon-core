@@ -1,15 +1,7 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.core.providers.VmCreationRequest;
-import com.onetattva.infron.core.providers.VmCreationResult;
-import com.onetattva.infron.core.providers.VmDeletionRequest;
-import com.onetattva.infron.core.providers.VmDeletionResult;
-import com.onetattva.infron.core.providers.VmInfo;
-import com.onetattva.infron.core.providers.VmListRequest;
-import com.onetattva.infron.core.providers.VmOperationRequest;
-import com.onetattva.infron.core.providers.VmOperationResult;
-import com.onetattva.infron.core.providers.ProviderCapabilities;
-import com.onetattva.infron.core.providers.ValidationResult;
+import com.onetattva.infron.db.enums.VmPowerState;
+import com.onetattva.infron.db.enums.VmStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -20,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -33,7 +24,6 @@ public class MockVmProvider implements VmProvider {
     private static final Logger logger = LoggerFactory.getLogger(MockVmProvider.class);
     
     private final Map<String, MockVm> vms = new HashMap<>();
-    private final Map<String, MockVmOperation> operations = new HashMap<>();
 
     @Override
     public String id() {
@@ -47,21 +37,21 @@ public class MockVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmCreationResult> createVm(VmCreationRequest request) {
-        logger.info("Mock: Creating VM {} with spec", request.getVmId(), request.getSpec());
+        logger.info("Mock: Creating VM {} with spec", request.vmId(), request.spec());
         
         // Create mock VM
         MockVm vm = MockVm.builder()
-                .id(request.getVmId())
-                .externalId("mock-" + request.getVmId().toString().substring(0, 8))
+                .id(request.vmId())
+                .externalId("mock-" + request.vmId().toString().substring(0, 8))
                 .status(VmStatus.ACTIVE)
                 .powerState(VmPowerState.ON)
                 .ipAddresses(List.of("192.168.1." + (100 + vms.size() % 255)))
-                .hostname("mock-vm-" + request.getVmId().toString().substring(0, 8))
+                .hostname("mock-vm-" + request.vmId().toString().substring(0, 8))
                 .createdAt(Instant.now())
-                .spec(request.getSpec())
+                .spec(request.spec())
                 .build();
         
-        vms.put(request.getVmId(), vm);
+        vms.put(request.vmId().toString(), vm);
         
         // Simulate async creation delay
         return CompletableFuture.supplyAsync(() -> {
@@ -72,24 +62,24 @@ public class MockVmProvider implements VmProvider {
             }
             
             return VmCreationResult.success(
-                    vm.getExternalId(),
-                    VmInfo.fromMock(vm)
+                    vm.externalId(),
+                    vm.toVmInfo()
             );
         });
     }
 
     @Override
     public CompletableFuture<VmDeletionResult> deleteVm(VmDeletionRequest request) {
-        logger.info("Mock: Deleting VM {}", request.getVmId());
+        logger.info("Mock: Deleting VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmDeletionResult.failure("VM not found: " + request.getVmId())
+                    VmDeletionResult.failure("VM not found: " + request.vmId())
             );
         }
         
-        vms.remove(request.getVmId());
+        vms.remove(request.vmId().toString());
         
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -104,23 +94,35 @@ public class MockVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> startVm(VmOperationRequest request) {
-        logger.info("Mock: Starting VM {}", request.getVmId());
+        logger.info("Mock: Starting VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmOperationResult.failure("VM not found: " + request.getVmId())
+                    VmOperationResult.failure("VM not found: " + request.vmId())
             );
         }
         
-        if (vm.getPowerState() == VmPowerState.ON) {
+        if (vm.powerState() == VmPowerState.ON) {
             return CompletableFuture.completedFuture(
                     VmOperationResult.failure("VM is already running")
             );
         }
         
-        vm.setPowerState(VmPowerState.ON);
-        vm.setUpdatedAt(Instant.now());
+        // Update vm state - records are immutable, so we need to rebuild
+        MockVm updatedVm = new MockVm(
+                vm.id(),
+                vm.externalId(),
+                vm.status(),
+                VmPowerState.ON,
+                vm.ipAddresses(),
+                vm.hostname(),
+                vm.metadata(),
+                vm.createdAt(),
+                Instant.now(),
+                vm.spec()
+        );
+        vms.put(request.vmId().toString(), updatedVm);
         
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -129,29 +131,41 @@ public class MockVmProvider implements VmProvider {
                 Thread.currentThread().interrupt();
             }
             
-            return VmOperationResult.success(VmInfo.fromMock(vm));
+            return VmOperationResult.success(vm.toVmInfo());
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> stopVm(VmOperationRequest request) {
-        logger.info("Mock: Stopping VM {}", request.getVmId());
+        logger.info("Mock: Stopping VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmOperationResult.failure("VM not found: " + request.getVmId())
+                    VmOperationResult.failure("VM not found: " + request.vmId())
             );
         }
         
-        if (vm.getPowerState() == VmPowerState.OFF) {
+        if (vm.powerState() == VmPowerState.OFF) {
             return CompletableFuture.completedFuture(
                     VmOperationResult.failure("VM is already stopped")
             );
         }
         
-        vm.setPowerState(VmPowerState.OFF);
-        vm.setUpdatedAt(Instant.now());
+        // Update vm state - records are immutable, so we need to rebuild
+        MockVm updatedVm = new MockVm(
+                vm.id(),
+                vm.externalId(),
+                vm.status(),
+                VmPowerState.OFF,
+                vm.ipAddresses(),
+                vm.hostname(),
+                vm.metadata(),
+                vm.createdAt(),
+                Instant.now(),
+                vm.spec()
+        );
+        vms.put(request.vmId().toString(), updatedVm);
         
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -160,18 +174,18 @@ public class MockVmProvider implements VmProvider {
                 Thread.currentThread().interrupt();
             }
             
-            return VmOperationResult.success(VmInfo.fromMock(vm));
+            return VmOperationResult.success(vm.toVmInfo());
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> restartVm(VmOperationRequest request) {
-        logger.info("Mock: Restarting VM {}", request.getVmId());
+        logger.info("Mock: Restarting VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmOperationResult.failure("VM not found: " + request.getVmId())
+                    VmOperationResult.failure("VM not found: " + request.vmId())
             );
         }
         
@@ -182,32 +196,56 @@ public class MockVmProvider implements VmProvider {
                 Thread.currentThread().interrupt();
             }
             
-            vm.setPowerState(VmPowerState.ON);
-            vm.setUpdatedAt(Instant.now());
+            // Update vm state - records are immutable, so we need to rebuild
+            MockVm updatedVm = new MockVm(
+                    vm.id(),
+                    vm.externalId(),
+                    vm.status(),
+                    VmPowerState.ON,
+                    vm.ipAddresses(),
+                    vm.hostname(),
+                    vm.metadata(),
+                    vm.createdAt(),
+                    Instant.now(),
+                    vm.spec()
+            );
+            vms.put(request.vmId().toString(), updatedVm);
             
-            return VmOperationResult.success(VmInfo.fromMock(vm));
+            return VmOperationResult.success(vm.toVmInfo());
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> suspendVm(VmOperationRequest request) {
-        logger.info("Mock: Suspending VM {}", request.getVmId());
+        logger.info("Mock: Suspending VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmOperationResult.failure("VM not found: " + request.getVmId())
+                    VmOperationResult.failure("VM not found: " + request.vmId())
             );
         }
         
-        if (vm.getPowerState() == VmPowerState.SUSPENDED) {
+        if (vm.powerState() == VmPowerState.SUSPENDED) {
             return CompletableFuture.completedFuture(
                     VmOperationResult.failure("VM is already suspended")
             );
         }
         
-        vm.setPowerState(VmPowerState.SUSPENDED);
-        vm.setUpdatedAt(Instant.now());
+        // Update vm state - records are immutable, so we need to rebuild
+        MockVm updatedVm = new MockVm(
+                vm.id(),
+                vm.externalId(),
+                vm.status(),
+                VmPowerState.SUSPENDED,
+                vm.ipAddresses(),
+                vm.hostname(),
+                vm.metadata(),
+                vm.createdAt(),
+                Instant.now(),
+                vm.spec()
+        );
+        vms.put(request.vmId().toString(), updatedVm);
         
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -216,29 +254,41 @@ public class MockVmProvider implements VmProvider {
                 Thread.currentThread().interrupt();
             }
             
-            return VmOperationResult.success(VmInfo.fromMock(vm));
+            return VmOperationResult.success(vm.toVmInfo());
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> resumeVm(VmOperationRequest request) {
-        logger.info("Mock: Resuming VM {}", request.getVmId());
+        logger.info("Mock: Resuming VM {}", request.vmId());
         
-        MockVm vm = vms.get(request.getVmId());
+        MockVm vm = vms.get(request.vmId().toString());
         if (vm == null) {
             return CompletableFuture.completedFuture(
-                    VmOperationResult.failure("VM not found: " + request.getVmId())
+                    VmOperationResult.failure("VM not found: " + request.vmId())
             );
         }
         
-        if (vm.getPowerState() != VmPowerState.SUSPENDED) {
+        if (vm.powerState() != VmPowerState.SUSPENDED) {
             return CompletableFuture.completedFuture(
                     VmOperationResult.failure("VM is not suspended")
             );
         }
         
-        vm.setPowerState(VmPowerState.ON);
-        vm.setUpdatedAt(Instant.now());
+        // Update vm state - records are immutable, so we need to rebuild
+        MockVm updatedVm = new MockVm(
+                vm.id(),
+                vm.externalId(),
+                vm.status(),
+                VmPowerState.ON,
+                vm.ipAddresses(),
+                vm.hostname(),
+                vm.metadata(),
+                vm.createdAt(),
+                Instant.now(),
+                vm.spec()
+        );
+        vms.put(request.vmId().toString(), updatedVm);
         
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -247,7 +297,7 @@ public class MockVmProvider implements VmProvider {
                 Thread.currentThread().interrupt();
             }
             
-            return VmOperationResult.success(VmInfo.fromMock(vm));
+            return VmOperationResult.success(vm.toVmInfo());
         });
     }
 
@@ -256,8 +306,8 @@ public class MockVmProvider implements VmProvider {
         logger.debug("Mock: Getting VM info for {}", externalVmId);
         
         for (MockVm vm : vms.values()) {
-            if (vm.getExternalId().equals(externalVmId)) {
-                return CompletableFuture.completedFuture(Optional.of(VmInfo.fromMock(vm)));
+            if (vm.externalId().equals(externalVmId)) {
+                return CompletableFuture.completedFuture(Optional.of(vm.toVmInfo()));
             }
         }
         
@@ -296,22 +346,16 @@ public class MockVmProvider implements VmProvider {
     }
 
     @Override
-    public CompletableFuture<ValidationResult> validateVmSpec(VmSpec spec) {
+    public CompletableFuture<ValidationResult> validateVmSpec(String spec) {
         logger.debug("Mock: Validating VM spec");
         
-        // Simple validation
+        // Simple validation - since spec is now a String, we'll do basic checks
         List<String> errors = new ArrayList<>();
         
-        if (spec.getCpu().getCores() < 1 || spec.getCpu().getCores() > 128) {
-            errors.add("CPU cores must be between 1 and 128");
-        }
-        
-        if (spec.getMemory().getSizeMb() < 512 || spec.getMemory().getSizeMb() > 1048576) {
-            errors.add("Memory must be between 512MB and 1TB");
-        }
-        
-        if (spec.getStorage().isEmpty()) {
-            errors.add("At least one storage device is required");
+        if (spec == null || spec.isEmpty()) {
+            errors.add("VM spec cannot be null or empty");
+        } else if (spec.length() > 100000) {
+            errors.add("VM spec is too large (max 100KB)");
         }
         
         ValidationResult result = ValidationResult.builder()
@@ -327,7 +371,6 @@ public class MockVmProvider implements VmProvider {
      */
     public void clear() {
         vms.clear();
-        operations.clear();
         logger.info("Cleared mock provider data");
     }
 }

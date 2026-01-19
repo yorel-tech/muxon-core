@@ -1,18 +1,14 @@
 package com.onetattva.infron.db.repository;
 
+import com.onetattva.infron.db.enums.VmStatus;
 import com.onetattva.infron.db.model.VmEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Query.Param;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.onetattva.infron.db.model.VmStatus;
-import com.onetattva.infron.db.model.VmPowerState;
 
 /**
  * Repository for VM entity operations

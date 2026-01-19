@@ -1,6 +1,5 @@
 package com.onetattva.infron.core.controllers;
 
-import com.onetattva.infron.api.SystemSettingsApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
@@ -19,21 +18,19 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/v1")
-public class TenantSettingsController implements SystemSettingsApi {
+public class TenantSettingsController {
 
     @Autowired
     private SystemSettingsService settingsService;
 
     // ==================== Tenant Settings Endpoints ====================
-
-    @Override
+    
     @GetMapping("/tenants/{tenantId}/settings")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<SystemSettings> getTenantSettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getTenantSettings(tenantId));
     }
 
-    @Override
     @PutMapping("/tenants/{tenantId}/settings")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<SystemSettings> updateTenantSettings(
@@ -42,14 +39,12 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateTenantSettings(tenantId, settings));
     }
 
-    @Override
     @GetMapping("/tenants/{tenantId}/settings/general")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<GeneralSettings> getTenantGeneralSettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getGeneralSettings(tenantId));
     }
 
-    @Override
     @PutMapping("/tenants/{tenantId}/settings/general")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<GeneralSettings> updateTenantGeneralSettings(
@@ -58,7 +53,6 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateGeneralSettings(tenantId, settings));
     }
 
-    @Override
     @PatchMapping("/tenants/{tenantId}/settings/general")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<GeneralSettings> patchTenantGeneralSettings(
@@ -67,14 +61,12 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateGeneralSettings(tenantId, settings));
     }
 
-    @Override
     @GetMapping("/tenants/{tenantId}/settings/security")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<SecuritySettings> getTenantSecuritySettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getSecuritySettings(tenantId));
     }
 
-    @Override
     @PutMapping("/tenants/{tenantId}/settings/security")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<SecuritySettings> updateTenantSecuritySettings(
@@ -83,7 +75,6 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateSecuritySettings(tenantId, settings));
     }
 
-    @Override
     @PatchMapping("/tenants/{tenantId}/settings/security")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<SecuritySettings> patchTenantSecuritySettings(
@@ -92,39 +83,34 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateSecuritySettings(tenantId, settings));
     }
 
-    @Override
     @GetMapping("/tenants/{tenantId}/settings/notifications")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
-    public ResponseEntity<NotificationSettings> getTenantNotificationSettings(@PathVariable UUID tenantId) {
+    public ResponseEntity<SchemasNotificationSettings> getTenantNotificationSettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getNotificationSettings(tenantId));
     }
 
-    @Override
     @PutMapping("/tenants/{tenantId}/settings/notifications")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
-    public ResponseEntity<NotificationSettings> updateTenantNotificationSettings(
+    public ResponseEntity<SchemasNotificationSettings> updateTenantNotificationSettings(
             @PathVariable UUID tenantId,
-            @Valid @RequestBody NotificationSettings settings) {
+            @Valid @RequestBody SchemasNotificationSettings settings) {
         return ResponseEntity.ok(settingsService.updateNotificationSettings(tenantId, settings));
     }
 
-    @Override
     @PatchMapping("/tenants/{tenantId}/settings/notifications")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
-    public ResponseEntity<NotificationSettings> patchTenantNotificationSettings(
+    public ResponseEntity<SchemasNotificationSettings> patchTenantNotificationSettings(
             @PathVariable UUID tenantId,
-            @Valid @RequestBody NotificationSettings settings) {
+            @Valid @RequestBody SchemasNotificationSettings settings) {
         return ResponseEntity.ok(settingsService.updateNotificationSettings(tenantId, settings));
     }
 
-    @Override
     @GetMapping("/tenants/{tenantId}/settings/appearance")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<AppearanceSettings> getTenantAppearanceSettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getAppearanceSettings(tenantId));
     }
 
-    @Override
     @PutMapping("/tenants/{tenantId}/settings/appearance")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<AppearanceSettings> updateTenantAppearanceSettings(
@@ -133,12 +119,19 @@ public class TenantSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateAppearanceSettings(tenantId, settings));
     }
 
-    @Override
     @PatchMapping("/tenants/{tenantId}/settings/appearance")
     @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
     public ResponseEntity<AppearanceSettings> patchTenantAppearanceSettings(
             @PathVariable UUID tenantId,
             @Valid @RequestBody AppearanceSettings settings) {
         return ResponseEntity.ok(settingsService.updateAppearanceSettings(tenantId, settings));
+    }
+
+    @PostMapping("/tenants/{tenantId}/settings/idp/validate")
+    @PreAuthorize("hasRole('system:admin') or hasRole('tenant:admin')")
+    public ResponseEntity<IdpValidationResponse> validateIdp(
+            @PathVariable UUID tenantId,
+            @Valid @RequestBody IdpValidationRequest request) {
+        return ResponseEntity.ok(settingsService.validateIdpConfiguration(request));
     }
 }

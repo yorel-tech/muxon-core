@@ -89,7 +89,7 @@ public class BootstrapConfig {
     public static class IdpConfig {
         private String name;
         private String protocol;
-        private Map<String, Object> metadata;
+        private Map<String, String> metadata;
 
         public String getName() {
             return name;
@@ -107,11 +107,11 @@ public class BootstrapConfig {
             this.protocol = protocol;
         }
 
-        public Map<String, Object> getMetadata() {
+        public Map<String, String> getMetadata() {
             return metadata;
         }
 
-        public void setMetadata(Map<String, Object> metadata) {
+        public void setMetadata(Map<String, String> metadata) {
             this.metadata = metadata;
         }
     }

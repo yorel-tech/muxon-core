@@ -48,9 +48,7 @@ components:
               description: Provider-specific extensions
               additionalProperties: true
         metadata:
-          type: object
-          description: Compute profile metadata
-          additionalProperties: true
+          $ref: './commons.yaml#/components/schemas/Metadata'
         tags:
           type: array
           items:
@@ -203,9 +201,7 @@ components:
         spec:
           $ref: '#/components/schemas/ComputeProfile/properties/spec'
         metadata:
-          type: object
-          description: Compute profile metadata
-          additionalProperties: true
+          $ref: './commons.yaml#/components/schemas/Metadata'
         tags:
           type: array
           items:
@@ -228,9 +224,7 @@ components:
         spec:
           $ref: '#/components/schemas/ComputeProfile/properties/spec'
         metadata:
-          type: object
-          description: Compute profile metadata
-          additionalProperties: true
+          $ref: './commons.yaml#/components/schemas/Metadata'
         tags:
           type: array
           items:
@@ -565,8 +559,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: './commons.yaml#/components/schemas/Metadata'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -594,16 +587,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: true
+              $ref: './commons.yaml#/components/schemas/Metadata'
       responses:
         '200':
           description: Compute profile metadata updated
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: './commons.yaml#/components/schemas/Metadata'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

@@ -1,8 +1,11 @@
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.db.enums.EntityType;
+import com.onetattva.infron.db.enums.QueueCategory;
+import com.onetattva.infron.db.enums.QueueStatus;
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -23,23 +26,24 @@ public class QueueEntry {
     @Column(name = "queue_type", nullable = false)
     private String queueType;
 
-    @Enumerated(EnumType.STRING, QueueCategory.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "queue_category", nullable = false)
     private QueueCategory queueCategory;
 
     @Column(name = "entity_type", nullable = false)
-    @Enumerated(EnumType.STRING, EntityType.class)
+    @Enumerated(EnumType.STRING)
     private EntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
     @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING, QueueStatus.class)
+    @Enumerated(EnumType.STRING)
     private QueueStatus status;
 
     // Queue content
     @Column(name = "payload", nullable = false, columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> payload;
 
     // Actor information
@@ -73,7 +77,8 @@ public class QueueEntry {
     private String version;
 
     @Column(name = "metadata", nullable = true)
-    private Map<String, Object> metadata;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, String> metadata;
 
     // Audit fields
     @Column(name = "created_by", nullable = true)
@@ -81,6 +86,9 @@ public class QueueEntry {
 
     @Column(name = "updated_by", nullable = true)
     private UUID updatedBy;
+
+    @Column(name = "error_message", nullable = true)
+    private String errorMessage;
 
     // Constructors
     public QueueEntry() {
@@ -215,11 +223,11 @@ public class QueueEntry {
         this.version = version;
     }
 
-    public Map<String, Object> getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, Object> metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 
@@ -237,5 +245,13 @@ public class QueueEntry {
 
     public void setUpdatedBy(UUID updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }

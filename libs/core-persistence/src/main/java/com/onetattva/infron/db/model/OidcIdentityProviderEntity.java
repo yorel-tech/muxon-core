@@ -28,7 +28,7 @@ public class OidcIdentityProviderEntity extends IdentityProviderEntity {
      * @return the OIDC metadata
      */
     public OidcMetadata getOidcMetadata() {
-        Map<String, Object> metadata = getMetadata();
+        Map<String, String> metadata = getMetadata();
         if (metadata == null) {
             return null;
         }
@@ -45,7 +45,7 @@ public class OidcIdentityProviderEntity extends IdentityProviderEntity {
             setMetadata(null);
             return;
         }
-        Map<String, Object> metadata = objectMapper.convertValue(oidcMetadata, new TypeReference<Map<String, Object>>() {});
+        Map<String, String> metadata = objectMapper.convertValue(oidcMetadata, new TypeReference<Map<String, String>>() {});
         setMetadata(metadata);
     }
 }

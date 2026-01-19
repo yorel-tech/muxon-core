@@ -85,8 +85,6 @@ components:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
         - type: object
           properties:
-            description:
-              type: string
             capacity:
               $ref: '#/components/schemas/DatacenterCapacity'
             settings:

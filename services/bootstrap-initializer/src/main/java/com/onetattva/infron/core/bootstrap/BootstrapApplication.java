@@ -415,7 +415,7 @@ public class BootstrapApplication implements CommandLineRunner {
             ((Saml2IdentityProviderEntity)idpEntity).setSaml2Metadata(saml2Metadata);
         } else {
             // Fallback to raw metadata map with encrypted secrets
-            Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
+            Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
             if (rawMetadata.containsKey("clientSecret")) {
                 rawMetadata.put("clientSecret", EncryptionUtil.encrypt((String) rawMetadata.get("clientSecret")));
             }
@@ -434,7 +434,7 @@ public class BootstrapApplication implements CommandLineRunner {
 
     private static Saml2Metadata getSaml2Metadata(BootstrapConfig config) {
         Saml2Metadata saml2Metadata = new Saml2Metadata();
-        Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
+        Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
         saml2Metadata.setEntityId((String) rawMetadata.get("entityId"));
         saml2Metadata.setSingleSignOnServiceUrl((String) rawMetadata.get("singleSignOnServiceUrl"));
         saml2Metadata.setPrivateKey(EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
@@ -443,7 +443,7 @@ public class BootstrapApplication implements CommandLineRunner {
 
     private static OidcMetadata getOidcMetadata(BootstrapConfig config, String oidcSecretPath) throws IOException {
         OidcMetadata oidcMetadata = new OidcMetadata();
-        Map<String, Object> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
+        Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
         oidcMetadata.setIssuerUri((String) rawMetadata.get("issuerUri"));
         oidcMetadata.setClientId((String) rawMetadata.get("clientId"));
         // Read client secret from file instead of config

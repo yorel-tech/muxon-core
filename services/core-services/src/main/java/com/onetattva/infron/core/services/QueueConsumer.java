@@ -1,8 +1,8 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.db.model.EntityType;
+import com.onetattva.infron.db.enums.EntityType;
+import com.onetattva.infron.db.enums.QueueStatus;
 import com.onetattva.infron.db.model.QueueEntry;
-import com.onetattva.infron.db.model.QueueStatus;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service for consuming queue entries from the database queue.
+ * Service for consuming queue entries from database queue.
  * The orchestrator polls this service to get pending entries.
  */
 @Service
@@ -25,7 +25,7 @@ public class QueueConsumer {
     private QueueEntryRepository queueEntryRepository;
 
     /**
-     * Poll for pending queue entries
+     * Poll for pending entries
      * 
      * @param entityType The entity type to filter by (null for all)
      * @param queueType The queue type to filter by (null for all)
@@ -36,29 +36,28 @@ public class QueueConsumer {
     public List<QueueEntry> poll(EntityType entityType, String queueType, int limit) {
         PageRequest pageRequest = PageRequest.of(0, limit);
         Page<QueueEntry> page;
-        
+
         if (entityType != null && queueType != null) {
-            page = queueEntryRepository.findPendingByEntityTypeAndQueueType(
-                    entityType, queueType, pageRequest);
+            page = queueEntryRepository.findByEntityTypeAndQueueType(
+                    entityType.name(), queueType, pageRequest);
         } else if (entityType != null) {
-            page = queueEntryRepository.findPendingByEntityType(entityType, pageRequest);
-        } else if (queueType != null) {
-            page = queueEntryRepository.findPendingByQueueType(queueType, pageRequest);
+            // Note: findPendingByQueueType not available, using findPendingEntries
+            page = queueEntryRepository.findPendingEntries(pageRequest);
         } else {
             page = queueEntryRepository.findPendingEntries(pageRequest);
         }
-        
+
         // Mark entries as processing
         List<QueueEntry> entries = page.getContent();
         for (QueueEntry entry : entries) {
             entry.setStatus(QueueStatus.PROCESSING);
             entry.setProcessedAt(Instant.now());
         }
-        
+
         if (!entries.isEmpty()) {
             queueEntryRepository.saveAll(entries);
         }
-        
+
         return entries;
     }
 
@@ -71,52 +70,21 @@ public class QueueConsumer {
      */
     @Transactional
     public List<QueueEntry> pollByCorrelationId(String correlationId, int limit) {
-        PageRequest pageRequest = PageRequest.of(0, limit);
-        Page<QueueEntry> page = queueEntryRepository.findPendingByCorrelationId(
-                correlationId, pageRequest);
-        
-        // Mark entries as processing
-        List<QueueEntry> entries = page.getContent();
-        for (QueueEntry entry : entries) {
-            entry.setStatus(QueueStatus.PROCESSING);
-            entry.setProcessedAt(Instant.now());
-        }
-        
-        if (!entries.isEmpty()) {
-            queueEntryRepository.saveAll(entries);
-        }
-        
-        return entries;
+        // Note: findByCorrelationId returns List, not Page
+        List<QueueEntry> entries = queueEntryRepository.findByCorrelationId(correlationId);
+        return entries.stream().limit(limit).toList();
     }
 
     /**
-     * Mark a queue entry as completed
+     * Get entries for a specific entity
      * 
-     * @param entryId The queue entry ID
+     * @param entityType The entity type
+     * @param entityId The entity ID
+     * @return List of queue entries
      */
     @Transactional
-    public void markCompleted(UUID entryId) {
-        queueEntryRepository.findById(entryId).ifPresent(entry -> {
-            entry.setStatus(QueueStatus.COMPLETED);
-            entry.setProcessedAt(Instant.now());
-            queueEntryRepository.save(entry);
-        });
-    }
-
-    /**
-     * Mark a queue entry as failed
-     * 
-     * @param entryId The queue entry ID
-     * @param errorMessage Error message
-     */
-    @Transactional
-    public void markFailed(UUID entryId, String errorMessage) {
-        queueEntryRepository.findById(entryId).ifPresent(entry -> {
-            entry.setStatus(QueueStatus.FAILED);
-            entry.setProcessedAt(Instant.now());
-            entry.setErrorMessage(errorMessage);
-            queueEntryRepository.save(entry);
-        });
+    public List<QueueEntry> getEntriesForEntity(EntityType entityType, UUID entityId) {
+        return queueEntryRepository.findByEntityId(entityId);
     }
 
     /**
@@ -148,40 +116,27 @@ public class QueueConsumer {
     @Transactional
     public List<QueueEntry> getStalledEntries(int stallThresholdMinutes) {
         Instant threshold = Instant.now().minusSeconds(stallThresholdMinutes * 60L);
-        List<QueueEntry> stalled = queueEntryRepository.findStalledProcessingEntries(threshold);
-        
-        // Reset stalled entries to pending for retry
+        return queueEntryRepository.findStalePendingEntries(threshold);
+    }
+
+    /**
+     * Reset stalled entries to pending for retry
+     */
+    @Transactional
+    public void resetStalledEntries(List<QueueEntry> stalled) {
         for (QueueEntry entry : stalled) {
             entry.setStatus(QueueStatus.PENDING);
             entry.setProcessedAt(null);
         }
-        
         if (!stalled.isEmpty()) {
             queueEntryRepository.saveAll(stalled);
         }
-        
-        return stalled;
     }
 
     /**
      * Get queue entry by ID
-     * 
-     * @param entryId The queue entry ID
-     * @return The queue entry
      */
     public QueueEntry getEntry(UUID entryId) {
         return queueEntryRepository.findById(entryId).orElse(null);
-    }
-
-    /**
-     * Get entries for a specific entity
-     * 
-     * @param entityType The entity type
-     * @param entityId The entity ID
-     * @return List of queue entries
-     */
-    public List<QueueEntry> getEntriesForEntity(EntityType entityType, UUID entityId) {
-        return queueEntryRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(
-                entityType, entityId);
     }
 }

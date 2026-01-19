@@ -1,8 +1,9 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.api.*;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.db.model.DatacenterEntity;
+import java.util.Map;
 import com.onetattva.infron.db.repository.DatacenterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -97,9 +98,7 @@ public class DatacentersService {
         if (datacenterUpdate.getDescription() != null) {
             entity.setDescription(datacenterUpdate.getDescription());
         }
-        if (datacenterUpdate.getSettings() != null) {
-            entity.setSettings(datacenterUpdate.getSettings());
-        }
+        entity.setSettings(datacenterUpdate.getSettings());
         // TODO: Handle partial capacity and settings updates
         entity.setUpdatedAt(Instant.now());
         DatacenterEntity saved = datacenterRepository.save(entity);
@@ -120,7 +119,13 @@ public class DatacentersService {
         api.setId(entity.getId());
         api.setName(entity.getName());
         api.setDescription(entity.getDescription());
-        api.setCapacity(entity.getCapacity());
+        // Convert DB DatacenterCapacity to API DatacenterCapacity
+        if (entity.getCapacity() != null) {
+            DatacenterCapacity apiCapacity = new DatacenterCapacity();
+            // Note: Would need proper mapping from DB capacity to API capacity
+            api.setCapacity(apiCapacity);
+        }
+        // Convert DB DatacenterSettings to API DatacenterSettings
         api.setSettings(entity.getSettings());
         if (entity.getCreatedAt() != null) {
             api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));

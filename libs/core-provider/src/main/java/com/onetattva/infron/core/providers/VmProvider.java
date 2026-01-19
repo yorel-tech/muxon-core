@@ -24,7 +24,7 @@ public interface VmProvider {
 
     /**
      * Create a new VM instance
-     * 
+     *
      * @param request VM creation request with spec and placement hints
      * @return CompletableFuture with creation result
      */
@@ -32,7 +32,7 @@ public interface VmProvider {
 
     /**
      * Delete an existing VM
-     * 
+     *
      * @param request VM deletion request
      * @return CompletableFuture with deletion result
      */
@@ -40,7 +40,7 @@ public interface VmProvider {
 
     /**
      * Start a stopped VM
-     * 
+     *
      * @param request VM operation request
      * @return CompletableFuture with operation result
      */
@@ -48,7 +48,7 @@ public interface VmProvider {
 
     /**
      * Stop a running VM
-     * 
+     *
      * @param request VM operation request
      * @return CompletableFuture with operation result
      */
@@ -56,7 +56,7 @@ public interface VmProvider {
 
     /**
      * Restart a VM
-     * 
+     *
      * @param request VM operation request
      * @return CompletableFuture with operation result
      */
@@ -64,7 +64,7 @@ public interface VmProvider {
 
     /**
      * Suspend a VM (preserve state to disk)
-     * 
+     *
      * @param request VM operation request
      * @return CompletableFuture with operation result
      */
@@ -72,7 +72,7 @@ public interface VmProvider {
 
     /**
      * Resume a suspended VM
-     * 
+     *
      * @param request VM operation request
      * @return CompletableFuture with operation result
      */
@@ -80,7 +80,7 @@ public interface VmProvider {
 
     /**
      * Get VM status and details
-     * 
+     *
      * @param externalVmId Provider's VM ID
      * @return CompletableFuture with optional VM info
      */
@@ -88,7 +88,7 @@ public interface VmProvider {
 
     /**
      * List all VMs managed by this provider
-     * 
+     *
      * @param request VM list request
      * @return CompletableFuture with list of VM info
      */
@@ -96,16 +96,16 @@ public interface VmProvider {
 
     /**
      * Get provider capabilities and available resources
-     * 
+     *
      * @return CompletableFuture with provider capabilities
      */
     CompletableFuture<ProviderCapabilities> getCapabilities();
 
     /**
      * Validate VM specification against provider capabilities
-     * 
+     *
      * @param spec VM specification to validate
      * @return CompletableFuture with validation result
      */
-    CompletableFuture<ValidationResult> validateVmSpec(VmSpec spec);
+    CompletableFuture<ValidationResult> validateVmSpec(String spec);
 }

@@ -1,12 +1,14 @@
 package com.onetattva.infron.db.repository;
 
+import com.onetattva.infron.db.enums.EntityType;
 import com.onetattva.infron.db.model.QueueEntry;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Query.Param;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,5 +57,46 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntry, UUID> {
     @Query("SELECT q FROM QueueEntry q WHERE q.status = 'PENDING' AND q.createdAt < :cutoff ORDER BY q.createdAt ASC")
     List<QueueEntry> findStalePendingEntries(
         @Param("cutoff") Instant cutoff
+    );
+
+    long countPendingByEntityType(EntityType entityType);
+
+    long countProcessingByEntityType(EntityType entityType);
+
+    /**
+     * Poll for pending entries by entity type
+     */
+    @Query("SELECT q FROM QueueEntry q WHERE q.entityType = :entityType AND q.status = 'PENDING' ORDER BY q.createdAt ASC")
+    List<QueueEntry> poll(
+        @Param("entityType") EntityType entityType,
+        @Param("queueType") String queueType,
+        @Param("limit") int limit
+    );
+
+    /**
+     * Get stalled entries older than threshold minutes
+     */
+    @Query("SELECT q FROM QueueEntry q WHERE q.status = 'PENDING' AND q.createdAt < :cutoff ORDER BY q.createdAt ASC")
+    List<QueueEntry> getStalledEntries(
+        @Param("cutoff") Instant cutoff
+    );
+
+    /**
+     * Mark an entry as failed with error message
+     */
+    @Query("UPDATE QueueEntry q SET q.status = 'FAILED', q.errorMessage = :errorMessage, q.processedAt = :processedAt WHERE q.id = :id")
+    void markFailed(
+        @Param("id") UUID id,
+        @Param("errorMessage") String errorMessage,
+        @Param("processedAt") Instant processedAt
+    );
+
+    /**
+     * Mark an entry as completed
+     */
+    @Query("UPDATE QueueEntry q SET q.status = 'COMPLETED', q.processedAt = :processedAt WHERE q.id = :id")
+    void markCompleted(
+        @Param("id") UUID id,
+        @Param("processedAt") Instant processedAt
     );
 }

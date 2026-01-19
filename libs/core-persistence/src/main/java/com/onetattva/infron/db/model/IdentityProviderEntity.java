@@ -38,7 +38,7 @@ public class IdentityProviderEntity {
 
     @Column(name = "metadata", columnDefinition = "jsonb", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> metadata;
+    private Map<String, String> metadata;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -91,11 +91,11 @@ public class IdentityProviderEntity {
         this.isSystem = isSystem;
     }
 
-    public Map<String, Object> getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, Object> metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 

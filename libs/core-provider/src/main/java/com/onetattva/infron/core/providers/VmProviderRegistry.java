@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.core.providers.VmProvider;
+import com.onetattva.infron.api.model.DatacenterType;
 import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.repository.TenantDatacenterGrantRepository;
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VmProviderRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(VmProviderRegistry.class);
-    
+
     private final Map<String, VmProvider> providers = new ConcurrentHashMap<>();
 
     @Autowired
@@ -70,26 +70,25 @@ public class VmProviderRegistry {
             return Optional.empty();
         }
 
-        String providerType = datacenter.getSettings().getProviderType();
-        
+        DatacenterType providerType = datacenter.getSettings().getProviderType();
+
         // Map provider type to provider ID
         // For now, use simple mapping: "mock" -> "mock", "kvm" -> "mock" (fallback)
         String providerId = mapProviderTypeToProviderId(providerType);
-        
+
         return getProvider(providerId);
     }
 
     /**
      * Map provider type from datacenter settings to provider ID
      */
-    private String mapProviderTypeToProviderId(String providerType) {
+    private String mapProviderTypeToProviderId(DatacenterType providerType) {
         if (providerType == null) {
             return "mock"; // Default to mock provider
         }
-        
+
         return switch (providerType) {
-            case "mock" -> "mock";
-            case "kvm", "vcenter", "k8s", "mixed" -> "mock"; // Use mock as fallback for testing
+            case KVM, VCENTER, K8S, MIXED -> "mock"; // Use mock as fallback for testing
             default -> "mock";
         };
     }

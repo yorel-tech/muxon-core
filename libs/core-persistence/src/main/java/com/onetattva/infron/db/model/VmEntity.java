@@ -1,14 +1,14 @@
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.model.VmStatus;
-import com.onetattva.infron.db.model.VmPowerState;
+import com.onetattva.infron.db.enums.VmPowerState;
+import com.onetattva.infron.db.enums.VmStatus;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Entity representing a Virtual Machine
@@ -35,14 +35,15 @@ public class VmEntity {
 
     // VM specification (immutable after creation)
     @Column(name = "spec", nullable = false, columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String spec;
 
     // Runtime state (mutable)
-    @Enumerated(EnumType.STRING, VmStatus.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private VmStatus status;
 
-    @Enumerated(EnumType.STRING, VmPowerState.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "power_state", nullable = false)
     private VmPowerState powerState;
 
@@ -103,9 +104,9 @@ public class VmEntity {
     }
 
     public VmEntity(UUID id, UUID tenantDatacenterGrantId, String name, String description, String spec,
-                      VmStatus status, VmPowerState powerState, UUID providerId, UUID nodeId,
-                      String externalId, List<String> ipAddresses, String hostname,
-                      String resourceUsage, String metadata, List<String> tags) {
+                    VmStatus status, VmPowerState powerState, UUID providerId, UUID nodeId,
+                    String externalId, List<String> ipAddresses, String hostname,
+                    String resourceUsage, String metadata, List<String> tags) {
         this.id = id;
         this.tenantDatacenterGrantId = tenantDatacenterGrantId;
         this.name = name;

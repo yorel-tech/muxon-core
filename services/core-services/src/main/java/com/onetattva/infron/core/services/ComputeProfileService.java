@@ -3,10 +3,15 @@ package com.onetattva.infron.core.services;
 import com.onetattva.infron.api.model.ComputeProfile;
 import com.onetattva.infron.api.model.ComputeProfileCreate;
 import com.onetattva.infron.api.model.ComputeProfileList;
+import com.onetattva.infron.api.model.ComputeProfileSpec;
 import com.onetattva.infron.api.model.ComputeProfileUpdate;
+import com.onetattva.infron.api.model.Spec;
 import com.onetattva.infron.db.model.ComputeProfileEntity;
 import com.onetattva.infron.db.repository.ComputeProfileRepository;
 import com.onetattva.infron.db.repository.VmRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,7 +20,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +40,9 @@ public class ComputeProfileService {
     @Autowired
     private VmRepository vmRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     /**
      * Create a new compute profile
      */
@@ -40,11 +52,11 @@ public class ComputeProfileService {
         entity.setTenantDatacenterGrantId(request.getTenantDatacenterGrantId());
         entity.setName(request.getName());
         entity.setDescription(request.getDescription());
-        entity.setSpec(request.getSpec());
+        entity.setSpec(specToJson(request.getSpec()));
         entity.setMetadata(request.getMetadata());
         entity.setTags(request.getTags());
-        entity.setCreatedAt(java.time.Instant.now());
-        entity.setUpdatedAt(java.time.Instant.now());
+        entity.setCreatedAt(Instant.now());
+        entity.setUpdatedAt(Instant.now());
 
         entity = computeProfileRepository.save(entity);
         return toApiModel(entity);
@@ -122,7 +134,7 @@ public class ComputeProfileService {
             entity.setDescription(request.getDescription());
         }
         if (request.getSpec() != null) {
-            entity.setSpec(request.getSpec());
+            entity.setSpec(specToJson(request.getSpec()));
         }
         if (request.getMetadata() != null) {
             entity.setMetadata(request.getMetadata());
@@ -130,7 +142,7 @@ public class ComputeProfileService {
         if (request.getTags() != null) {
             entity.setTags(request.getTags());
         }
-        entity.setUpdatedAt(java.time.Instant.now());
+        entity.setUpdatedAt(Instant.now());
         
         entity = computeProfileRepository.save(entity);
         return toApiModel(entity);
@@ -162,13 +174,13 @@ public class ComputeProfileService {
      * Update metadata for a compute profile
      */
     @Transactional
-    public java.util.Map<String, String> updateMetadata(UUID profileId, 
+    public java.util.Map<String, String> updateMetadata(UUID profileId,
             java.util.Map<String, String> metadata) {
         ComputeProfileEntity entity = computeProfileRepository.findById(profileId)
                 .orElseThrow(() -> new com.onetattva.infron.core.common.EntityNotFoundException(
                         "Compute profile not found: " + profileId));
         entity.setMetadata(metadata);
-        entity.setUpdatedAt(java.time.Instant.now());
+        entity.setUpdatedAt(Instant.now());
         entity = computeProfileRepository.save(entity);
         return entity.getMetadata();
     }
@@ -212,12 +224,55 @@ public class ComputeProfileService {
         model.setName(entity.getName());
         model.setDescription(entity.getDescription());
         model.setTenantDatacenterGrantId(entity.getTenantDatacenterGrantId());
-        model.setSpec(entity.getSpec());
+        model.setSpec(jsonToSpec(entity.getSpec()));
         model.setMetadata(entity.getMetadata());
         model.setTags(entity.getTags());
-        model.setCreatedAt(entity.getCreatedAt());
-        model.setUpdatedAt(entity.getUpdatedAt());
+        model.setCreatedAt(instantToOffsetDateTime(entity.getCreatedAt()));
+        model.setUpdatedAt(instantToOffsetDateTime(entity.getUpdatedAt()));
         model.setIsSystem(entity.isSystem());
         return model;
+    }
+
+    /**
+     * Convert Spec object to JSON string
+     */
+    private String specToJson(Spec spec) {
+        try {
+            return objectMapper.writeValueAsString(spec);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert spec to JSON", e);
+        }
+    }
+
+    /**
+     * Convert JSON string to ComputeProfileSpec object
+     */
+    private ComputeProfileSpec jsonToSpec(String json) {
+        if (json == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, ComputeProfileSpec.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert JSON to spec", e);
+        }
+    }
+
+    /**
+     * Convert Instant to OffsetDateTime
+     */
+    private OffsetDateTime instantToOffsetDateTime(Instant instant) {
+        if (instant == null) {
+            return null;
+        }
+        return instant.atOffset(ZoneOffset.UTC);
+    }
+
+    public Map<String, String> getEntityMetadata(@NotNull UUID profileId) {
+        return null;
+    }
+
+    public Map<String, String> updateEntityMetadata(@NotNull UUID profileId, @Valid Map<String, String> requestBody) {
+        return null;
     }
 }

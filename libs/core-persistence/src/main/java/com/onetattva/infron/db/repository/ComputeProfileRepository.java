@@ -50,4 +50,10 @@ public interface ComputeProfileRepository extends JpaRepository<ComputeProfileEn
     boolean existsByTenantDatacenterGrantIdAndName(
             @Param("tenantDatacenterGrantId") UUID tenantDatacenterGrantId,
             @Param("name") String name);
+
+    /**
+     * Find system profiles (available to all tenants)
+     */
+    @Query("SELECT p FROM ComputeProfileEntity p WHERE p.isSystem = true ORDER BY p.createdAt DESC")
+    List<ComputeProfileEntity> findSystemProfiles();
 }

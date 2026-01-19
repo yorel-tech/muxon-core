@@ -8,6 +8,7 @@ dependencies {
     implementation(libs.quarkus.arc)
     implementation(project(":libs:core-persistence"))
     implementation(project(":libs:core-spi"))
+    implementation(project(":libs:core-provider"))
 }
 
 tasks.register("runDev") {

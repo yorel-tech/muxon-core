@@ -48,9 +48,7 @@ components:
         description:
           type: string
         metadata:
-          type: object
-          additionalProperties:
-            type: string
+          $ref: './commons.yaml#/components/schemas/Metadata'
 
     NodeClusterUpdate:
       type: object
@@ -60,9 +58,7 @@ components:
         description:
           type: string
         metadata:
-          type: object
-          additionalProperties:
-            type: string
+          $ref: './commons.yaml#/components/schemas/Metadata'
 
     NodeClusterList:
       type: object

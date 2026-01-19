@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Transient;
 
 import java.util.Map;
 
@@ -27,8 +28,9 @@ public class Saml2IdentityProviderEntity extends IdentityProviderEntity {
      *
      * @return the SAML 2.0 metadata
      */
+    @Transient
     public Saml2Metadata getSaml2Metadata() {
-        Map<String, Object> metadata = getMetadata();
+        Map<String, String> metadata = getMetadata();
         if (metadata == null) {
             return null;
         }
@@ -45,7 +47,7 @@ public class Saml2IdentityProviderEntity extends IdentityProviderEntity {
             setMetadata(null);
             return;
         }
-        Map<String, Object> metadata = objectMapper.convertValue(saml2Metadata, new TypeReference<Map<String, Object>>() {});
+        Map<String, String> metadata = objectMapper.convertValue(saml2Metadata, new TypeReference<Map<String, String>>() {});
         setMetadata(metadata);
     }
 }

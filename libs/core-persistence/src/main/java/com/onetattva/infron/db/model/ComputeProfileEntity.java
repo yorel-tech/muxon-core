@@ -57,7 +57,7 @@ public class ComputeProfileEntity {
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "JSONB")
-    private Map<String, Object> metadata;
+    private Map<String, String> metadata;
 
     /**
      * Searchable tags
@@ -130,11 +130,11 @@ public class ComputeProfileEntity {
         this.spec = spec;
     }
 
-    public Map<String, Object> getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(Map<String, Object> metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 
@@ -168,5 +168,13 @@ public class ComputeProfileEntity {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public boolean isSystem() {
+        return isSystem;
+    }
+
+    public void setSystem(boolean system) {
+        isSystem = system;
     }
 }

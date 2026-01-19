@@ -1,5 +1,7 @@
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.db.enums.EntityType;
+import com.onetattva.infron.db.enums.EventType;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
