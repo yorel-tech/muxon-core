@@ -3,7 +3,7 @@
  */
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.ProviderType;
+import com.onetattva.infron.db.enums.ProviderType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;

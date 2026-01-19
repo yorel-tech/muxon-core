@@ -9,8 +9,8 @@ import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.core.common.UuidUtils;
-import com.onetattva.infron.db.RoleBindingSubjectType;
-import com.onetattva.infron.db.RoleScopeType;
+import com.onetattva.infron.db.enums.RoleBindingSubjectType;
+import com.onetattva.infron.db.enums.RoleScopeType;
 import com.onetattva.infron.db.model.RoleBindingEntity;
 import com.onetattva.infron.db.model.RoleEntity;
 import com.onetattva.infron.db.repository.RoleBindingRepository;
@@ -29,8 +29,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service

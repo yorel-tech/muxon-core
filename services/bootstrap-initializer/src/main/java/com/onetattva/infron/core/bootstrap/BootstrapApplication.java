@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EncryptionUtil;
-import com.onetattva.infron.db.RoleBindingSubjectType;
-import com.onetattva.infron.db.RoleScopeType;
-import com.onetattva.infron.db.TenantStatus;
+import com.onetattva.infron.db.enums.RoleBindingSubjectType;
+import com.onetattva.infron.db.enums.RoleScopeType;
+import com.onetattva.infron.db.enums.TenantStatus;
 import com.onetattva.infron.db.model.*;
 import com.onetattva.infron.db.repository.*;
 import com.onetattva.infron.core.services.OidcUserService;
@@ -32,8 +32,6 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import static com.onetattva.infron.core.common.Constants.BOOTSTRAP_DONE_KEY;
 

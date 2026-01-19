@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 -- Each tenant can have at most one settings override
 CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_settings_singleton 
-ON system_settings(tenant_id)
+ON system_settings(tenant_id);
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_system_settings_tenant ON system_settings(tenant_id);
@@ -78,9 +78,9 @@ ON identity_provider ((1))
 WHERE is_system = true;
 
 -- Insert default system settings row
-INSERT INTO system_settings (id, tenant_id, name, description, default_timezone, default_locale, 
-    session_timeout_minutes, max_login_attempts, lockout_duration_minutes, 
-    password_min_length, password_require_uppercase, password_require_lowercase, password_require_digit, 
+INSERT INTO system_settings (id, tenant_id, name, description, contact_email, contact_phone, default_timezone, default_locale,
+    session_timeout_minutes, max_login_attempts, lockout_duration_minutes,
+    password_min_length, password_require_uppercase, password_require_lowercase, password_require_digit,
     password_expiry_days, api_rate_limit_per_minute, created_at, updated_at)
 VALUES (
     gen_random_uuid(),

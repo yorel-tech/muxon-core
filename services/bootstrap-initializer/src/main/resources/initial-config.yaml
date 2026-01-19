@@ -13,13 +13,6 @@ infron:
         issuerUri: "http://localhost:8085/realms/infron-dev"
         clientId: "infron-api"
         clientSecret: "provide-in-secrets"
-
-        # SAML placeholders
-        # entityId: ""
-        # metadataUrl: ""
-        # spEntityId: ""
-        # spAssertionConsumerServiceUrl: ""
-        # privateKey: ""
       
   # new tenants
   tenants:

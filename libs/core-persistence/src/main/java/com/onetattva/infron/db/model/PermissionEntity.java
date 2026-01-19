@@ -3,7 +3,7 @@
  */
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.RoleScopeType;
+import com.onetattva.infron.db.enums.RoleScopeType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;

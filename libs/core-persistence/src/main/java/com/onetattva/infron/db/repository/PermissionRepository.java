@@ -1,7 +1,7 @@
 package com.onetattva.infron.db.repository;
 
 import com.onetattva.infron.db.model.PermissionEntity;
-import com.onetattva.infron.db.RoleScopeType;
+import com.onetattva.infron.db.enums.RoleScopeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

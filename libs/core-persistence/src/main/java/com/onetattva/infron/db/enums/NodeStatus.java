@@ -1,6 +1,6 @@
 // Enum for node_status
 
-package com.onetattva.infron.db;
+package com.onetattva.infron.db.enums;
 
 public enum NodeStatus {
     UNKNOWN,

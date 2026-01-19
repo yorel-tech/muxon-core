@@ -45,7 +45,8 @@ public interface VmRepository extends JpaRepository<VmEntity, UUID> {
     /**
      * Find VMs by tags
      */
-    @Query("SELECT v FROM VmEntity v WHERE v.tenantDatacenterGrantId = :tenantDatacenterGrantId AND :tag = ANY(v.tags) ORDER BY v.createdAt DESC")
+    @Query(value = "SELECT v FROM VmEntity v WHERE v.tenantDatacenterGrantId = :tenantDatacenterGrantId AND :tag = ANY(v.tags) ORDER BY v.createdAt DESC",
+    nativeQuery = true)
     Page<VmEntity> findByTenantDatacenterGrantIdAndTag(UUID tenantDatacenterGrantId, String tag, Pageable pageable);
 
     /**

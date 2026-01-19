@@ -273,11 +273,16 @@ CREATE TRIGGER trg_job_updated BEFORE UPDATE ON job FOR EACH ROW EXECUTE FUNCTIO
 CREATE TRIGGER trg_entity_event_updated BEFORE UPDATE ON entity_event FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
 
 -- Add VM permissions to permission table
-INSERT INTO permission (id, action, description, scope)
-VALUES
-    (uuid_generate_v5('696e6672-6f6e-636f-6372-726f-111111111111', 'vm:create'), 'vm:create', 'Create VM', 'TENANT'),
-    (uuid_generate_v5('696e6672-6f6e-636f-6372-726f-111111111112', 'vm:read'), 'vm:read', 'Read VM', 'TENANT'),
-    (uuid_generate_v5('696e6672-6f6e-636f-6372-726f-111111111113', 'vm:edit'), 'vm:edit', 'Edit VM', 'TENANT'),
-    (uuid_generate_v5('696e6672-6f6e-636f-6372-726f-111111111114', 'vm:manage'), 'vm:manage', 'Manage VM', 'TENANT'),
-    (uuid_generate_v5('696e6672-6f6e-636f-6372-726f-111111111115', 'vm:console'), 'vm:console', 'View VM console', 'TENANT')
-ON CONFLICT (action) DO NOTHING;
+DO $$
+DECLARE
+ns CONSTANT uuid := '696e6672-6f6e-636f-7265-111111111111';
+BEGIN
+    INSERT INTO permission (id, action, description, scope)
+    VALUES
+        (uuid_generate_v5(ns, 'vm:create'), 'vm:create', 'Create VM', 'TENANT'),
+        (uuid_generate_v5(ns, 'vm:read'), 'vm:read', 'Read VM', 'TENANT'),
+        (uuid_generate_v5(ns, 'vm:edit'), 'vm:edit', 'Edit VM', 'TENANT'),
+        (uuid_generate_v5(ns, 'vm:manage'), 'vm:manage', 'Manage VM', 'TENANT'),
+        (uuid_generate_v5(ns, 'vm:console'), 'vm:console', 'View VM console', 'TENANT')
+    ON CONFLICT (action) DO NOTHING;
+END$$;
