@@ -34,13 +34,17 @@ public class SystemSettingsService {
 
     /**
      * Get system settings (tenant_id = SYSTEM_ID)
+     * If system settings don't exist, create with default values
      */
     public SystemSettings getSystemSettings() {
-        Optional<SystemSettingsEntity> systemSettings = 
+        Optional<SystemSettingsEntity> systemSettings =
             settingsRepository.findByTenantId(UUID.fromString(Constants.SYSTEM_ID));
         
         if (systemSettings.isEmpty()) {
-            throw new EntityNotFoundException("System settings not found. Please initialize during bootstrap.");
+            // Create default system settings
+            SystemSettingsEntity defaultSettings = createDefaultSystemSettings();
+            SystemSettingsEntity saved = settingsRepository.save(defaultSettings);
+            return mapEntityToDto(saved, true);
         }
         
         return mapEntityToDto(systemSettings.get(), true);
@@ -105,11 +109,30 @@ public class SystemSettingsService {
 
     /**
      * Get general settings for a tenant
+     * If tenant settings don't exist, create based on system defaults
      */
     public GeneralSettings getGeneralSettings(UUID tenantId) {
         Optional<SystemSettingsEntity> settingsOpt = settingsRepository.findByTenantId(tenantId);
         if (settingsOpt.isEmpty()) {
-            throw new EntityNotFoundException("Settings not found for tenant: " + tenantId);
+            // Get system defaults and create tenant settings based on them
+            Optional<SystemSettingsEntity> systemSettingsOpt =
+                settingsRepository.findByTenantId(UUID.fromString(Constants.SYSTEM_ID));
+            if (systemSettingsOpt.isPresent()) {
+                SystemSettingsEntity newEntity = new SystemSettingsEntity();
+                newEntity.setTenantId(tenantId);
+                newEntity.setCreatedAt(Instant.now());
+                newEntity.setUpdatedAt(Instant.now());
+                // Copy general settings from system defaults
+                newEntity.setName(systemSettingsOpt.get().getName());
+                newEntity.setDescription(systemSettingsOpt.get().getDescription());
+                newEntity.setContactEmail(systemSettingsOpt.get().getContactEmail());
+                newEntity.setContactPhone(systemSettingsOpt.get().getContactPhone());
+                newEntity.setDefaultTimezone(systemSettingsOpt.get().getDefaultTimezone());
+                newEntity.setDefaultLocale(systemSettingsOpt.get().getDefaultLocale());
+                SystemSettingsEntity saved = settingsRepository.save(newEntity);
+                return mapGeneralSettings(saved);
+            }
+            throw new EntityNotFoundException("System settings not found. Cannot create tenant defaults.");
         }
         return mapGeneralSettings(settingsOpt.get());
     }
@@ -141,11 +164,34 @@ public class SystemSettingsService {
 
     /**
      * Get security settings for a tenant
+     * If tenant settings don't exist, create based on system defaults
      */
     public SecuritySettings getSecuritySettings(UUID tenantId) {
         Optional<SystemSettingsEntity> settingsOpt = settingsRepository.findByTenantId(tenantId);
         if (settingsOpt.isEmpty()) {
-            throw new EntityNotFoundException("Settings not found for tenant: " + tenantId);
+            // Get system defaults and create tenant settings based on them
+            Optional<SystemSettingsEntity> systemSettingsOpt =
+                settingsRepository.findByTenantId(UUID.fromString(Constants.SYSTEM_ID));
+            if (systemSettingsOpt.isPresent()) {
+                SystemSettingsEntity newEntity = new SystemSettingsEntity();
+                newEntity.setTenantId(tenantId);
+                newEntity.setCreatedAt(Instant.now());
+                newEntity.setUpdatedAt(Instant.now());
+                // Copy security settings from system defaults
+                newEntity.setSessionTimeoutMinutes(systemSettingsOpt.get().getSessionTimeoutMinutes());
+                newEntity.setMaxLoginAttempts(systemSettingsOpt.get().getMaxLoginAttempts());
+                newEntity.setLockoutDurationMinutes(systemSettingsOpt.get().getLockoutDurationMinutes());
+                newEntity.setPasswordMinLength(systemSettingsOpt.get().getPasswordMinLength());
+                newEntity.setPasswordRequireUppercase(systemSettingsOpt.get().getPasswordRequireUppercase());
+                newEntity.setPasswordRequireLowercase(systemSettingsOpt.get().getPasswordRequireLowercase());
+                newEntity.setPasswordRequireDigit(systemSettingsOpt.get().getPasswordRequireDigit());
+                newEntity.setPasswordRequireSymbol(systemSettingsOpt.get().getPasswordRequireSymbol());
+                newEntity.setPasswordExpiryDays(systemSettingsOpt.get().getPasswordExpiryDays());
+                newEntity.setApiRateLimitPerMinute(systemSettingsOpt.get().getApiRateLimitPerMinute());
+                SystemSettingsEntity saved = settingsRepository.save(newEntity);
+                return mapSecuritySettings(saved);
+            }
+            throw new EntityNotFoundException("System settings not found. Cannot create tenant defaults.");
         }
         return mapSecuritySettings(settingsOpt.get());
     }
@@ -564,6 +610,48 @@ public class SystemSettingsService {
     public Optional<IdentityProviderEntity> getSystemIdentityProvider() {
         List<IdentityProviderEntity> systemProviders = idpRepository.findSystemProvider();
         return systemProviders.isEmpty() ? Optional.empty() : Optional.of(systemProviders.get(0));
+    }
+
+    /**
+     * Create default system settings
+     */
+    private SystemSettingsEntity createDefaultSystemSettings() {
+        SystemSettingsEntity entity = new SystemSettingsEntity();
+        entity.setTenantId(UUID.fromString(Constants.SYSTEM_ID));
+        entity.setCreatedAt(Instant.now());
+        entity.setUpdatedAt(Instant.now());
+        
+        // General Settings defaults
+        entity.setName("Infron Cloud Platform");
+        entity.setDescription("Multi-tenant cloud management platform");
+        entity.setContactEmail("admin@infron.example");
+        entity.setContactPhone("+1-555-123-4567");
+        entity.setDefaultTimezone("UTC");
+        entity.setDefaultLocale("en-US");
+        
+        // Security Settings defaults
+        entity.setSessionTimeoutMinutes(60);
+        entity.setMaxLoginAttempts(5);
+        entity.setLockoutDurationMinutes(30);
+        entity.setPasswordMinLength(8);
+        entity.setPasswordRequireUppercase(true);
+        entity.setPasswordRequireLowercase(true);
+        entity.setPasswordRequireDigit(true);
+        entity.setPasswordRequireSymbol(false);
+        entity.setPasswordExpiryDays(90);
+        entity.setApiRateLimitPerMinute(100);
+        
+        // Notification Settings defaults
+        entity.setSmtpEnabled(false);
+        entity.setSmtpPort(587);
+        entity.setSmtpUseTls(true);
+        
+        // Appearance Settings defaults
+        entity.setTheme("light");
+        entity.setPrimaryColor("#3b82f6");
+        entity.setSecondaryColor("#64748b");
+        
+        return entity;
     }
 
     /**

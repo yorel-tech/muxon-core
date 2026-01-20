@@ -45,7 +45,7 @@ public class ConfigDecryptor implements ApplicationListener<ApplicationEnvironme
             passphrase = Files.readString(Paths.get(INFRON_PASSPHRASE_FILE)).trim();
         } catch (IOException e) {
             // Fallback to a default for development - in production this should fail
-            passphrase = "default-passphrase-change-in-production";
+            passphrase = System.getenv("INFRON_PASSPHRASE");
         }
 
         String encryptionKey = generateEncryptionKey(instanceName, instanceId, passphrase);
