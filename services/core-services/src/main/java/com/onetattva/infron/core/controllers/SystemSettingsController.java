@@ -147,6 +147,11 @@ public class SystemSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok().build();
     }
 
+    @RequiresPermission(Permission.TENANT_SETTINGS)
+    public ResponseEntity<SchemasIdpSettings> getTenantIdpSettings(@PathVariable UUID tenantId) {
+        return ResponseEntity.ok(settingsService.getIdpSettings(tenantId));
+    }
+
     // ==================== Appearance Settings Endpoints ====================
 
     @Override

@@ -4,10 +4,9 @@ import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.core.common.EncryptionUtil;
-import com.onetattva.infron.db.model.SystemSettingsEntity;
+import com.onetattva.infron.db.model.*;
 import com.onetattva.infron.db.repository.SystemSettingsRepository;
 import com.onetattva.infron.db.repository.IdentityProviderRepository;
-import com.onetattva.infron.db.model.IdentityProviderEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -270,40 +269,140 @@ public class SystemSettingsService {
 
 
     /**
-     * Get IdP settings for a tenant
+     * Get IdP settings for a tenant.
+     * For system tenant (SYSTEM_ID), returns the system IdP with full details.
+     * For other tenants, returns the system IdP in read-only mode with masked secrets.
      */
     public SchemasIdpSettings getIdpSettings(UUID tenantId) {
+        Optional<IdentityProviderEntity> idpOpt = getSystemIdentityProvider();
+        
+        if (idpOpt.isEmpty()) {
+            SchemasIdpSettings idpSettings = new SchemasIdpSettings();
+            idpSettings.setEnabled(false);
+            return idpSettings;
+        }
+        
+        IdentityProviderEntity idpEntity = idpOpt.get();
+
+        // Only OIDC is currently supported
+        if (!(idpEntity instanceof OidcIdentityProviderEntity oidcIdp)) {
+            SchemasIdpSettings idpSettings = new SchemasIdpSettings();
+            idpSettings.setEnabled(false);
+            return idpSettings;
+        }
+        
+        OidcMetadata metadata = oidcIdp.getOidcMetadata();
+        if (metadata == null) {
+            SchemasIdpSettings idpSettings = new SchemasIdpSettings();
+            idpSettings.setEnabled(false);
+            return idpSettings;
+        }
+
+        final boolean isSystem = Constants.SYSTEM_ID.equals(tenantId.toString());
         SchemasIdpSettings idpSettings = new SchemasIdpSettings();
-        idpSettings.setEnabled(false);
+        idpSettings.setEnabled(idpEntity.getEnabled());
+        idpSettings.setType(SchemasIdpSettings.TypeEnum.OIDC);
+        idpSettings.setName(idpEntity.getName());
+        
+        if (metadata.getIssuerUri() != null) {
+            idpSettings.setIssuerUrl(URI.create(metadata.getIssuerUri()));
+        }
+        if (isSystem) {
+            idpSettings.setClientId(metadata.getClientId());
+
+            idpSettings.setScopes(metadata.getScope());
+            idpSettings.setAutoProvisionUsers(metadata.getValidateIssuer());
+
+            if (metadata.getJwkSetUri() != null) {
+                idpSettings.setJwksUri(URI.create(metadata.getJwkSetUri()));
+            }
+            if (metadata.getUserInfoEndpoint() != null) {
+                idpSettings.setUserinfoEndpoint(URI.create(metadata.getUserInfoEndpoint()));
+            }
+        }
+        // Mask client secret for non-system tenants
+        idpSettings.setClientSecret(Constants.MASKED_SECRET);
+
         return idpSettings;
     }
 
     /**
-     * Update IdP settings for a tenant
+     * Update IdP settings for the system.
+     * Only system admin can update IdP settings.
      */
     @Transactional
     public SchemasIdpSettings updateIdpSettings(UUID tenantId, SchemasIdpSettings settings) {
-        SchemasIdpSettings result = new SchemasIdpSettings();
-        result.setEnabled(settings.getEnabled() != null ? settings.getEnabled() : false);
-        result.setType(settings.getType());
-        result.setName(settings.getName());
-        result.setIssuerUrl(settings.getIssuerUrl());
-        result.setClientId(settings.getClientId());
-        result.setClientSecret(settings.getClientSecret());
-        result.setScopes(settings.getScopes());
-        result.setAutoProvisionUsers(settings.getAutoProvisionUsers());
-        result.setJwksUri(settings.getJwksUri());
-        result.setUserinfoEndpoint(settings.getUserinfoEndpoint());
-        return result;
+        // Only allow updating system IdP
+        if (!Constants.SYSTEM_ID.equals(tenantId.toString())) {
+            throw new EntityNotFoundException("Only system IdP can be updated");
+        }
+        
+        Optional<IdentityProviderEntity> idpOpt = getSystemIdentityProvider();
+        OidcIdentityProviderEntity idpEntity;
+        
+        if (idpOpt.isEmpty()) {
+            // Create new system IdP
+            idpEntity = new OidcIdentityProviderEntity();
+            idpEntity.setId(UUID.randomUUID());
+            idpEntity.setIsSystem(true);
+            idpEntity.setCreatedAt(Instant.now());
+        } else {
+            idpEntity = (OidcIdentityProviderEntity) idpOpt.get();
+        }
+        
+        // Update basic fields
+        idpEntity.setEnabled(settings.getEnabled() != null ? settings.getEnabled() : false);
+        idpEntity.setName(settings.getName() != null ? settings.getName() : "System OIDC Provider");
+        idpEntity.setUpdatedAt(Instant.now());
+        
+        // Update OIDC metadata
+        OidcMetadata metadata = idpEntity.getOidcMetadata();
+        if (metadata == null) {
+            metadata = new OidcMetadata();
+        }
+        
+        if (settings.getIssuerUrl() != null) {
+            metadata.setIssuerUri(settings.getIssuerUrl().toString());
+        }
+        if (settings.getClientId() != null) {
+            metadata.setClientId(settings.getClientId());
+        }
+        // Only update client secret if not masked
+        if (settings.getClientSecret() != null && !Constants.MASKED_SECRET.equals(settings.getClientSecret())) {
+            metadata.setClientSecret(settings.getClientSecret());
+        }
+        if (settings.getScopes() != null) {
+            metadata.setScope(settings.getScopes());
+        }
+        if (settings.getAutoProvisionUsers() != null) {
+            metadata.setValidateIssuer(settings.getAutoProvisionUsers());
+        }
+        if (settings.getJwksUri() != null) {
+            metadata.setJwkSetUri(settings.getJwksUri().toString());
+        }
+        if (settings.getUserinfoEndpoint() != null) {
+            metadata.setUserInfoEndpoint(settings.getUserinfoEndpoint().toString());
+        }
+        
+        idpEntity.setOidcMetadata(metadata);
+        idpRepository.save(idpEntity);
+        
+        return getIdpSettings(tenantId);
     }
 
     /**
-     * Disable IdP for a tenant
+     * Disable IdP for the system.
+     * Only system admin can disable IdP.
      */
     @Transactional
     public void disableIdp() {
-        // Implementation would delete IdP configuration
-        // For now, just a placeholder
+        Optional<IdentityProviderEntity> idpOpt = getSystemIdentityProvider();
+        if (idpOpt.isPresent()) {
+            IdentityProviderEntity idpEntity = idpOpt.get();
+            idpEntity.setEnabled(false);
+            idpEntity.setUpdatedAt(Instant.now());
+            idpRepository.save(idpEntity);
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.onetattva.infron.core.controllers;
 import com.onetattva.infron.api.TenantSettingsApi;
 import com.onetattva.infron.api.model.AppearanceSettings;
 import com.onetattva.infron.api.model.GeneralSettings;
+import com.onetattva.infron.api.model.SchemasIdpSettings;
 import com.onetattva.infron.api.model.SchemasNotificationSettings;
 import com.onetattva.infron.api.model.SecuritySettings;
 import com.onetattva.infron.core.auth.Permission;
@@ -17,7 +18,7 @@ import java.util.UUID;
 
 /**
  * REST controller for tenant settings management.
- * Requires system:admin or tenant:admin role.
+ * Tenant settings are read-only for IdP settings (system IdP is shared).
  */
 @RestController
 public class TenantSettingsController implements TenantSettingsApi {
@@ -47,6 +48,16 @@ public class TenantSettingsController implements TenantSettingsApi {
     @RequiresPermission(Permission.TENANT_SETTINGS)
     public ResponseEntity<SecuritySettings> getTenantSecuritySettings(@PathVariable UUID tenantId) {
         return ResponseEntity.ok(settingsService.getSecuritySettings(tenantId));
+    }
+
+    /**
+     * Get IdP settings for a tenant.
+     * Returns system IdP settings with masked secrets (read-only).
+     * Tenants cannot modify IdP settings.
+     */
+    @RequiresPermission(Permission.TENANT_SETTINGS)
+    public ResponseEntity<SchemasIdpSettings> getTenantIdpSettings(@PathVariable UUID tenantId) {
+        return ResponseEntity.ok(settingsService.getIdpSettings(tenantId));
     }
 
     @Override

@@ -15,4 +15,6 @@ public class Constants {
     public static final String ROLE_TENANT_ADMIN = "tenant:admin";
     public static final String ROLE_WORKLOAD_OPERATOR = "workload:operator";
     public static final String ROLE_WORKLOAD_USER = "workload:user";
+
+    public static final String MASKED_SECRET = "*****";
 }

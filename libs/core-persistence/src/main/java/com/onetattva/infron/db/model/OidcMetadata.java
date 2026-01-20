@@ -12,7 +12,7 @@ public class OidcMetadata {
     private String clientId;
     private String clientSecret;
     private String redirectUri;
-    private List<String> scope;
+    private String scope;
 
     // Optional OIDC endpoints (can be discovered from issuerUri)
     private String authorizationEndpoint;
@@ -81,11 +81,11 @@ public class OidcMetadata {
         this.redirectUri = redirectUri;
     }
 
-    public List<String> getScope() {
+    public String getScope() {
         return scope;
     }
 
-    public void setScope(List<String> scope) {
+    public void setScope(String scope) {
         this.scope = scope;
     }
 
