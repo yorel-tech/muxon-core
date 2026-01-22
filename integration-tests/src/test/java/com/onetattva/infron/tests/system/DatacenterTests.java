@@ -17,10 +17,10 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 /**
- * Integration tests for provider functionality using mock provider.
+ * Integration tests for datacenter functionality including provider tests.
  * Tests provider API through datacenter API which uses providers.
  */
-public class ProviderTests extends BaseIntegrationTest {
+public class DatacenterTests extends BaseIntegrationTest {
 
     private static String tenantId;
 
@@ -308,6 +308,93 @@ public class ProviderTests extends BaseIntegrationTest {
         listResponse.then()
             .body("items.find { it.id == '%s' }.name".formatted(datacenterId1), equalTo(datacenterName1))
             .body("items.find { it.id == '%s' }.name".formatted(datacenterId2), equalTo(datacenterName2));
+
+        // Cleanup
+        assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId1), 204);
+        assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId2), 204);
+    }
+
+    @Test
+    public void testCreateLibvirtProviderDatacenter() {
+        String datacenterName = ProviderTestUtil.generateUniqueDatacenterName();
+
+        Response response = ProviderTestUtil.createMockDatacenter(
+            datacenterName,
+            "Test datacenter with libvirt provider"
+        );
+
+        assertStatusCode(response, 201);
+        response.then()
+            .body("name", equalTo(datacenterName))
+            .body("description", equalTo("Test datacenter with libvirt provider"))
+            .body("settings.providerType", equalTo("kvm"))
+            .body("settings.defaultCpuOvercommitRatio", equalTo(4.0))
+            .body("settings.defaultMemoryOvercommitRatio", equalTo(1.5));
+
+        // Cleanup
+        String datacenterId = response.jsonPath().getString("id");
+        assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId), 204);
+    }
+
+    @Test
+    public void testLibvirtProviderCapabilities() {
+        String datacenterName = ProviderTestUtil.generateUniqueDatacenterName();
+
+        Response createResponse = ProviderTestUtil.createMockDatacenter(
+            datacenterName,
+            "Test datacenter for libvirt capabilities"
+        );
+        assertStatusCode(createResponse, 201);
+        String datacenterId = createResponse.jsonPath().getString("id");
+
+        // Update settings to enable libvirt-specific features
+        DatacenterSettings settings = new DatacenterSettings();
+        settings.setProviderType(DatacenterType.KVM);
+        settings.setDefaultCpuOvercommitRatio(BigDecimal.valueOf(4.0));
+        settings.setDefaultMemoryOvercommitRatio(BigDecimal.valueOf(1.5));
+        settings.setVmClasses(Arrays.asList("small", "medium", "large"));
+        settings.setStorageClasses(Arrays.asList("ssd", "hdd"));
+        settings.setNetworkDomains(Arrays.asList("default", "management"));
+
+        Response updateResponse = ProviderTestUtil.updateDatacenterSettings(datacenterId, settings);
+        assertStatusCode(updateResponse, 200);
+        updateResponse.then()
+            .body("vmClasses", hasItems("small", "medium", "large"))
+            .body("storageClasses", hasItems("ssd", "hdd"))
+            .body("networkDomains", hasItems("default", "management"));
+
+        // Cleanup
+        assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId), 204);
+    }
+
+    @Test
+    public void testLibvirtProviderWithMultipleDatacenters() {
+        // Create multiple datacenters with libvirt provider
+        String datacenterName1 = ProviderTestUtil.generateUniqueDatacenterName();
+        String datacenterName2 = ProviderTestUtil.generateUniqueDatacenterName();
+
+        Response response1 = ProviderTestUtil.createMockDatacenter(
+            datacenterName1,
+            "Test libvirt datacenter 1"
+        );
+        assertStatusCode(response1, 201);
+        String datacenterId1 = response1.jsonPath().getString("id");
+
+        Response response2 = ProviderTestUtil.createMockDatacenter(
+            datacenterName2,
+            "Test libvirt datacenter 2"
+        );
+        assertStatusCode(response2, 201);
+        String datacenterId2 = response2.jsonPath().getString("id");
+
+        // Verify both datacenters exist and use KVM provider type
+        Response listResponse = ProviderTestUtil.listDatacenters();
+        assertStatusCode(listResponse, 200);
+        listResponse.then()
+            .body("items.find { it.id == '%s' }.name".formatted(datacenterId1), equalTo(datacenterName1))
+            .body("items.find { it.id == '%s' }.settings.providerType".formatted(datacenterId1), equalTo("kvm"))
+            .body("items.find { it.id == '%s' }.name".formatted(datacenterId2), equalTo(datacenterName2))
+            .body("items.find { it.id == '%s' }.settings.providerType".formatted(datacenterId2), equalTo("kvm"));
 
         // Cleanup
         assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId1), 204);

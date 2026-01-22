@@ -1,12 +1,11 @@
 package com.onetattva.infron.core.providers.libvirt;
 
 import com.onetattva.infron.core.providers.ProviderError;
-import com.onetattva.infron.core.providers.ErrorCode;
-import org.libvirt.LibvirtError;
 import org.libvirt.LibvirtException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -25,30 +24,30 @@ public class LibvirtErrorHandler {
      * @param e The Libvirt exception
      * @return Mapped ErrorCode
      */
-    public static ErrorCode mapLibvirtError(LibvirtException e) {
-        int errorCode = e.getError();
-
-        return switch (errorCode) {
-            case LibvirtError.VIR_ERR_NO_CONNECT -> ErrorCode.NETWORK_ERROR;
-            case LibvirtError.VIR_ERR_OPERATION_DENIED -> ErrorCode.AUTHENTICATION_ERROR;
-            case LibvirtError.VIR_ERR_INVALID_ARG -> ErrorCode.VALIDATION_ERROR;
-            case LibvirtError.VIR_ERR_NO_DOMAIN -> ErrorCode.RESOURCE_UNAVAILABLE;
-            case LibvirtError.VIR_ERR_SYSTEM_ERROR -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_OPERATION_INVALID -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_INTERNAL_ERROR -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_NO_MEMORY -> ErrorCode.RESOURCE_UNAVAILABLE;
-            case LibvirtError.VIR_ERR_NO_SUPPORT -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_XML_ERROR -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_XML_DETAIL -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_UNKNOWN_HOST -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_CONFIG -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_MIGRATE_PERSIST -> ErrorCode.PROVIDER_ERROR;
-            case LibvirtError.VIR_ERR_OPERATION_TIMEOUT -> ErrorCode.TIMEOUT;
-            default -> {
-                logger.warn("Unknown Libvirt error code: {}, mapping to PROVIDER_ERROR", errorCode);
-                return ErrorCode.PROVIDER_ERROR;
+    public static ProviderError.ErrorCode mapLibvirtError(LibvirtException e) {
+        try {
+            String errorMessage = e.getMessage();
+            
+            // Map based on error message content
+            if (errorMessage != null) {
+                if (errorMessage.contains("connection") || errorMessage.contains("network")) {
+                    return ProviderError.ErrorCode.NETWORK_ERROR;
+                } else if (errorMessage.contains("auth") || errorMessage.contains("permission")) {
+                    return ProviderError.ErrorCode.AUTHENTICATION_ERROR;
+                } else if (errorMessage.contains("invalid") || errorMessage.contains("validation")) {
+                    return ProviderError.ErrorCode.VALIDATION_ERROR;
+                } else if (errorMessage.contains("resource") || errorMessage.contains("no space")) {
+                    return ProviderError.ErrorCode.RESOURCE_UNAVAILABLE;
+                } else if (errorMessage.contains("timeout")) {
+                    return ProviderError.ErrorCode.TIMEOUT;
+                }
             }
-        };
+            
+            return ProviderError.ErrorCode.PROVIDER_ERROR;
+        } catch (Exception ex) {
+            logger.error("Error mapping Libvirt exception: {}", ex.getMessage());
+            return ProviderError.ErrorCode.PROVIDER_ERROR;
+        }
     }
 
     /**
@@ -58,14 +57,21 @@ public class LibvirtErrorHandler {
      * @return true if error is retryable, false otherwise
      */
     public static boolean isRetryable(LibvirtException e) {
-        int errorCode = e.getError();
-
-        // Retry on network errors and temporary failures
-        return errorCode == LibvirtError.VIR_ERR_NO_CONNECT ||
-               errorCode == LibvirtError.VIR_ERR_SYSTEM_ERROR ||
-               errorCode == LibvirtError.VIR_ERR_OPERATION_INVALID ||
-               errorCode == LibvirtError.VIR_ERR_OPERATION_TIMEOUT ||
-               errorCode == LibvirtError.VIR_ERR_INTERNAL_ERROR;
+        try {
+            String errorMessage = e.getMessage();
+            
+            // Consider network errors and timeouts as retryable
+            if (errorMessage != null) {
+                return errorMessage.contains("connection") ||
+                       errorMessage.contains("timeout") ||
+                       errorMessage.contains("network");
+            }
+            
+            return false;
+        } catch (Exception ex) {
+            logger.error("Error checking retryability of Libvirt exception: {}", ex.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -76,14 +82,13 @@ public class LibvirtErrorHandler {
      * @return ProviderError with mapped code and retry flag
      */
     public static ProviderError handleError(LibvirtException e, String operation) {
-        ErrorCode code = mapLibvirtError(e);
+        ProviderError.ErrorCode code = mapLibvirtError(e);
 
         return ProviderError.builder()
                 .code(code)
                 .message(operation + " failed: " + e.getMessage())
-                .providerErrorCode(String.valueOf(e.getError()))
+                .providerErrorCode("LIBVIRT_ERROR")
                 .details(Map.of(
-                        "libvirtError", e.getError().toString(),
                         "libvirtMessage", e.getMessage()
                 ))
                 .retryable(isRetryable(e))

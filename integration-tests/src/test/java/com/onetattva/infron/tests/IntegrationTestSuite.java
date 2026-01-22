@@ -10,7 +10,8 @@ import org.junit.platform.suite.api.SuiteDisplayName;
 @SelectPackages({
     "com.onetattva.infron.tests.deploy",
     "com.onetattva.infron.tests.system",
-    "com.onetattva.infron.tests.tenant"
+    "com.onetattva.infron.tests.tenant",
+    "com.onetattva.infron.tests.vm"
 })
 @IncludeClassNamePatterns(".*Tests?")
 public class IntegrationTestSuite {

@@ -210,16 +210,6 @@ public class LibvirtCapabilitiesParser {
         return null;
     }
 
-    /**
-     * Gets a single child element by tag name.
-     */
-    private static Element getSingleChild(Element parent, String tagName) {
-        NodeList children = parent.getElementsByTagName(tagName);
-        if (children != null && children.getLength() > 0) {
-            return (Element) children.item(0);
-        }
-        return null;
-    }
 
     /**
      * Represents parsed Libvirt capabilities.

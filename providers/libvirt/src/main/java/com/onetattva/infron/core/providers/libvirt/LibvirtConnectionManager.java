@@ -65,7 +65,9 @@ public class LibvirtConnectionManager {
      * @return true if connection is successful, false otherwise
      */
     public boolean testConnection() {
-        try (Connect conn = new Connect(uri)) {
+        Connect conn = null;
+        try {
+            conn = new Connect(uri);
             boolean connected = conn != null && conn.isConnected();
             if (connected) {
                 logger.info("Successfully tested connection to Libvirt: {}", uri);
@@ -76,6 +78,14 @@ public class LibvirtConnectionManager {
         } catch (LibvirtException e) {
             logger.error("Connection test failed for Libvirt {}: {}", uri, e.getMessage());
             return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (LibvirtException e) {
+                    logger.warn("Error closing test connection: {}", e.getMessage());
+                }
+            }
         }
     }
 

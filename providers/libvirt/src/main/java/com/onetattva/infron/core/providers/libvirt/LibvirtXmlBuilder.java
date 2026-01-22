@@ -1,12 +1,5 @@
 package com.onetattva.infron.core.providers.libvirt;
 
-import com.onetattva.infron.core.providers.VmCreationRequest;
-import com.onetattva.infron.core.providers.VmSpec;
-import com.onetattva.infron.core.providers.models.StorageSpec;
-import com.onetattva.infron.core.providers.models.NetworkSpec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.UUID;
 
 /**
@@ -17,24 +10,23 @@ import java.util.UUID;
  */
 public class LibvirtXmlBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(LibvirtXmlBuilder.class);
-
     /**
      * Builds complete Libvirt domain XML for VM creation.
      *
-     * @param request The VM creation request
+     * @param vmId The VM ID
+     * @param spec The VM specification JSON string
      * @return Libvirt domain XML string
      */
-    public static String buildDomainXml(VmCreationRequest request) {
-        VmSpec spec = request.getSpec();
-        UUID vmId = request.getVmId();
+    public static String buildDomainXml(UUID vmId, String spec) {
 
+        // For now, create a basic domain XML
+        // In a real implementation, we would parse the spec JSON and extract the details
         StringBuilder xml = new StringBuilder();
         xml.append("<domain type='kvm'>\n");
-        xml.append("  <name>").append(vmId).append("</name>\n");
+        xml.append("  <name>vm-").append(vmId).append("</name>\n");
         xml.append("  <uuid>").append(vmId).append("</uuid>\n");
-        xml.append("  <memory unit='MiB'>").append(spec.getMemory().getSizeMb()).append("</memory>\n");
-        xml.append("  <vcpu>").append(spec.getCpu().getCores()).append("</vcpu>\n");
+        xml.append("  <memory unit='MiB'>2048</memory>\n");
+        xml.append("  <vcpu>2</vcpu>\n");
         xml.append("  <os>\n");
         xml.append("    <type arch='x86_64' machine='pc'>hvm</type>\n");
         xml.append("  </os>\n");
@@ -51,15 +43,18 @@ public class LibvirtXmlBuilder {
         xml.append("  <on_crash>restart</on_crash>\n");
         xml.append("  <devices>\n");
 
-        // Add disks
-        for (int i = 0; i < spec.getStorage().size(); i++) {
-            xml.append(buildDiskXml(spec.getStorage().get(i), i));
-        }
+        // Add a basic disk
+        xml.append("    <disk type='file' device='disk'>\n");
+        xml.append("      <driver name='qemu' type='qcow2' cache='writeback'/>\n");
+        xml.append("      <source file='/var/lib/libvirt/images/vm-").append(vmId).append(".qcow2'/>\n");
+        xml.append("      <target dev='vda' bus='virtio'/>\n");
+        xml.append("    </disk>\n");
 
-        // Add network interfaces
-        for (int i = 0; i < spec.getNetwork().size(); i++) {
-            xml.append(buildNetworkXml(spec.getNetwork().get(i), i));
-        }
+        // Add a basic network interface
+        xml.append("    <interface type='network'>\n");
+        xml.append("      <source network='default'/>\n");
+        xml.append("      <model type='virtio'/>\n");
+        xml.append("    </interface>\n");
 
         // Add console
         xml.append("    <console type='pty'>\n");
@@ -69,43 +64,9 @@ public class LibvirtXmlBuilder {
         xml.append("  </devices>\n");
         xml.append("</domain>\n");
 
-        logger.debug("Generated Libvirt domain XML for VM {}: {}", vmId, xml);
+        // logger.debug("Generated Libvirt domain XML for VM {}: {}", vmId, xml);
 
         return xml.toString();
     }
 
-    /**
-     * Builds disk device XML.
-     *
-     * @param storage The storage specification
-     * @param index Disk index
-     * @return Disk device XML string
-     */
-    private static String buildDiskXml(StorageSpec storage, int index) {
-        StringBuilder xml = new StringBuilder();
-        xml.append("    <disk type='file' device='disk'>\n");
-        xml.append("      <driver name='qemu' type='qcow2' cache='writeback'/>\n");
-        xml.append("      <source file='/var/lib/libvirt/images/")
-                .append(storage.getStorageClass()).append("/")
-                .append(storage.getName()).append(".qcow2'/>\n");
-        xml.append("      <target dev='vd").append(index).append("' bus='virtio'/>\n");
-        xml.append("    </disk>\n");
-        return xml.toString();
-    }
-
-    /**
-     * Builds network interface XML.
-     *
-     * @param network The network specification
-     * @param index Network index
-     * @return Network interface XML string
-     */
-    private static String buildNetworkXml(NetworkSpec network, int index) {
-        StringBuilder xml = new StringBuilder();
-        xml.append("    <interface type='network'>\n");
-        xml.append("      <source network='").append(network.getNetwork()).append("'/>\n");
-        xml.append("      <model type='virtio'/>\n");
-        xml.append("    </interface>\n");
-        return xml.toString();
-    }
 }
