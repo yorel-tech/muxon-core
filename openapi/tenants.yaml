@@ -67,6 +67,7 @@ components:
               format: email
             phone:
               type: string
+          additionalProperties: false
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
         status:

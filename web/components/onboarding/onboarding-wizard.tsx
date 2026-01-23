@@ -101,7 +101,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       case 'welcome':
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8">
+            <div className="rounded-lg p-8" style={{ background: 'linear-gradient(to bottom right, #dbeafe, #6366f1)' }}>
               <Server className="h-16 w-16 text-primary mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-center text-gray-900">
                 Welcome to Infron Cloud Management
@@ -135,7 +135,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       case 'identity-provider':
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-8">
+            <div className="rounded-lg p-8" style={{ background: 'linear-gradient(to bottom right, #f3e8ff, #ec4899)' }}>
               <Key className="h-16 w-16 text-purple-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-center text-gray-900">
                 Configure Identity Provider
@@ -186,7 +186,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       case 'datacenter':
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-lg p-8">
+            <div className="rounded-lg p-8" style={{ background: 'linear-gradient(to bottom right, #d1fae5d, #a7f3d0)' }}>
               <Database className="h-16 w-16 text-green-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-center text-gray-900">
                 Add Your First Datacenter
@@ -237,7 +237,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       case 'users':
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-8">
+            <div className="rounded-lg p-8" style={{ background: 'linear-gradient(to bottom right, #ffedd5, #f59e0b)' }}>
               <Users className="h-16 w-16 text-orange-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-center text-gray-900">
                 Create Your First User
@@ -297,7 +297,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       case 'complete':
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-8 text-center">
+            <div className="rounded-lg p-8 text-center" style={{ background: 'linear-gradient(to bottom right, #d1fae5d, #a7f3d0)' }}>
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -358,8 +358,8 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+   return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #f9fafb, #f3f4f6)' }}>
       <Card className="w-full max-w-4xl">
         <CardHeader className="border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">

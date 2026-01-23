@@ -18,6 +18,8 @@ dependencies {
     compileOnly(libs.servlet.api)
     // ➜ Swagger/OpenAPI annotations used by generated interfaces
     compileOnly(libs.swagger.annotations)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 }
 
 java {

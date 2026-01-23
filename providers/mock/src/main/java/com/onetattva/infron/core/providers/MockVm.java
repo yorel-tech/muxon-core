@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.db.enums.VmPowerState;
-import com.onetattva.infron.db.enums.VmStatus;
+import com.onetattva.infron.api.enums.VmPowerState;
+import com.onetattva.infron.api.enums.VmStatus;
 
 import java.time.Instant;
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.QueueStatus;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.QueueEntry;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,8 @@
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.JobStatus;
-import com.onetattva.infron.db.enums.JobType;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.JobStatus;
+import com.onetattva.infron.api.enums.JobType;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;

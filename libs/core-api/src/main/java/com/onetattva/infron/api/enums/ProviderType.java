@@ -1,4 +1,4 @@
-package com.onetattva.infron.db.enums;
+package com.onetattva.infron.api.enums;
 
 /**
  * Enum for provider_type.

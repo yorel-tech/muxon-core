@@ -37,7 +37,7 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
         {/* Left: Logo and Search */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-gradient-to-br from-primary-500 to-nexus-600 rounded-lg" />
+            <div className="h-8 w-8 rounded-lg" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }} />
             <span className="text-xl font-bold text-gray-900">infron</span>
             {user?.email === 'admin@infron.dev' && (
               <span className="ml-2 text-xs px-2 py-0.5 bg-nexus-100 text-nexus-700 rounded-full font-medium">
@@ -104,7 +104,7 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <div className="h-8 w-8 bg-gradient-to-br from-primary-500 to-nexus-600 rounded-full flex items-center justify-center text-white font-medium">
+              <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }}>
                 {user?.name?.charAt(0).toUpperCase()}
               </div>
             )}

@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.db.enums.VmPowerState;
-import com.onetattva.infron.db.enums.VmStatus;
+import com.onetattva.infron.api.enums.VmPowerState;
+import com.onetattva.infron.api.enums.VmStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

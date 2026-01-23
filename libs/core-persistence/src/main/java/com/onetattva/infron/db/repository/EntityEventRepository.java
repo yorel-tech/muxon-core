@@ -1,7 +1,7 @@
 package com.onetattva.infron.db.repository;
 
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.EventType;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.EventType;
 import com.onetattva.infron.db.model.EntityEventEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

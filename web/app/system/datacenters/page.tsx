@@ -318,7 +318,7 @@ export default function DatacentersPage() {
       header: 'Health',
       cell: (row: Datacenter) => (
         <div className="flex items-center justify-end gap-2">
-          {getStatusIcon(row.health, row.status)}
+          {getStatusIcon(row.status, row.health)}
           <span className="font-medium">{row.health}</span>
           {getHealthBadge(row.health)}
         </div>

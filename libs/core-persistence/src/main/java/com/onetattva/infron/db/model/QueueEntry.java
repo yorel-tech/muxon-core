@@ -1,8 +1,8 @@
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.QueueCategory;
-import com.onetattva.infron.db.enums.QueueStatus;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueCategory;
+import com.onetattva.infron.api.enums.QueueStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;

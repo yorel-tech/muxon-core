@@ -4,7 +4,7 @@
 package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.TenantSettings;
-import com.onetattva.infron.db.enums.TenantStatus;
+import com.onetattva.infron.api.enums.TenantStatus;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;

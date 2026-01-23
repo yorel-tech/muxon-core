@@ -10,6 +10,8 @@ dependencies {
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.spring.boot.starter.data.redis)
     compileOnly(libs.swagger.annotations)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
     implementation(libs.jackson.annotations)
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-auth"))

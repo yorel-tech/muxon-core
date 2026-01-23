@@ -2,9 +2,9 @@ package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.EntityNotFoundException;
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.QueueCategory;
-import com.onetattva.infron.db.enums.QueueStatus;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueCategory;
+import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.QueueEntry;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.VmEntity;
@@ -49,8 +49,8 @@ public class VmsService {
         // Note: VmCreateRequest doesn't have description field
         // Note: spec conversion to JSON would need proper serialization
         vm.setSpec("{}"); // Placeholder for VmSpec JSON string
-        vm.setStatus(com.onetattva.infron.db.enums.VmStatus.PENDING);
-        vm.setPowerState(com.onetattva.infron.db.enums.VmPowerState.UNKNOWN);
+        vm.setStatus(com.onetattva.infron.api.enums.VmStatus.PENDING);
+        vm.setPowerState(com.onetattva.infron.api.enums.VmPowerState.UNKNOWN);
         vm.setCreatedAt(Instant.now());
         vm.setUpdatedAt(Instant.now());
         vm.setMetadata(request.getMetadata() != null ? request.getMetadata().toString() : null);
@@ -132,7 +132,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Validate state transition
-        if (vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.STOPPED) {
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.STOPPED) {
             throw new IllegalStateException("VM must be stopped to start");
         }
 
@@ -148,7 +148,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Validate state transition
-        if (vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.ACTIVE) {
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
             throw new IllegalStateException("VM must be running to stop");
         }
 
@@ -175,7 +175,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Validate state transition
-        if (vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.ACTIVE && vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.SUSPENDED) {
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE && vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
             throw new IllegalStateException("VM must be running or suspended to suspend");
         }
 
@@ -191,7 +191,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Validate state transition
-        if (vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.SUSPENDED) {
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
             throw new IllegalStateException("VM must be suspended to resume");
         }
 
@@ -207,7 +207,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Update VM status
-        vm.setStatus(com.onetattva.infron.db.enums.VmStatus.DELETING);
+        vm.setStatus(com.onetattva.infron.api.enums.VmStatus.DELETING);
         vm.setUpdatedAt(Instant.now());
         vmRepository.save(vm);
 
@@ -223,7 +223,7 @@ public class VmsService {
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
         // Validate VM is running
-        if (vm.getStatus() != com.onetattva.infron.db.enums.VmStatus.ACTIVE) {
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
             throw new IllegalStateException("VM must be running to access console");
         }
 

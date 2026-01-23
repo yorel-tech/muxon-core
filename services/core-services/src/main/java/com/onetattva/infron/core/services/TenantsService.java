@@ -2,7 +2,7 @@ package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.EntityNotFoundException;
-import com.onetattva.infron.db.enums.TenantStatus;
+import com.onetattva.infron.api.enums.TenantStatus;
 import com.onetattva.infron.db.model.TenantEntity;
 import com.onetattva.infron.db.repository.TenantRepository;
 import org.springframework.beans.factory.annotation.Autowired;

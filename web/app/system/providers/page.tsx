@@ -11,6 +11,8 @@ import { Table } from '@components/ui/organisms/table';
 import { Modal } from '@components/ui/molecules/modal';
 import { Dropdown } from '@components/ui/molecules/dropdown';
 import { Toast } from '@components/ui/molecules/toast';
+import { Sidebar } from '@components/ui/organisms/sidebar';
+import { Header } from '@components/ui/organisms/header';
 
 interface Provider {
   id: string;
@@ -339,34 +341,6 @@ export default function ProvidersPage() {
                 <MoreVertical size={16} />
               </button>
           </Dropdown>
-            items={[
-              {
-                label: 'Sync',
-                icon: <RefreshCw size={16} />,
-                onClick: () => handleSyncProvider(row),
-              },
-              {
-                label: 'Connect',
-                onClick: () => handleConnectProvider(row),
-                disabled: row.status === 'connected',
-              },
-              {
-                label: 'Disconnect',
-                onClick: () => handleDisconnectProvider(row),
-                disabled: row.status !== 'connected',
-              },
-              {
-                label: 'Edit',
-                icon: <Edit size={16} />,
-                onClick: () => handleEditProvider(row),
-              },
-              {
-                label: 'Delete',
-                icon: <Trash2 size={16} />,
-                onClick: () => handleDeleteProvider(row),
-                variant: 'danger',
-              },
-            ]}
         </div>
       ),
       sortable: false,

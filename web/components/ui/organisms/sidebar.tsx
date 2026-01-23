@@ -160,7 +160,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
               'hover:bg-gray-100',
-              isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700',
+              isActive(item.href) ? 'bg-primary-50 text-primary-700' : 'text-gray-700',
               depth > 0 && 'ml-4',
             )}
           >
@@ -202,7 +202,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                   transition={{ duration: 0.2 }}
                   className="ml-4 overflow-hidden"
                 >
-                  {item.children.map((child) => renderSidebarItem(child, depth + 1))}
+                  {item.children?.map((child) => renderSidebarItem(child, depth + 1))}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -229,7 +229,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
           {/* Logo / Brand */}
           <div className="flex items-center gap-3 p-6 border-b border-gray-200">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 bg-gradient-to-br from-primary-500 to-nexus-500 rounded-lg" />
+              <div className="h-8 w-8 rounded-lg" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #a855f7)' }} />
               <span className="text-lg font-bold text-gray-900">infron</span>
               {isEnterprise && (
                 <span className="ml-2 text-xs font-medium px-2 py-0.5 bg-nexus-100 text-nexus-700 rounded-full">

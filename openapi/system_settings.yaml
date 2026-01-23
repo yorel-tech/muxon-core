@@ -656,10 +656,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/IdpSettings'
         '400':
-          $ref: './commons.yaml#/components/responses/BadRequest'
-          example:
-            code: INVALID_IDP_TYPE
-            message: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
+          description: Invalid IdP type
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+              examples:
+                invalidIdpType:
+                  value:
+                    code: INVALID_IDP_TYPE
+                    message: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '403':
@@ -836,10 +842,16 @@ paths:
         '403':
           $ref: './commons.yaml#/components/responses/Forbidden'
         '404':
-          $ref: './commons.yaml#/components/responses/NotFound'
-          example:
-            code: NOT_FOUND
-            message: Tenant not found
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+              examples:
+                tenantNotFound:
+                  value:
+                    code: NOT_FOUND
+                    message: Tenant not found
     put:
       tags:
         - Tenant Settings

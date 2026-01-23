@@ -1,8 +1,8 @@
 package com.onetattva.infron.db.repository;
 
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.JobStatus;
-import com.onetattva.infron.db.enums.JobType;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.JobStatus;
+import com.onetattva.infron.api.enums.JobType;
 import com.onetattva.infron.db.model.JobEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

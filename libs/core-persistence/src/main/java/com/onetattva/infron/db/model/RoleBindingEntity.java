@@ -3,8 +3,8 @@
  */
 package com.onetattva.infron.db.model;
 
-import com.onetattva.infron.db.enums.RoleBindingSubjectType;
-import com.onetattva.infron.db.enums.RoleScopeType;
+import com.onetattva.infron.api.enums.RoleBindingSubjectType;
+import com.onetattva.infron.api.enums.RoleScopeType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;

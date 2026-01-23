@@ -81,12 +81,14 @@ LeaseSettings:
         type:
           type: string
           enum: [ suspend, poweroff ]
+      additionalProperties: false
     actionOnStorageLeaseExpiry:
       type: object
       properties:
         type:
           type: string
           enum: [ snapshot, archive, delete ]
+      additionalProperties: false
     notifyBeforeExpiryDays:
       type: integer
       minimum: 0
@@ -119,6 +121,7 @@ PasswordPolicySettings:
   additionalProperties: false
 
 SecurityPolicySettings:
+  type: object
   properties:
     lockAfterFailedAttempts:
       type: boolean
@@ -263,4 +266,5 @@ UISettings:
           format: email
         phone:
           type: string
+      additionalProperties: false
   additionalProperties: false

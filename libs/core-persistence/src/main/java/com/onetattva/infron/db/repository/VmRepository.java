@@ -1,6 +1,6 @@
 package com.onetattva.infron.db.repository;
 
-import com.onetattva.infron.db.enums.VmStatus;
+import com.onetattva.infron.api.enums.VmStatus;
 import com.onetattva.infron.db.model.VmEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

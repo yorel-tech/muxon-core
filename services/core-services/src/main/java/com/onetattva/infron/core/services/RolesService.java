@@ -10,7 +10,7 @@ import com.onetattva.infron.db.model.RolePermissionEntity;
 import com.onetattva.infron.db.repository.PermissionRepository;
 import com.onetattva.infron.db.repository.RolePermissionRepository;
 import com.onetattva.infron.db.repository.RoleRepository;
-import com.onetattva.infron.db.enums.RoleScopeType;
+import com.onetattva.infron.api.enums.RoleScopeType;
 import com.onetattva.infron.db.repository.TenantRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
