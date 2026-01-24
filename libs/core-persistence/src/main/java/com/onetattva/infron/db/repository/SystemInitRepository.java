@@ -9,13 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Repository for managing system initialization status.
  * Provides methods to query and update bootstrap status in the system_init table.
  */
-public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UUID> {
+public interface SystemInitRepository extends JpaRepository<SystemInitEntity, String> {
 
     /**
      * Find system init entry by primary key.
@@ -34,7 +33,7 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UU
      * @return number of rows updated
      */
     @Modifying
-    @Query("UPDATE SystemInitEntity s SET s.value = :systemStatus, s.updatedAt = :updatedAt WHERE s.primaryKey = :primaryKey")
+    @Query("UPDATE SystemInitEntity s SET s.value = :systemStatus, s.systemStatus = :systemStatus, s.updatedAt = :updatedAt WHERE s.primaryKey = :primaryKey")
     int updateSystemStatus(@Param("primaryKey") String primaryKey, @Param("systemStatus") BootstrapStatus systemStatus,
                            @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
