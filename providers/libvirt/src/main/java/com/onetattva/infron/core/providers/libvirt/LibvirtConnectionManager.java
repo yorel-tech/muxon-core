@@ -118,7 +118,7 @@ public class LibvirtConnectionManager {
      *
      * @return Number of active connections in the pool
      */
-    public int getActiveConnectionCount() {
+    public int getActiveConnectionCount() throws LibvirtException {
         int count = 0;
         for (Connect conn : connectionPool.values()) {
             if (conn != null && conn.isConnected()) {

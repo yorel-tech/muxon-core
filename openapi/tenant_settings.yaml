@@ -241,6 +241,7 @@ BillingSettings:
       enum: [pay-as-you-go, subscription, reserved]
     creditLimitUsd:
       type: number
+      format: float
       minimum: 0
     autoSuspendOnCreditExceeded:
       type: boolean

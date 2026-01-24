@@ -176,7 +176,7 @@ public class VmTests extends BaseIntegrationTest {
         String vmId = createResponse.jsonPath().getString("id");
 
         // Update the VM
-        Map<String, Object> metadata = new HashMap<>();
+        Map<String, String> metadata = new HashMap<>();
         metadata.put("environment", "test");
         metadata.put("owner", "integration-test");
         

@@ -98,7 +98,8 @@ export default function SystemDashboardPage() {
 
   const fetchBootstrapStatus = async () => {
     try {
-      const response = await fetch('/api/v1/status');
+      const base = process.env.NEXT_PUBLIC_API_BASE!;
+      const response = await fetch(`${base}/api/v1/status`);
       if (!response.ok) {
         throw new Error('Failed to fetch bootstrap status');
       }

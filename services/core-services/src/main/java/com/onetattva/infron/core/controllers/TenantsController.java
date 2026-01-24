@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import java.util.UUID;
 
 @RestController
@@ -48,8 +46,8 @@ public class TenantsController implements TenantsApi {
     @Override
     @RequiresPermission(Permission.TENANT_READ)
     public ResponseEntity<TenantList> listTenants(
-            @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-            @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
+            @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
+            @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
             @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "status", required = false) String status) {

@@ -129,8 +129,8 @@ public class DatacenterTests extends BaseIntegrationTest {
         // Update the datacenter settings
         DatacenterSettings newSettings = new DatacenterSettings();
         newSettings.setProviderType(DatacenterType.KVM);
-        newSettings.setDefaultCpuOvercommitRatio(BigDecimal.valueOf(8.0));
-        newSettings.setDefaultMemoryOvercommitRatio(BigDecimal.valueOf(2.0));
+        newSettings.setDefaultCpuOvercommitRatio(8.0F);
+        newSettings.setDefaultMemoryOvercommitRatio(2.0F);
         newSettings.setVmClasses(Arrays.asList("small", "medium", "large"));
         newSettings.setStorageClasses(Arrays.asList("gold", "silver"));
         newSettings.setNetworkDomains(Arrays.asList("private", "public"));
@@ -350,8 +350,8 @@ public class DatacenterTests extends BaseIntegrationTest {
         // Update settings to enable libvirt-specific features
         DatacenterSettings settings = new DatacenterSettings();
         settings.setProviderType(DatacenterType.KVM);
-        settings.setDefaultCpuOvercommitRatio(BigDecimal.valueOf(4.0));
-        settings.setDefaultMemoryOvercommitRatio(BigDecimal.valueOf(1.5));
+        settings.setDefaultCpuOvercommitRatio(4.0F);
+        settings.setDefaultMemoryOvercommitRatio(1.5F);
         settings.setVmClasses(Arrays.asList("small", "medium", "large"));
         settings.setStorageClasses(Arrays.asList("ssd", "hdd"));
         settings.setNetworkDomains(Arrays.asList("default", "management"));

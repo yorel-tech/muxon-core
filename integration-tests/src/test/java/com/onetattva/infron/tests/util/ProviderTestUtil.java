@@ -41,8 +41,8 @@ public class ProviderTestUtil {
             // Set provider type to KVM
             DatacenterSettings settings = new DatacenterSettings();
             settings.setProviderType(DatacenterType.KVM);
-            settings.setDefaultCpuOvercommitRatio(BigDecimal.valueOf(4.0));
-            settings.setDefaultMemoryOvercommitRatio(BigDecimal.valueOf(1.5));
+            settings.setDefaultCpuOvercommitRatio(4.0F);
+            settings.setDefaultMemoryOvercommitRatio(1.5F);
             datacenter.setSettings(settings);
             
             return given()

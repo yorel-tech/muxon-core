@@ -47,8 +47,8 @@ public class LibvirtCapabilitiesParser {
             if (host != null) {
                 Element cpu = getSingleChild(host, "cpu");
                 if (cpu != null) {
-                    caps.arch = cpu.getAttribute("arch");
-                    caps.hypervisorType = host.getAttribute("type");
+                    caps.setArch(cpu.getAttribute("arch"));
+                    caps.setHypervisorType(host.getAttribute("type"));
 
                     // Extract CPU models
                     NodeList cpuModels = cpu.getElementsByTagName("model");
@@ -62,7 +62,7 @@ public class LibvirtCapabilitiesParser {
                             }
                         }
                     }
-                    caps.supportedCpuTypes = supportedCpuTypes;
+                    caps.setSupportedCpuTypes(supportedCpuTypes);
 
                     // Check for nested virtualization support
                     Element features = getSingleChild(cpu, "features");
@@ -70,10 +70,10 @@ public class LibvirtCapabilitiesParser {
                         NodeList featureList = features.getElementsByTagName("feature");
                         for (int i = 0; i < featureList.getLength(); i++) {
                             Element feature = (Element) featureList.item(i);
-                            if (feature != null && "vmx" != null) {
+                            if (feature != null) {
                                 String name = feature.getAttribute("name");
                                 if ("vmx".equals(name)) {
-                                    caps.supportsNestedVirtualization = true;
+                                    caps.setSupportsNestedVirtualization(true);
                                 }
                             }
                         }
@@ -89,10 +89,10 @@ public class LibvirtCapabilitiesParser {
                 if (maxMem != null && !maxMem.isEmpty()) {
                     try {
                         long maxMemKb = Long.parseLong(maxMem);
-                        caps.maxMemoryMb = (int) (maxMemKb / 1024);
+                        caps.setMaxMemoryMb((int) (maxMemKb / 1024));
                     } catch (NumberFormatException e) {
                         logger.warn("Could not parse memory size: {}", maxMem);
-                        caps.maxMemoryMb = 1048576; // Default 1TB
+                        caps.setMaxMemoryMb(1048576); // Default 1TB
                     }
                 }
             }
@@ -114,17 +114,17 @@ public class LibvirtCapabilitiesParser {
                             }
                         }
                     }
-                    caps.supportedDiskTypes = supportedDiskTypes;
+                    caps.setSupportedDiskTypes(supportedDiskTypes);
 
                     // Extract maximum storage
                     String maxStorage = disk.getAttribute("capacity");
                     if (maxStorage != null && !maxStorage.isEmpty()) {
                         try {
                             long maxStorageBytes = Long.parseLong(maxStorage);
-                            caps.maxStorageGb = (int) (maxStorageBytes / (1024L * 1024 * 1024L)); // Convert to GB
+                            caps.setMaxStorageGb((int) (maxStorageBytes / (1024L * 1024 * 1024L))); // Convert to GB
                         } catch (NumberFormatException e) {
                             logger.warn("Could not parse storage capacity: {}", maxStorage);
-                            caps.maxStorageGb = 10240; // Default 10TB
+                            caps.setMaxStorageGb(10240); // Default 10TB
                         }
                     }
                 }
@@ -145,16 +145,16 @@ public class LibvirtCapabilitiesParser {
                         }
                     }
                 }
-                caps.supportedNetworkModels = supportedNetworkModels;
+                caps.setSupportedNetworkModels(supportedNetworkModels);
 
                 // Check for virtio support
                 NodeList features = network.getElementsByTagName("feature");
                 for (int i = 0; i < features.getLength(); i++) {
                     Element feature = (Element) features.item(i);
-                    if (feature != null && "virtio" != null) {
+                    if (feature != null) {
                         String name = feature.getAttribute("name");
                         if ("virtio".equals(name)) {
-                            caps.supportsVirtio = true;
+                            caps.setSupportsVirtio(true);
                         }
                     }
                 }
@@ -164,10 +164,10 @@ public class LibvirtCapabilitiesParser {
             String maxVms = host.getAttribute("maxVms");
             if (maxVms != null && !maxVms.isEmpty()) {
                 try {
-                    caps.maxVms = Integer.parseInt(maxVms);
+                    caps.setMaxVms(Integer.parseInt(maxVms));
                 } catch (NumberFormatException e) {
                     logger.warn("Could not parse max VMs: {}", maxVms);
-                    caps.maxVms = 1000; // Default
+                    caps.setMaxVms(1000); // Default
                 }
             }
 
@@ -175,17 +175,17 @@ public class LibvirtCapabilitiesParser {
             String maxCpus = host.getAttribute("maxCpus");
             if (maxCpus != null && !maxCpus.isEmpty()) {
                 try {
-                    caps.maxCpuCores = Integer.parseInt(maxCpus);
+                    caps.setMaxCpuCores(Integer.parseInt(maxCpus));
                 } catch (NumberFormatException e) {
                     logger.warn("Could not parse max CPUs: {}", maxCpus);
-                    caps.maxCpuCores = 256; // Default
+                    caps.setMaxCpuCores(256); // Default
                 }
             }
 
             logger.debug("Parsed Libvirt capabilities: arch={}, hypervisorType={}, maxMemoryMb={}, maxStorageGb={}, maxVms={}, maxCpuCores={}, supportedCpuTypes={}, supportedDiskTypes={}, supportedNetworkModels={}",
-                    caps.arch, caps.hypervisorType, caps.maxMemoryMb, caps.maxStorageGb,
-                    caps.maxVms, caps.maxCpuCores, caps.supportedCpuTypes,
-                    caps.supportedDiskTypes, caps.supportedNetworkModels);
+                    caps.getArch(), caps.getHypervisorType(), caps.getMaxMemoryMb(), caps.getMaxStorageGb(),
+                    caps.getMaxVms(), caps.getMaxCpuCores(), caps.getSupportedCpuTypes(),
+                    caps.getSupportedDiskTypes(), caps.getSupportedNetworkModels());
 
             return caps;
 
@@ -208,94 +208,5 @@ public class LibvirtCapabilitiesParser {
             return (Element) children.item(0);
         }
         return null;
-    }
-
-
-    /**
-     * Represents parsed Libvirt capabilities.
-     */
-    public static class LibvirtCapabilities {
-        String arch;
-        String hypervisorType;
-        int maxMemoryMb;
-        int maxStorageGb;
-        int maxVms;
-        int maxCpuCores;
-        List<String> supportedCpuTypes = new ArrayList<>();
-        List<String> supportedDiskTypes = new ArrayList<>();
-        List<String> supportedNetworkModels = new ArrayList<>();
-        boolean supportsVirtio = false;
-        boolean supportsNestedVirtualization = false;
-        boolean supportsLiveMigration = false;
-
-        /**
-         * Gets maximum CPU cores.
-         */
-        public int getMaxCpuCores() {
-            return maxCpuCores;
-        }
-
-        /**
-         * Gets maximum memory in MB.
-         */
-        public int getMaxMemoryMb() {
-            return maxMemoryMb;
-        }
-
-        /**
-         * Gets maximum storage in GB.
-         */
-        public int getMaxStorageGb() {
-            return maxStorageGb;
-        }
-
-        /**
-         * Gets maximum number of VMs.
-         */
-        public int getMaxVms() {
-            return maxVms;
-        }
-
-        /**
-         * Gets supported CPU types.
-         */
-        public List<String> getSupportedCpuTypes() {
-            return supportedCpuTypes;
-        }
-
-        /**
-         * Gets supported disk types.
-         */
-        public List<String> getSupportedDiskTypes() {
-            return supportedDiskTypes;
-        }
-
-        /**
-         * Gets supported network models.
-         */
-        public List<String> getSupportedNetworkModels() {
-            return supportedNetworkModels;
-        }
-
-        /**
-         * Checks if virtio is supported.
-         */
-        public boolean supportsVirtio() {
-            return supportsVirtio;
-        }
-
-        /**
-         * Checks if nested virtualization is supported.
-         */
-        public boolean supportsNestedVirtualization() {
-            return supportsNestedVirtualization;
-        }
-
-        /**
-         * Checks if live migration is supported.
-         */
-        public boolean supportsLiveMigration() {
-            return supportsLiveMigration;
-        }
     }
 }

@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.springframework.lang.Nullable;
 import java.util.UUID;
 
@@ -49,8 +47,8 @@ public class DatacentersController implements DatacentersApi {
 
     @Override
     public ResponseEntity<DatacenterList> listDatacenters(
-        @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-        @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
+        @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
+        @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
         @RequestParam(value = "providerType", required = false) @Nullable DatacenterType providerType
     ) {
         DatacenterList datacenterList = datacentersService.listDatacenters(page, perPage, providerType);

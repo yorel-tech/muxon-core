@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import java.util.UUID;
 
 @RestController
@@ -71,25 +69,25 @@ public class RolesController implements RolesApi {
     }
 
     @Override
-    public ResponseEntity<RolePermissionList> listRolePermissions(@NotNull @PathVariable("roleId") UUID roleId, @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
+    public ResponseEntity<RolePermissionList> listRolePermissions(@NotNull @PathVariable("roleId") UUID roleId, @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
         RolePermissionList result = rolesService.listRolePermissions(roleId, page, perPage);
         return ResponseEntity.ok(result);
     }
 
     @Override
-    public ResponseEntity<RoleList> listRoles(@RequestParam(value = "scope_type", required = false) String scopeType, @RequestParam(value = "scope_id", required = false) UUID scopeId, @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
+    public ResponseEntity<RoleList> listRoles(@RequestParam(value = "scope_type", required = false) String scopeType, @RequestParam(value = "scope_id", required = false) UUID scopeId, @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
         RoleList roleList = rolesService.listRoles(scopeType, scopeId, page, perPage);
         return ResponseEntity.ok(roleList);
     }
 
     @Override
-    public ResponseEntity<RolePermissionList> listTenantRolePermissions(@NotNull @PathVariable("tenantId") UUID tenantId, @NotNull @PathVariable("roleId") UUID roleId, @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
+    public ResponseEntity<RolePermissionList> listTenantRolePermissions(@NotNull @PathVariable("tenantId") UUID tenantId, @NotNull @PathVariable("roleId") UUID roleId, @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
         RolePermissionList result = rolesService.listTenantRolePermissions(tenantId, roleId, page, perPage);
         return ResponseEntity.ok(result);
     }
 
     @Override
-    public ResponseEntity<RoleList> listTenantRoles(@NotNull @PathVariable("tenantId") UUID tenantId, @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @Min(value = 1) @Max(value = 200) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
+    public ResponseEntity<RoleList> listTenantRoles(@NotNull @PathVariable("tenantId") UUID tenantId, @RequestParam(value = "page", required = false, defaultValue = "1") Integer page, @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage) {
         RoleList roleList = rolesService.listTenantRoles(tenantId, page, perPage);
         return ResponseEntity.ok(roleList);
     }

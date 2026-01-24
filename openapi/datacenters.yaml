@@ -46,10 +46,12 @@ components:
       properties:
         defaultCpuOvercommitRatio:
           type: number
+          format: float
           minimum: 0
           example: 4.0
         defaultMemoryOvercommitRatio:
           type: number
+          format: float
           minimum: 0
           example: 1.5
         vmClasses:

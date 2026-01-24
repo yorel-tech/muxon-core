@@ -3,17 +3,17 @@ package com.onetattva.infron.core.providers.libvirt;
 import com.onetattva.infron.core.providers.*;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
-import com.onetattva.infron.db.enums.VmStatus;
-import com.onetattva.infron.db.enums.VmPowerState;
+import com.onetattva.infron.api.enums.VmStatus;
+import com.onetattva.infron.api.enums.VmPowerState;
 import org.libvirt.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+
+import static org.libvirt.DomainInfo.DomainState.VIR_DOMAIN_RUNNING;
 
 /**
  * Infron Libvirt Provider implementation.
@@ -24,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class LibvirtVmProvider implements VmProvider {
 
-    // private static final Logger logger = LoggerFactory.getLogger(LibvirtVmProvider.class);
+    private static final Logger logger = LoggerFactory.getLogger(LibvirtVmProvider.class);
 
     private final ProviderEntity provider;
     private final NodeEntity node;
@@ -57,16 +57,16 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmCreationResult> createVm(VmCreationRequest request) {
-        logger.info("Creating VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Creating VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 // Convert VmSpec to Libvirt XML
-                String domainXml = LibvirtXmlBuilder.buildDomainXml(request.getVmId(), request.getSpec());
+                String domainXml = LibvirtXmlBuilder.buildDomainXml(request.vmId(), request.spec());
 
-                logger.debug("Libvirt domain XML for VM {}: {}", request.getVmId(), domainXml);
+                logger.debug("Libvirt domain XML for VM {}: {}", request.vmId(), domainXml);
 
                 // Define and start domain
                 Domain domain = connection.domainDefineXML(domainXml);
@@ -76,13 +76,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully created VM {} on Libvirt provider {} with external ID: {}",
-                        request.getVmId(), provider.getName(), domain.getName());
+                        request.vmId(), provider.getName(), domain.getName());
 
                 return VmCreationResult.success(domain.getName(), vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to create VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmCreationResult.failure(
                         ProviderError.builder()
@@ -110,19 +110,19 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmDeletionResult> deleteVm(VmDeletionRequest request) {
-        logger.info("Deleting VM {} from Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Deleting VM {} from Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmDeletionResult.failure("VM not found");
                 }
 
@@ -138,13 +138,13 @@ public class LibvirtVmProvider implements VmProvider {
                 domain.undefine();
 
                 logger.info("Successfully deleted VM {} from Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmDeletionResult.success();
 
             } catch (LibvirtException e) {
                 logger.error("Failed to delete VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmDeletionResult.failure(
                         ProviderError.builder()
@@ -168,24 +168,24 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> startVm(VmOperationRequest request) {
-        logger.info("Starting VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Starting VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmOperationResult.failure("VM not found");
                 }
 
                 if (domain.isActive() == 1) {
-                    logger.debug("VM {} is already running", request.getVmId());
+                    logger.debug("VM {} is already running", request.vmId());
                     return VmOperationResult.failure("VM is already running");
                 }
 
@@ -193,13 +193,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully started VM {} on Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to start VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -223,24 +223,24 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> stopVm(VmOperationRequest request) {
-        logger.info("Stopping VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Stopping VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmOperationResult.failure("VM not found");
                 }
 
                 if (domain.isActive() == 0) {
-                    logger.debug("VM {} is already stopped", request.getVmId());
+                    logger.debug("VM {} is already stopped", request.vmId());
                     return VmOperationResult.failure("VM is already stopped");
                 }
 
@@ -248,13 +248,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully stopped VM {} on Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to stop VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -278,19 +278,19 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> restartVm(VmOperationRequest request) {
-        logger.info("Restarting VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Restarting VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -298,13 +298,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully restarted VM {} on Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to restart VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -328,24 +328,24 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> suspendVm(VmOperationRequest request) {
-        logger.info("Suspending VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Suspending VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmOperationResult.failure("VM not found");
                 }
 
                 if (domain.isActive() == 0) {
-                    logger.debug("VM {} is not running", request.getVmId());
+                    logger.debug("VM {} is not running", request.vmId());
                     return VmOperationResult.failure("VM is not running");
                 }
 
@@ -354,13 +354,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully suspended VM {} on Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to suspend VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -384,19 +384,19 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmOperationResult> resumeVm(VmOperationRequest request) {
-        logger.info("Resuming VM {} on Libvirt provider {}", request.getVmId(), provider.getName());
+        logger.info("Resuming VM {} on Libvirt provider {}", request.vmId(), provider.getName());
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
                 Domain domain = connection.domainLookupByUUIDString(
-                        request.getVmId().toString()
+                        request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.getVmId(), provider.getName());
+                            request.vmId(), provider.getName());
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -406,13 +406,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully resumed VM {} on Libvirt provider {}",
-                        request.getVmId(), provider.getName());
+                        request.vmId(), provider.getName());
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to resume VM {} on Libvirt provider {}: {}",
-                        request.getVmId(), provider.getName(), e.getMessage(), e);
+                        request.vmId(), provider.getName(), e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -475,15 +475,15 @@ public class LibvirtVmProvider implements VmProvider {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
-                String[] activeDomainIds = connection.listDomains();
+                int[] activeDomainIds = connection.listDomains();
                 String[] inactiveDomainIds = connection.listDefinedDomains();
 
                 List<VmInfo> vmList = new ArrayList<>();
 
                 // Active domains
-                for (String domainId : activeDomainIds) {
+                for (int domainId : activeDomainIds) {
                     try {
-                        Domain domain = connection.domainLookupByUUIDString(domainId);
+                        Domain domain = connection.domainLookupByUUIDString(String.valueOf(domainId));
                         vmList.add(getVmInfoFromDomain(domain));
                     } catch (LibvirtException e) {
                         logger.warn("Failed to get info for active domain {}: {}", domainId, e.getMessage());
@@ -630,9 +630,7 @@ public class LibvirtVmProvider implements VmProvider {
         List<String> ipAddresses = getDomainIpAddresses(domain);
 
         // Get hostname from domain metadata
-        String hostname = domain.getMetadata() != null
-                ? extractHostnameFromMetadata(domain.getMetadata())
-                : domain.getName();
+        String hostname = domain.getConnect().getHostName();
 
         return new VmInfo(
                 domain.getName(),
@@ -642,7 +640,7 @@ public class LibvirtVmProvider implements VmProvider {
                 hostname,
                 null, // resourceUsage - not available from basic domain info
                 Map.of(
-                        "libvirtDomainId", String.valueOf(info.id),
+                        "libvirtDomainId", domain.getID() > 0 ? String.valueOf(domain.getID()) : "",
                         "libvirtState", String.valueOf(info.state),
                         "libvirtCpuTime", String.valueOf(info.cpuTime),
                         "libvirtMaxMem", String.valueOf(info.maxMem),
@@ -658,7 +656,7 @@ public class LibvirtVmProvider implements VmProvider {
      * @param state The Libvirt domain state bitmask
      * @return Corresponding VmStatus
      */
-    private VmStatus mapLibvirtStateToVmStatus(int state) {
+    private VmStatus mapLibvirtStateToVmStatus(DomainInfo.DomainState state) {
         // Libvirt state is a bitmask:
         // VIR_DOMAIN_NOSTATE = 0
         // VIR_DOMAIN_RUNNING = 1
@@ -668,18 +666,12 @@ public class LibvirtVmProvider implements VmProvider {
         // VIR_DOMAIN_SHUTOFF = 5
         // VIR_DOMAIN_CRASHED = 6
         // VIR_DOMAIN_PMSUSPENDED = 7
-
-        if (state == DomainState.VIR_DOMAIN_RUNNING) {
-            return VmStatus.ACTIVE;
-        } else if (state == DomainState.VIR_DOMAIN_PAUSED) {
-            return VmStatus.SUSPENDED;
-        } else if (state == DomainState.VIR_DOMAIN_SHUTOFF) {
-            return VmStatus.STOPPED;
-        } else if (state == DomainState.VIR_DOMAIN_CRASHED) {
-            return VmStatus.ERROR;
-        }
-
-        return VmStatus.UNKNOWN;
+        return switch (state) {
+            case VIR_DOMAIN_RUNNING -> VmStatus.ACTIVE;
+            case VIR_DOMAIN_PAUSED -> VmStatus.SUSPENDED;
+            case VIR_DOMAIN_SHUTOFF -> VmStatus.STOPPED;
+            default -> VmStatus.ERROR;
+        };
     }
 
     /**
@@ -688,14 +680,12 @@ public class LibvirtVmProvider implements VmProvider {
      * @param state The Libvirt domain state bitmask
      * @return Corresponding VmPowerState
      */
-    private VmPowerState mapLibvirtStateToPowerState(int state) {
-        if (state == DomainState.VIR_DOMAIN_RUNNING) {
-            return VmPowerState.ON;
-        } else if (state == DomainState.VIR_DOMAIN_PAUSED) {
-            return VmPowerState.SUSPENDED;
-        } else {
-            return VmPowerState.OFF;
-        }
+    private VmPowerState mapLibvirtStateToPowerState(DomainInfo.DomainState state) {
+        return switch (state) {
+            case VIR_DOMAIN_RUNNING -> VmPowerState.ON;
+            case VIR_DOMAIN_PAUSED -> VmPowerState.SUSPENDED;
+            default -> VmPowerState.OFF;
+        };
     }
 
     /**
@@ -709,7 +699,7 @@ public class LibvirtVmProvider implements VmProvider {
         List<String> ipAddresses = new ArrayList<>();
 
         try {
-            DomainInterface[] interfaces = domain.interfaceAddresses(Connect.VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE);
+            Collection<DomainInterface> interfaces = domain.interfaceAddresses(0, 0); // VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE = 0
 
             for (DomainInterface iface : interfaces) {
                 // Skip IP address extraction for now due to API differences

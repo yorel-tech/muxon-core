@@ -1,8 +1,10 @@
 package com.onetattva.infron.db.repository;
 
+import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.db.model.SystemInitEntity;
 import com.onetattva.infron.api.enums.BootstrapStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,22 +26,17 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UU
     Optional<SystemInitEntity> findByPrimaryKey(String primaryKey);
 
     /**
-     * Get the current bootstrap status from system_init table.
-     *
-     * @return the BootstrapStatus enum value
-     */
-    @Query("SELECT s.systemStatus FROM SystemInitEntity s WHERE s.primaryKey = :primaryKey")
-    Optional<BootstrapStatus> getSystemStatus(@Param("primaryKey") String primaryKey);
-
-    /**
      * Update the bootstrap status for a given primary key.
      *
      * @param primaryKey the primary key to update
      * @param systemStatus the new bootstrap status
+     * @param updatedAt the timestamp for the update
      * @return number of rows updated
      */
-    @Query("UPDATE SystemInitEntity s SET s.systemStatus = :systemStatus, s.updatedAt = now() WHERE s.primaryKey = :primaryKey")
-    int updateSystemStatus(@Param("primaryKey") String primaryKey, @Param("systemStatus") BootstrapStatus systemStatus);
+    @Modifying
+    @Query("UPDATE SystemInitEntity s SET s.value = :systemStatus, s.updatedAt = :updatedAt WHERE s.primaryKey = :primaryKey")
+    int updateSystemStatus(@Param("primaryKey") String primaryKey, @Param("systemStatus") BootstrapStatus systemStatus,
+                           @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
     /**
      * Check if bootstrap has been completed (status is READY).
@@ -47,20 +44,13 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UU
      * @return true if bootstrap status is READY, false otherwise
      */
     default boolean isBootstrapCompleted() {
-        return getSystemStatus("bootstrap_status")
-                .map(status -> status == BootstrapStatus.READY)
-                .orElse(false);
+        Optional<SystemInitEntity> status = findByPrimaryKey(Constants.BOOTSTRAP_STATUS_KEY);
+        return status.filter(systemInitEntity -> BootstrapStatus.READY.name().equals(systemInitEntity.getValue())).isPresent();
     }
 
-    /**
-     * Check if bootstrap has been performed (status is not NOTREADY).
-     *
-     * @return true if bootstrap status is BOOTSTRAPPED or READY, false otherwise
-     */
-    default boolean isBootstrapPerformed() {
-        return getSystemStatus("bootstrap_status")
-                .map(status -> status != BootstrapStatus.NOTREADY)
-                .orElse(false);
+    default Optional<BootstrapStatus> getBootstrapStatus() {
+        Optional<SystemInitEntity> status = findByPrimaryKey(Constants.BOOTSTRAP_STATUS_KEY);
+        return status.map(entity -> BootstrapStatus.valueOf(entity.getValue()));
     }
 
     /**
@@ -70,7 +60,7 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UU
      * @return number of rows updated
      */
     default int markAsBootstrapped() {
-        return updateSystemStatus("bootstrap_status", BootstrapStatus.BOOTSTRAPPED);
+        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED, java.time.LocalDateTime.now());
     }
 
     /**
@@ -80,6 +70,6 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, UU
      * @return number of rows updated
      */
     default int markAsReady() {
-        return updateSystemStatus("bootstrap_status", BootstrapStatus.READY);
+        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.READY, java.time.LocalDateTime.now());
     }
 }

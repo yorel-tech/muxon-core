@@ -2,6 +2,7 @@ package com.onetattva.infron.core.bootstrap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.onetattva.infron.api.enums.BootstrapStatus;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EncryptionUtil;
 import com.onetattva.infron.api.enums.RoleBindingSubjectType;
@@ -17,6 +18,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,9 +35,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.onetattva.infron.core.common.Constants.BOOTSTRAP_DONE_KEY;
+import static com.onetattva.infron.core.common.Constants.BOOTSTRAP_STATUS_KEY;
 
 @SpringBootApplication
+@ComponentScan(basePackages = "com.onetattva.infron.db.repository")
 @EntityScan(basePackages = "com.onetattva.infron.db.model")
 @EnableJpaRepositories(basePackages = "com.onetattva.infron.db.repository")
 public class BootstrapApplication implements CommandLineRunner {
@@ -61,7 +64,7 @@ public class BootstrapApplication implements CommandLineRunner {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         String configPath = null;
         String outputFolder = null;
         String passphrasePath = null;
@@ -190,15 +193,15 @@ public class BootstrapApplication implements CommandLineRunner {
                 throw new RuntimeException("Failed to acquire bootstrap advisory lock within timeout");
             }
 
-            String bootstrapValue = getBootstrapValue();
-            if ("true".equals(bootstrapValue)) {
+            BootstrapStatus bootstrapValue = getBootstrapValue();
+            if (!BootstrapStatus.NOTREADY.equals(bootstrapValue)) {
                 System.out.println("Bootstrap already completed");
                 return;
             }
 
             performInitialization(configPath, outputFolder, passphrasePath, oidcSecretPath, dbPasswordPath);
 
-            jdbcTemplate.update("INSERT INTO system_init (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", BOOTSTRAP_DONE_KEY, "true");
+            jdbcTemplate.update("INSERT INTO system_init (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name());
             System.out.println("Bootstrap initialization completed");
 
         } catch (Exception e) {
@@ -254,7 +257,7 @@ public class BootstrapApplication implements CommandLineRunner {
                 System.out.println("Acquired bootstrap advisory lock");
                 return true;
             }
-            System.out.println(String.format("Waiting for bootstrap advisory lock... remaining timeout: %d seconds", remainingTimeout));
+            System.out.printf("Waiting for bootstrap advisory lock... remaining timeout: %d seconds%n", remainingTimeout);
             Thread.sleep(5000);
             remainingTimeout -= 5;
         }
@@ -270,11 +273,12 @@ public class BootstrapApplication implements CommandLineRunner {
         }
     }
 
-    private String getBootstrapValue() {
+    private BootstrapStatus getBootstrapValue() {
         try {
-            return jdbcTemplate.queryForObject("SELECT value FROM system_init WHERE primary_key = ?", String.class, BOOTSTRAP_DONE_KEY);
+            final String bootStrapStatus = jdbcTemplate.queryForObject("SELECT value FROM system_init WHERE primary_key = ?", String.class, BOOTSTRAP_STATUS_KEY);
+            return BootstrapStatus.valueOf(bootStrapStatus);
         } catch (EmptyResultDataAccessException e) {
-            return null;
+            return BootstrapStatus.NOTREADY;
         }
     }
 
@@ -344,7 +348,7 @@ public class BootstrapApplication implements CommandLineRunner {
 
         // Mark bootstrap as done - for now using JDBC since system_init might not have a repository
         jdbcTemplate.update("INSERT INTO system_init (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-                BOOTSTRAP_DONE_KEY, "true");
+                BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name());
 
         System.out.println("Bootstrap data insertion completed");
     }
@@ -415,10 +419,10 @@ public class BootstrapApplication implements CommandLineRunner {
             // Fallback to raw metadata map with encrypted secrets
             Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
             if (rawMetadata.containsKey("clientSecret")) {
-                rawMetadata.put("clientSecret", EncryptionUtil.encrypt((String) rawMetadata.get("clientSecret")));
+                rawMetadata.put("clientSecret", EncryptionUtil.encrypt(rawMetadata.get("clientSecret")));
             }
             if (rawMetadata.containsKey("privateKey")) {
-                rawMetadata.put("privateKey", EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
+                rawMetadata.put("privateKey", EncryptionUtil.encrypt(rawMetadata.get("privateKey")));
             }
             idpEntity.setMetadata(rawMetadata);
         }
@@ -433,17 +437,17 @@ public class BootstrapApplication implements CommandLineRunner {
     private static Saml2Metadata getSaml2Metadata(BootstrapConfig config) {
         Saml2Metadata saml2Metadata = new Saml2Metadata();
         Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
-        saml2Metadata.setEntityId((String) rawMetadata.get("entityId"));
-        saml2Metadata.setSingleSignOnServiceUrl((String) rawMetadata.get("singleSignOnServiceUrl"));
-        saml2Metadata.setPrivateKey(EncryptionUtil.encrypt((String) rawMetadata.get("privateKey")));
+        saml2Metadata.setEntityId(rawMetadata.get("entityId"));
+        saml2Metadata.setSingleSignOnServiceUrl(rawMetadata.get("singleSignOnServiceUrl"));
+        saml2Metadata.setPrivateKey(EncryptionUtil.encrypt(rawMetadata.get("privateKey")));
         return saml2Metadata;
     }
 
     private static OidcMetadata getOidcMetadata(BootstrapConfig config, String oidcSecretPath) throws IOException {
         OidcMetadata oidcMetadata = new OidcMetadata();
         Map<String, String> rawMetadata = config.getInfron().getSystem().getIdp().getMetadata();
-        oidcMetadata.setIssuerUri((String) rawMetadata.get("issuerUri"));
-        oidcMetadata.setClientId((String) rawMetadata.get("clientId"));
+        oidcMetadata.setIssuerUri(rawMetadata.get("issuerUri"));
+        oidcMetadata.setClientId(rawMetadata.get("clientId"));
         // Read client secret from file instead of config
         String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
         oidcMetadata.setClientSecret(EncryptionUtil.encrypt(clientSecret));
@@ -458,8 +462,8 @@ public class BootstrapApplication implements CommandLineRunner {
         }
 
         // Get OIDC connection details
-        String issuerUri = (String) config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
-        String clientId = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
+        String issuerUri = config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
+        String clientId = config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
         // Read client secret from file instead of config
         String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
 
@@ -508,8 +512,8 @@ public class BootstrapApplication implements CommandLineRunner {
         }
 
         // Get OIDC connection details
-        String issuerUri = (String) config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
-        String clientId = (String) config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
+        String issuerUri = config.getInfron().getSystem().getIdp().getMetadata().get("issuerUri");
+        String clientId = config.getInfron().getSystem().getIdp().getMetadata().get("clientId");
         // Read client secret from file instead of config
         String clientSecret = Files.readString(Paths.get(oidcSecretPath)).trim();
 

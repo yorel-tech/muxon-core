@@ -7,7 +7,7 @@ public class Constants {
 
     public static final long BOOTSTRAP_ADVISORY_LOCK_KEY = 0x696e66726f6eL; // 'infron' in hex
     public static final int BOOTSTRAP_TIMEOUT_SECONDS = 60;
-    public static final String BOOTSTRAP_DONE_KEY = "bootstrap_done";
+    public static final String BOOTSTRAP_STATUS_KEY = "bootstrap_status";
     private static final String ENCRYPTION_KEY_KEY = "encryption_key";
 
     // Default role names

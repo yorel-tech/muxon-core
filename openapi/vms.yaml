@@ -95,6 +95,7 @@ components:
           description: Memory size in MB
         overcommit_ratio:
           type: number
+          format: float
           minimum: 1.0
           maximum: 4.0
           default: 1.0
@@ -394,10 +395,12 @@ components:
           type: object
           properties:
             utilized_cores:
-              type: number
+              type: integer
+              format: int32
               description: CPU cores currently utilized
             utilization_percent:
-              type: number
+              type: integer
+              format: int32
               minimum: 0
               maximum: 100
               description: CPU utilization percentage
@@ -405,10 +408,12 @@ components:
           type: object
           properties:
             utilized_mb:
-              type: number
+              type: integer
+              format: int32
               description: Memory currently utilized in MB
             utilization_percent:
-              type: number
+              type: integer
+              format: int32
               minimum: 0
               maximum: 100
               description: Memory utilization percentage
@@ -421,10 +426,12 @@ components:
                 type: string
                 description: Storage device identifier
               utilized_gb:
-                type: number
+                type: integer
+                format: int32
                 description: Storage currently utilized in GB
               utilization_percent:
-                type: number
+                type: integer
+                format: int32
                 minimum: 0
                 maximum: 100
                 description: Storage utilization percentage
@@ -437,8 +444,10 @@ components:
                 type: string
                 description: Network interface identifier
               bytes_in:
-                type: number
+                type: integer
+                format: int64
                 description: Bytes received
               bytes_out:
-                type: number
+                type: integer
+                format: int64
                 description: Bytes sent

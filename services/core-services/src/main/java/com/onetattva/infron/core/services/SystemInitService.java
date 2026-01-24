@@ -6,6 +6,8 @@ import com.onetattva.infron.api.enums.BootstrapStatus;
 import com.onetattva.infron.api.enums.RoleBindingSubjectType;
 import com.onetattva.infron.api.enums.RoleName;
 import com.onetattva.infron.api.enums.RoleScopeType;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.db.model.IdpUserEntity;
 import com.onetattva.infron.db.model.IdentityProviderEntity;
 import com.onetattva.infron.db.model.RoleBindingEntity;
@@ -54,8 +56,8 @@ public class SystemInitService {
      * @return BootstrapStatusDto containing only the system status
      */
     public BootstrapStatusDto getBootstrapStatus() {
-        return systemInitRepository.getSystemStatus(BOOTSTRAP_STATUS_KEY)
-                .map(status -> BootstrapStatusDto.of(status))
+        return systemInitRepository.getBootstrapStatus()
+                .map(BootstrapStatusDto::of)
                 .orElse(BootstrapStatusDto.of(BootstrapStatus.NOTREADY));
     }
 
@@ -66,7 +68,7 @@ public class SystemInitService {
      * @return true if system IDP exists, false otherwise
      */
     public boolean checkIdpStatus() {
-        return systemInitRepository.getSystemStatus(BOOTSTRAP_STATUS_KEY)
+        return systemInitRepository.getBootstrapStatus()
                 .map(status -> status.equals(BootstrapStatus.BOOTSTRAPPED) || status.equals(BootstrapStatus.READY))
                 .orElse(false);
     }
@@ -78,10 +80,10 @@ public class SystemInitService {
      * @return true if at least one system admin user exists, false otherwise
      */
     public boolean checkSystemAdminUsers() {
-        return systemInitRepository.getSystemStatus(BOOTSTRAP_STATUS_KEY)
+        return systemInitRepository.getBootstrapStatus()
                 .map(status -> status.equals(BootstrapStatus.BOOTSTRAPPED) || status.equals(BootstrapStatus.READY))
                 .flatMap(status -> {
-                    if (status.equals(BootstrapStatus.NOTREADY)) {
+                    if (!status) {
                         return Optional.empty();
                     }
                     // Find system admin role
@@ -103,12 +105,9 @@ public class SystemInitService {
      * @return true if tenant exists, false otherwise
      */
     public boolean checkTenantStatus() {
-        return systemInitRepository.getSystemStatus(BOOTSTRAP_STATUS_KEY)
+        return systemInitRepository.getBootstrapStatus()
                 .map(status -> status.equals(BootstrapStatus.BOOTSTRAPPED) || status.equals(BootstrapStatus.READY))
-                .flatMap(status -> {
-                    if (status.equals(BootstrapStatus.NOTREADY)) {
-                        return Optional.empty();
-                    }
+                .flatMap(_ -> {
                     List<TenantEntity> tenants = tenantRepository.findAll();
                     return Optional.of(!tenants.isEmpty());
                 })
@@ -123,7 +122,7 @@ public class SystemInitService {
      */
     public IdentityProviderEntity getSystemIdp() {
         List<IdentityProviderEntity> systemProviders = idpRepository.findSystemProvider();
-        return systemProviders.isEmpty() ? null : systemProviders.get(0);
+        return systemProviders.isEmpty() ? null : systemProviders.getFirst();
     }
 
     /**
@@ -133,7 +132,7 @@ public class SystemInitService {
      * @return List of IdpUserEntity with system:admin role
      */
     public List<IdpUserEntity> getSystemAdminUsers() {
-        Optional<BootstrapStatus> statusOpt = systemInitRepository.getSystemStatus(BOOTSTRAP_STATUS_KEY);
+        Optional<BootstrapStatus> statusOpt = systemInitRepository.getBootstrapStatus();
         if (statusOpt.isEmpty()) {
             return List.of();
         }
@@ -161,7 +160,7 @@ public class SystemInitService {
                 .map(UUID::fromString)
                 .toList();
         return userIds.stream()
-                .map(id -> idpUserRepository.findById(id))
+                .map(idpUserRepository::findById)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
@@ -175,13 +174,13 @@ public class SystemInitService {
      */
     public TenantEntity getTenant() {
         List<TenantEntity> tenants = tenantRepository.findAll();
-        return tenants.isEmpty() ? null : tenants.get(0);
+        return tenants.isEmpty() ? null : tenants.getFirst();
     }
 
     /**
      * Add a new system admin user with system:admin role.
      * This can be called when bootstrap has been performed and additional admins need to be added.
-     *
+
      * Note: This implementation assumes users are managed by an external IDP.
      * The user must already exist in the external IDP before calling this method.
      * The password field in the request is ignored as authentication is handled by the IDP.
@@ -190,14 +189,14 @@ public class SystemInitService {
      * @return the created IdpUserEntity
      */
     @Transactional
-    @PreAuthorize("hasAuthority('SYSTEM_SETTINGS')")
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
     public IdpUserEntity addSystemAdminUser(AddSystemAdminRequest request) {
         // Find system IDP
         List<IdentityProviderEntity> systemProviders = idpRepository.findSystemProvider();
         if (systemProviders.isEmpty()) {
             throw new IllegalStateException("System IDP not found. Please run bootstrap-initializer first.");
         }
-        UUID systemIdpId = systemProviders.get(0).getId();
+        UUID systemIdpId = systemProviders.getFirst().getId();
 
         // Find system admin role
         RoleEntity systemAdminRole = roleRepository.findByNameAndScopeIdIsNull(RoleName.SYSTEM_ADMIN.getValue());

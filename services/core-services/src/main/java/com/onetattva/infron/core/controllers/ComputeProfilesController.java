@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,8 +44,8 @@ public class ComputeProfilesController implements ComputeProfilesApi {
     @Override
     @RequiresPermission(Permission.COMPUTE_PROFILE_READ)
     public ResponseEntity<ComputeProfileList> listComputeProfiles(
-        @Min(value = 1) @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-        @Min(value = 1) @Max(value = 100) @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
+        @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
+        @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
         @RequestParam(value = "sort", required = false, defaultValue = "name") String sort,
         @RequestParam(value = "tenantDatacenterGrantId", required = false) UUID tenantDatacenterGrantId,
         @RequestParam(value = "name", required = false) String name,

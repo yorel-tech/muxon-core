@@ -221,7 +221,7 @@ public class VmTestUtil {
         // Memory configuration
         MemorySpec memory = new MemorySpec();
         memory.setSizeMb(2048);
-        memory.setOvercommitRatio(1.0);
+        memory.setOvercommitRatio(1.0F);
         spec.setMemory(memory);
         
         // Storage configuration
@@ -270,7 +270,7 @@ public class VmTestUtil {
         // Memory configuration
         MemorySpec memory = new MemorySpec();
         memory.setSizeMb(16384);
-        memory.setOvercommitRatio(1.0);
+        memory.setOvercommitRatio(1.0F);
         spec.setMemory(memory);
         
         // Storage configuration
@@ -326,7 +326,7 @@ public class VmTestUtil {
         // Memory configuration
         MemorySpec memory = new MemorySpec();
         memory.setSizeMb(8192);
-        memory.setOvercommitRatio(1.0);
+        memory.setOvercommitRatio(1.0F);
         spec.setMemory(memory);
         
         // Storage configuration
@@ -395,14 +395,12 @@ public class VmTestUtil {
     /**
      * Create a VM update request with new description and metadata
      */
-    public static VmUpdateRequest createVmUpdateRequest(String description, Map<String, Object> metadata) {
+    public static VmUpdateRequest createVmUpdateRequest(String description, Map<String, String> metadata) {
         VmUpdateRequest updateRequest = new VmUpdateRequest();
         updateRequest.setDescription(description);
         
         if (metadata != null) {
-            Metadata meta = new Metadata();
-            meta.setAdditionalProperties(metadata);
-            updateRequest.setMetadata(meta);
+            updateRequest.setMetadata(metadata);
         }
         
         return updateRequest;
