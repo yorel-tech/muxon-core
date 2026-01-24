@@ -1,16 +1,10 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import { getUserManager } from '@lib/oidc';
+import { apiGet } from '@/lib/api';
 
 async function fetchProjects() {
-  const um = getUserManager();
-  const token = (await um?.getUser())?.access_token;
   const base = process.env.NEXT_PUBLIC_API_BASE!;
-  const res = await fetch(`${base}/api/v1/projects`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiGet(`${base}/api/v1/projects`);
 }
 
 export default function Projects() {

@@ -21,6 +21,7 @@ import {
   Loader2,
   Cloud
 } from 'lucide-react';
+import { apiGet } from '@/lib/api';
 
 interface SetupStep {
   id: string;
@@ -32,6 +33,21 @@ interface SetupStep {
 
 interface BootstrapStatusDto {
   systemStatus: 'NOTREADY' | 'BOOTSTRAPPED' | 'READY';
+}
+
+  interface IdpConfig {
+  providerType: string;
+  issuerUrl: string;
+  clientId: string;
+  clientSecret: string;
+  realm: string;
+}
+
+interface SystemUserConfig {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export default function SystemDashboardPage() {
@@ -77,6 +93,9 @@ export default function SystemDashboardPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatusDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [idpConfig, setIdpConfig] = useState<IdpConfig | null>(null);
+  const [systemUserConfig, setSystemUserConfig] = useState<SystemUserConfig | null>(null);
+  const [isFetchingConfig, setIsFetchingConfig] = useState(false);
 
   // Derived state from bootstrapStatus
   const isBootstrapped = bootstrapStatus?.systemStatus === 'BOOTSTRAPPED' || bootstrapStatus?.systemStatus === 'READY';
@@ -96,20 +115,64 @@ export default function SystemDashboardPage() {
     fetchBootstrapStatus();
   }, []);
 
+  // Update setup steps when bootstrap status changes
+  useEffect(() => {
+    if (bootstrapStatus) {
+      const isBootstrapped = bootstrapStatus.systemStatus === 'BOOTSTRAPPED' || bootstrapStatus.systemStatus === 'READY';
+      setSetupSteps(prev => prev.map(step => {
+        if (isBootstrapped && (step.id === 'idp' || step.id === 'system-users')) {
+          return { ...step, completed: true };
+        }
+        return step;
+      }));
+      
+      // Fetch existing configurations if bootstrapped
+      if (isBootstrapped) {
+        fetchExistingConfigs();
+      }
+    }
+  }, [bootstrapStatus]);
+
   const fetchBootstrapStatus = async () => {
     try {
-      const base = process.env.NEXT_PUBLIC_API_BASE!;
-      const response = await fetch(`${base}/api/v1/status`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch bootstrap status');
-      }
-      const status: BootstrapStatusDto = await response.json();
+      const status: BootstrapStatusDto = await apiGet('/api/v1/status');
       setBootstrapStatus(status);
     } catch (error) {
       console.error('Error fetching bootstrap status:', error);
       setBootstrapStatus({ systemStatus: 'NOTREADY' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchExistingConfigs = async () => {
+    setIsFetchingConfig(true);
+    try {
+      // Fetch IDP configuration
+      const idpData = await apiGet('/api/v1/system-settings/idp');
+      setIdpConfig({
+        providerType: idpData.providerType || 'keycloak',
+        issuerUrl: idpData.issuerUrl || '',
+        clientId: idpData.clientId || '',
+        clientSecret: idpData.clientSecret || '',
+        realm: idpData.realm || '',
+      });
+
+      // Fetch system user configuration
+      const usersData = await apiGet('/api/v1/system-users');
+      if (usersData && usersData.length > 0) {
+        const firstUser = usersData[0];
+        setSystemUserConfig({
+          username: firstUser.username || '',
+          email: firstUser.email || '',
+          firstName: firstUser.firstName || '',
+          lastName: firstUser.lastName || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching existing configurations:', error);
+    } finally {
+      setIsFetchingConfig(false);
     }
   };
 
@@ -169,407 +232,268 @@ export default function SystemDashboardPage() {
     switch (activeWizard) {
       case 'idp':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {idpActionText} Identity Provider
-                </h2>
-                <Button
-                  variant="secondary"
-                  onClick={handleWizardClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Provider Type
-                </label>
-                <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                  <option value="keycloak">Keycloak</option>
-                  <option value="azuread">Azure AD</option>
-                  <option value="okta">Okta</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Issuer URL
-                </label>
-                <Input
-                  type="text"
-                  placeholder="https://keycloak.example.com/realms"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client ID
-                </label>
-                <Input
-                  type="text"
-                  placeholder="infron-web"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Secret
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Realm
-                </label>
-                <Input
-                  type="text"
-                  placeholder="infron-dev"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider Type
+              </label>
+              <select
+                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                defaultValue={idpConfig?.providerType || 'keycloak'}
+              >
+                <option value="keycloak">Keycloak</option>
+                <option value="azuread">Azure AD</option>
+                <option value="okta">Okta</option>
+              </select>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button onClick={handleWizardClose} variant="secondary">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    Save & Continue
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Issuer URL
+              </label>
+              <Input
+                type="text"
+                placeholder="https://keycloak.example.com/realms"
+                defaultValue={idpConfig?.issuerUrl || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client ID
+              </label>
+              <Input
+                type="text"
+                placeholder="infron-web"
+                defaultValue={idpConfig?.clientId || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Secret
+              </label>
+              <Input
+                type="password"
+                placeholder="••••••••••••••"
+                defaultValue={idpConfig?.clientSecret || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Realm
+              </label>
+              <Input
+                type="text"
+                placeholder="infron-dev"
+                defaultValue={idpConfig?.realm || ''}
+              />
             </div>
           </div>
         );
 
       case 'system-users':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {systemUsersActionText} System Users
-                </h2>
-                <Button
-                  variant="secondary"
-                  onClick={handleWizardClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="admin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="admin@infron.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••••••••"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="System"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Last Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Administrator"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <Button onClick={handleWizardClose} variant="secondary">
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      Save & Continue
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <Input
+                type="text"
+                placeholder="admin"
+                defaultValue={systemUserConfig?.username || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <Input
+                type="email"
+                placeholder="admin@infron.com"
+                defaultValue={systemUserConfig?.email || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <Input
+                type="password"
+                placeholder={systemUserConfig ? "••••••••••••••" : "Enter new password"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                First Name
+              </label>
+              <Input
+                type="text"
+                placeholder="System"
+                defaultValue={systemUserConfig?.firstName || ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name
+              </label>
+              <Input
+                type="text"
+                placeholder="Administrator"
+                defaultValue={systemUserConfig?.lastName || ''}
+              />
             </div>
           </div>
         );
 
       case 'provider':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {providerActionText} Infrastructure Provider
-                </h2>
-                <Button
-                  variant="secondary"
-                  onClick={handleWizardClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Provider Type
-                </label>
-                <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                  <option value="proxmox">Proxmox</option>
-                  <option value="libvirt">Libvirt</option>
-                  <option value="vmware">VMware</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hostname / IP
-                </label>
-                <Input
-                  type="text"
-                  placeholder="192.168.1.100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <Input
-                  type="text"
-                  placeholder="root"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (optional)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Main production datacenter"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider Type
+              </label>
+              <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="proxmox">Proxmox</option>
+                <option value="libvirt">Libvirt</option>
+                <option value="vmware">VMware</option>
+              </select>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button onClick={handleWizardClose} variant="secondary">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    Save & Continue
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                  )}
-                </Button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hostname / IP
+              </label>
+              <Input
+                type="text"
+                placeholder="192.168.1.100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <Input
+                type="text"
+                placeholder="root"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <Input
+                type="password"
+                placeholder="••••••••••••••"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Main production datacenter"
+              />
             </div>
           </div>
         );
 
       case 'datacenter':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {isBootstrapped ? 'Edit' : 'Add'} Datacenter
-                </h2>
-                <Button
-                  variant="secondary"
-                  onClick={handleWizardClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Datacenter Type
-                </label>
-                <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                  <option value="proxmox">Proxmox</option>
-                  <option value="libvirt">Libvirt</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hostname / IP
-                </label>
-                <Input
-                  type="text"
-                  placeholder="192.168.1.100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <Input
-                  type="text"
-                  placeholder="root"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="•••••••••••••"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (optional)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Main production datacenter"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Datacenter Type
+              </label>
+              <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                <option value="proxmox">Proxmox</option>
+                <option value="libvirt">Libvirt</option>
+              </select>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button onClick={handleWizardClose} variant="secondary">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    Save & Continue
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                  )}
-                </Button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hostname / IP
+              </label>
+              <Input
+                type="text"
+                placeholder="192.168.1.100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <Input
+                type="text"
+                placeholder="root"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <Input
+                type="password"
+                placeholder="•••••••••••••"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Main production datacenter"
+              />
             </div>
           </div>
         );
 
       case 'tenant':
         return (
-          <div className="space-y-6">
-            <div className="rounded-lg p-6" style={{ background: 'linear-gradient(to bottom right, #fdf2f8, #ffe4e6)' }}>
+          <div className="space-y-4">
+            <div className="rounded-lg p-6 text-center" style={{ background: 'linear-gradient(to bottom right, #fdf2f8, #ffe4e6)' }}>
               <Building2 className="h-12 w-12 text-pink-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 Create Tenant
               </h3>
-              <p className="text-center text-gray-600 text-sm">
+              <p className="text-gray-600 text-sm mb-4">
                 Create your first tenant organization and assign users to it.
               </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tenant Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Acme Corp"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description (optional)
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Acme Corporation tenant"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Admin Email
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="admin@acme.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Admin Password
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••••••••"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <Button onClick={handleWizardClose} variant="secondary">
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                      <>
-                      Save & Continue
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </>
-                    )}
-                </Button>
-              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tenant Name
+              </label>
+              <Input
+                type="text"
+                placeholder="Acme Corp"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Acme Corporation tenant"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Admin Email
+              </label>
+              <Input
+                type="email"
+                placeholder="admin@acme.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Admin Password
+              </label>
+              <Input
+                type="password"
+                placeholder="••••••••••••••"
+              />
             </div>
           </div>
         );
@@ -645,14 +569,13 @@ export default function SystemDashboardPage() {
                   <motion.button
                     key={step.id}
                     onClick={() => handleStepClick(step.id)}
-                    disabled={step.completed}
                     className={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
                       step.completed
-                        ? 'border-green-200 bg-green-50/50 cursor-default'
+                        ? 'border-green-200 bg-green-50/50 cursor-pointer hover:border-green-300'
                         : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 cursor-pointer'
                     }`}
-                    whileHover={!step.completed ? { scale: 1.01 } : {}}
-                    whileTap={!step.completed ? { scale: 0.99 } : {}}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                   >
                     <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${getIconColorClass(step)}`}>
                       {step.completed ? (
@@ -703,7 +626,6 @@ export default function SystemDashboardPage() {
                   variant="secondary"
                   className="flex h-full flex-col items-center justify-center gap-3 p-6"
                   onClick={() => handleStepClick('idp')}
-                  disabled={setupSteps.find(s => s.id === 'idp')?.completed}
                   leftIcon={<Key className="h-6 w-6" />}
                 >
                   <span className="font-medium">{idpActionText}</span>

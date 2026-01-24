@@ -1,0 +1,16 @@
+meta {
+  name: System settings IDP
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{url}}/system-settings
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
