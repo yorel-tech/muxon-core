@@ -43,6 +43,8 @@ tags:
     description: Tenant settings management
   - name: VM Management
     description: VM lifecycle management operations
+  - name: Users
+    description: User management operations
 
 components:
   schemas:
@@ -224,3 +226,11 @@ paths:
     $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1notifications'
   /api/v1/tenants/{tenantId}/settings/appearance:
     $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1appearance'
+
+  # Users
+  /api/v1/system-users:
+    $ref: './users.yaml#/paths/~1system-users'
+  /api/v1/tenants/{tenantId}/users:
+    $ref: './users.yaml#/paths/~1tenants~1{tenantId}~1users'
+  /api/v1/idp/{idpId}/users:
+    $ref: './users.yaml#/paths/~1idp~1{idpId}~1users'

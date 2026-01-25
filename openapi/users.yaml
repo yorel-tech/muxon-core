@@ -1,0 +1,397 @@
+openapi: 3.0.3
+info:
+  title: Users API
+  version: "1.0.0"
+  description: "User management endpoints for listing, adding, updating, and deleting users in system and tenants"
+
+tags:
+  - name: Users
+    description: User management operations
+
+components:
+  schemas:
+    # User with role binding information (from user_role_bindings view)
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+        external_id:
+          type: string
+          example: "keycloak-user-id"
+        identity_provider_id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        username:
+          type: string
+          example: "jdoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        display_name:
+          type: string
+          example: "John Doe"
+        user_metadata:
+          type: object
+          additionalProperties:
+            type: string
+        user_created_at:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        user_updated_at:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        role_id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        role_name:
+          type: string
+          example: "system:admin"
+        scope_type:
+          type: string
+          example: "SYSTEM"
+        scope_id:
+          type: string
+          format: uuid
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # OIDC user from Keycloak (not in DB)
+    OidcUser:
+      type: object
+      properties:
+        sub:
+          type: string
+          example: "keycloak-user-id"
+        preferred_username:
+          type: string
+          example: "jdoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        name:
+          type: string
+          example: "John Doe"
+
+    # Paginated response for users with role bindings
+    UserList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+          example: 10
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+
+    # Paginated response for OIDC users
+    OidcUserList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcUser"
+        total:
+          type: integer
+          example: 50
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+
+    # Request for updating user role
+    RoleUpdateRequest:
+      type: object
+      required:
+        - role_name
+      properties:
+        role_name:
+          type: string
+          description: The new role name to assign to the user
+          example: "system:admin"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional expiration date for the role binding
+          example: "2025-12-31T23:59:59Z"
+
+  parameters:
+    query:
+      name: q
+      in: query
+      description: Search query for username/email
+      schema:
+        type: string
+    idpId:
+      name: idpId
+      in: path
+      required: true
+      description: Identity Provider UUID
+      schema:
+        type: string
+        format: uuid
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: User UUID
+      schema:
+        type: string
+        format: uuid
+    tenantId:
+      name: tenantId
+      in: path
+      required: true
+      description: Tenant UUID
+      schema:
+        type: string
+        format: uuid
+
+paths:
+  # List system users
+  /system-users:
+    get:
+      operationId: listSystemUsers
+      tags: [Users]
+      summary: List system users
+      description: Lists users who have system-level role bindings
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+    post:
+      operationId: addSystemUsers
+      tags: [Users]
+      summary: Add users to system
+      description: Adds Keycloak users to the system by creating idp_user entries (if needed) and role bindings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './core_rbac.yaml#/components/schemas/RoleBindingBulkCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: './core_rbac.yaml#/components/schemas/RoleBindingList'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+
+  # System user management
+  /system-users/{userId}:
+    delete:
+      operationId: deleteSystemUser
+      tags: [Users]
+      summary: Delete system user
+      description: Removes a user from the system by deleting their system-level role bindings
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '204':
+          description: No Content
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /system-users/{userId}/role:
+    put:
+      operationId: updateSystemUserRole
+      tags: [Users]
+      summary: Update system user role
+      description: Updates a user's role within the system
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './core_rbac.yaml#/components/schemas/RoleBinding'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # List tenant users
+  /tenants/{tenantId}/users:
+    get:
+      operationId: listTenantUsers
+      tags: [Users]
+      summary: List tenant users
+      description: Lists users who have tenant-level role bindings for the specified tenant
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      operationId: addTenantUsers
+      tags: [Users]
+      summary: Add users to tenant
+      description: Adds Keycloak users to a tenant by creating idp_user entries (if needed) and role bindings
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './core_rbac.yaml#/components/schemas/RoleBindingBulkCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: './core_rbac.yaml#/components/schemas/RoleBindingList'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      operationId: deleteTenantUser
+      tags: [Users]
+      summary: Delete tenant user
+      description: Removes a user from a tenant by deleting their tenant-level role bindings
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '204':
+          description: No Content
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      operationId: updateTenantUserRole
+      tags: [Users]
+      summary: Update tenant user role
+      description: Updates a user's role within a tenant
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './core_rbac.yaml#/components/schemas/RoleBinding'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # List IDP users
+  /idp/{idpId}/users:
+    get:
+      operationId: listIdpUsers
+      tags: [Users]
+      summary: List IDP users
+      description: Lists all users from a specific OIDC identity provider (Keycloak). These users are NOT stored in the database yet - this is a discovery endpoint.
+      parameters:
+        - $ref: '#/components/parameters/idpId'
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcUserList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
