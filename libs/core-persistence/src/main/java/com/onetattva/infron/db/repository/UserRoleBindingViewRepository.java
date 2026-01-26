@@ -1,6 +1,8 @@
 package com.onetattva.infron.db.repository;
 
 import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +37,23 @@ public interface UserRoleBindingViewRepository extends JpaRepository<UserRoleBin
      */
     @Query("SELECT u FROM UserRoleBindingViewEntity u WHERE u.scopeType = :scopeType AND u.scopeId = :scopeId")
     List<UserRoleBindingViewEntity> findByScope(@Param("scopeType") String scopeType, @Param("scopeId") UUID scopeId);
+
+    /**
+     * Find user role bindings by scope type and scope id with pagination
+     */
+    @Query("SELECT u FROM UserRoleBindingViewEntity u WHERE u.scopeType = :scopeType AND u.scopeId = :scopeId")
+    Page<UserRoleBindingViewEntity> findByScopeTypeAndScopeId(
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") UUID scopeId,
+            Pageable pageable);
+
+    /**
+     * Find user role bindings by scope type, scope id, and username/email with pagination
+     */
+    @Query("SELECT u FROM UserRoleBindingViewEntity u WHERE u.scopeType = :scopeType AND u.scopeId = :scopeId AND (LOWER(u.username) LIKE LOWER(:query) OR LOWER(u.email) LIKE LOWER(:query))")
+    Page<UserRoleBindingViewEntity> findByScopeTypeAndScopeIdAndUsernameOrEmail(
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") UUID scopeId,
+            @Param("query") String query,
+            Pageable pageable);
 }

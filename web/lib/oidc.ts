@@ -33,3 +33,18 @@ export function getUserManager(): UserManager | null {
 
   return _manager;
 }
+
+/**
+ * Clear the current user session
+ * Removes the user from storage and clears the session
+ */
+export async function clearUserSession(): Promise<void> {
+  const manager = getUserManager();
+  if (manager) {
+    try {
+      await manager.removeUser();
+    } catch (error) {
+      console.error('Error clearing user session:', error);
+    }
+  }
+}

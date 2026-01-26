@@ -321,6 +321,8 @@ paths:
           $ref: './commons.yaml#/components/responses/Forbidden'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/users/{userId}:
     delete:
       operationId: deleteTenantUser
       tags: [Users]

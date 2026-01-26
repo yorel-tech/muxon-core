@@ -3,7 +3,20 @@
  * Automatically adds Bearer token from OIDC session to all requests
  */
 
-import { getUserManager } from './oidc';
+import { getUserManager, clearUserSession } from './oidc';
+
+// Global auth state for components to check
+let authCheckPromise: Promise<void> | null = null;
+
+/**
+ * Trigger auth check across all components after session changes
+ */
+export function triggerAuthCheck() {
+  // Dispatch a custom event to notify all components to re-check auth
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('infron:auth-changed'));
+  }
+}
 
 export interface ApiRequestOptions extends RequestInit {
   /**
@@ -116,6 +129,15 @@ export async function apiRequest<T = any>(
 
   // Handle non-OK responses
   if (!response.ok) {
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      // Clear the user session and redirect to home page
+      await clearUserSession();
+      window.location.href = '/';
+      // Throw to prevent further processing
+      throw new Error('Authentication expired. Redirecting to login...');
+    }
+    
     const errorText = await response.text();
     throw new Error(
       `API request failed: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`

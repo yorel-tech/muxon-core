@@ -2,8 +2,9 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { forwardRef, useState } from 'react';
-import { Bell, Search, Menu, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Bell, Search, Menu, User, LogOut, Settings, ChevronDown, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 export interface HeaderProps {
   user?: {
@@ -20,10 +21,11 @@ export interface HeaderProps {
 }
 
 export const Header = forwardRef<HTMLDivElement, HeaderProps>(
-  ({ user, notifications = 0, onSearch, onMenuClick, onSettingsClick, onLogout, className = '' }: HeaderProps, ref,
+  ({ notifications = 0, onSearch, onMenuClick, onSettingsClick, className = '' }: HeaderProps, ref,
 ) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, checkAuth } = useAuth();
 
   return (
     <header
@@ -96,20 +98,31 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
           </button>
 
           {/* User */}
-          <button className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 transition-colors">
-            {user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }}>
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <ChevronDown size={16} className="text-gray-400" />
-          </button>
+          {isAuthenticated ? (
+            <button className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 transition-colors">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <ChevronDown size={16} className="text-gray-400" />
+            </button>
+          ) : (
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              aria-label="Sign in"
+            >
+              <LogIn size={20} className="text-gray-600" />
+              <span className="ml-2 hidden sm:inline">Sign In</span>
+            </button>
+          )}
 
           {/* Actions */}
           <div className="border-l border-gray-200 pl-4">
@@ -120,14 +133,16 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
             >
               <Settings size={20} className="text-gray-600" />
             </button>
-            <button
-              onClick={onLogout}
-              className="p-2 rounded-md hover:bg-red-50 hover:bg-red-100 transition-colors text-error-600"
-              aria-label="Sign out"
-            >
-              <LogOut size={20} />
-              <span className="ml-2 hidden sm:inline">Sign Out</span>
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={onLogout}
+                className="p-2 rounded-md hover:bg-red-50 hover:bg-red-100 transition-colors text-error-600"
+                aria-label="Sign out"
+              >
+                <LogOut size={20} />
+                <span className="ml-2 hidden sm:inline">Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -9,6 +9,10 @@ public enum Permission {
     // System-level permissions
     SYSTEM_SETTINGS("system:settings", "Update system settings", Scope.SYSTEM),
 
+    SYSTEM_USER_READ("system:user:read", "Read system user", Scope.SYSTEM),
+    SYSTEM_USER_EDIT("system:user:edit", "Edit system user", Scope.SYSTEM),
+    SYSTEM_USER_MANAGE("system:user:manage", "Manage system user", Scope.SYSTEM),
+
     PROVIDER_READ("provider:read", "Read provider", Scope.SYSTEM),
     PROVIDER_EDIT("provider:edit", "Edit provider", Scope.SYSTEM),
     PROVIDER_MANAGE("provider:manage", "Manage provider", Scope.SYSTEM),
