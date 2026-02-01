@@ -1,0 +1,395 @@
+openapi: 3.0.3
+info:
+  title: Infron Providers API
+  version: 2025-11-03
+  description: Infrastructure provider management API for Proxmox, Libvirt, Kubernetes, etc.
+
+components:
+  parameters:
+    providerId:
+      name: providerId
+      in: path
+      required: true
+      description: Provider UUID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Provider:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            type:
+              $ref: '#/components/schemas/ProviderType'
+            endpoint:
+              type: string
+              format: uri
+              example: "https://proxmox.example.com:8006/api2/json"
+            status:
+              $ref: '#/components/schemas/ProviderStatus'
+            capabilities:
+              $ref: '#/components/schemas/ProviderCapabilities'
+
+    ProviderCreate:
+      type: object
+      required:
+        - name
+        - type
+        - endpoint
+        - credentials
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: '#/components/schemas/ProviderType'
+        endpoint:
+          type: string
+          format: uri
+          description: >
+            Provider API endpoint URL. For Libvirt SSH providers, this should be
+            SSH connection string (e.g., "ssh://user@host:port")
+        credentials:
+          type: object
+          additionalProperties:
+            type: string
+          description: >
+            Provider-specific credentials (encrypted at rest). Structure depends on provider type:
+            - **PROXMOX**: username, password, realm (optional)
+            - **LIBVIRT**: sshPrivateKey, sshPassphrase (optional), sshPort (optional, default: 22)
+            - **KUBERNETES**: kubeconfig, token, clientCertificate, clientKey
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+
+    ProviderUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        endpoint:
+          type: string
+          format: uri
+        credentials:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+
+    ProviderList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+
+    ProviderType:
+      type: string
+      enum: [PROXMOX, LIBVIRT, KUBERNETES]
+
+    ProviderStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, ERROR, CONNECTING, DISCONNECTED]
+
+    ProviderCapabilities:
+      type: object
+      properties:
+        supportedCpuTypes:
+          type: array
+          items:
+            type: string
+        supportedStorageClasses:
+          type: array
+          items:
+            type: string
+        supportedNetworkTypes:
+          type: array
+          items:
+            type: string
+        supportedOsTypes:
+          type: array
+          items:
+            type: string
+        resourceLimits:
+          $ref: './commons.yaml#/components/schemas/ResourceLimits'
+        features:
+          type: object
+          additionalProperties:
+            type: string
+
+    ProviderConnectionTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/ProviderStatus'
+        message:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/ProviderCapabilities'
+        latencyMs:
+          type: integer
+
+paths:
+  /providers:
+    get:
+      tags: [Providers]
+      summary: List providers
+      operationId: listProviders
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProviderType'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProviderStatus'
+      responses:
+        '200':
+          description: Paginated provider list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Providers]
+      summary: Create provider
+      operationId: createProvider
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderCreate'
+      responses:
+        '201':
+          description: Created provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /providers/{providerId}:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    get:
+      tags: [Providers]
+      summary: Get provider
+      operationId: getProvider
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Providers]
+      summary: Replace provider
+      operationId: replaceProvider
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderUpdate'
+      responses:
+        '200':
+          description: Updated provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    patch:
+      tags: [Providers]
+      summary: Partially update provider
+      operationId: updateProvider
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderUpdate'
+      responses:
+        '200':
+          description: Updated provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Providers]
+      summary: Delete provider
+      operationId: deleteProvider
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          description: Provider has active VMs or datacenters
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+
+  /providers/{providerId}/test:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    post:
+      tags: [Providers]
+      summary: Test provider connection
+      operationId: testProviderConnection
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConnectionTestResult'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /providers/{providerId}/capabilities:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    get:
+      tags: [Providers]
+      summary: Get provider capabilities
+      operationId: getProviderCapabilities
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: refresh
+          in: query
+          description: Force refresh from provider
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Provider capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCapabilities'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '503':
+          description: Provider not reachable
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Error'
+
+  /providers/{providerId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    get:
+      tags: [Metadata]
+      summary: Get provider metadata
+      operationId: getProviderMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provider metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Metadata]
+      summary: Update provider metadata
+      operationId: updateProviderMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+      responses:
+        '200':
+          description: Updated metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

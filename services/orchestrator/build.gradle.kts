@@ -6,6 +6,7 @@ dependencies {
     implementation(libs.quarkus.kafka.client)
     implementation(libs.quarkus.opentelemetry)
     implementation(libs.quarkus.arc)
+    implementation(project(":libs:core-api"))
     implementation(project(":libs:core-persistence"))
     implementation(project(":libs:core-spi"))
     implementation(project(":libs:core-provider"))

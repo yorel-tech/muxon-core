@@ -15,36 +15,38 @@ servers:
   - url: /api/v1
 
 tags:
-  - name: Datacenters
-    description: Provider datacenter/capacity and settings management
-  - name: TenantDatacenters
-    description: Tenant access grants, per-datacenter quota & feature binding
-  - name: Tenants
-    description: Tenant / Organization lifecycle operations
-  - name: NodeClusters
-    description: Node cluster grouping and management
-  - name: Nodes
-    description: Individual infrastructure node management
-  - name: Health
-    description: Health endpoints
-  - name: Roles
-    description: Role operations for platform and tenant admins
-  - name: Permissions
-    description: Permissions endpoints
-  - name: Bindings
-    description: Role Bindings endpoints
-  - name: VMs
-    description: Virtual machine management operations
-  - name: ComputeProfiles
-    description: Compute profile (VM spec template) management
-  - name: System Settings
-    description: System and tenant settings management
-  - name: Tenant Settings
-    description: Tenant settings management
-  - name: VM Management
-    description: VM lifecycle management operations
-  - name: Users
-    description: User management operations
+- name: Datacenters
+  description: Provider datacenter/capacity and settings management
+- name: TenantDatacenters
+  description: Tenant access grants, per-datacenter quota & feature binding
+- name: Tenants
+  description: Tenant / Organization lifecycle operations
+- name: NodeClusters
+  description: Node cluster grouping and management
+- name: Nodes
+  description: Individual infrastructure node management
+- name: Health
+  description: Health endpoints
+- name: Roles
+  description: Role operations for platform and tenant admins
+- name: Permissions
+  description: Permissions endpoints
+- name: Bindings
+  description: Role Bindings endpoints
+- name: Providers
+  description: Infrastructure provider management
+- name: VMs
+  description: Virtual machine management operations
+- name: ComputeProfiles
+  description: Compute profile (VM spec template) management
+- name: System Settings
+  description: System and tenant settings management
+- name: Tenant Settings
+  description: Tenant settings management
+- name: VM Management
+  description: VM lifecycle management operations
+- name: Users
+  description: User management operations
 
 components:
   schemas:
@@ -226,6 +228,18 @@ paths:
     $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1notifications'
   /api/v1/tenants/{tenantId}/settings/appearance:
     $ref: './system_settings.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1settings~1appearance'
+
+  # Providers
+  /api/v1/providers:
+    $ref: './providers.yaml#/paths/~1providers'
+  /api/v1/providers/{providerId}:
+    $ref: './providers.yaml#/paths/~1providers~1{providerId}'
+  /api/v1/providers/{providerId}/test:
+    $ref: './providers.yaml#/paths/~1providers~1{providerId}~1test'
+  /api/v1/providers/{providerId}/capabilities:
+    $ref: './providers.yaml#/paths/~1providers~1{providerId}~1capabilities'
+  /api/v1/providers/{providerId}/metadata:
+    $ref: './providers.yaml#/paths/~1providers~1{providerId}~1metadata'
 
   # Users
   /api/v1/system-users:

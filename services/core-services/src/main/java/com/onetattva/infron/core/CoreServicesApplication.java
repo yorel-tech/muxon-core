@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         "com.onetattva.infron.core.services",
         "com.onetattva.infron.core.auth",
         "com.onetattva.infron.core.web",
+        "com.onetattva.infron.core.providers",
         "com.onetattva.infron.db.repository"})
 @EnableJpaRepositories(basePackages = {"com.onetattva.infron.db.repository"})
 @EntityScan(basePackages = {"com.onetattva.infron.db.model"})

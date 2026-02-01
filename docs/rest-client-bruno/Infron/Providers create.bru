@@ -1,0 +1,27 @@
+meta {
+  name: Providers create
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{url}}/tenants
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "displayName": "ACME Corporation",
+    "metadata": {
+      "additionalProp1": "string1",
+      "additionalProp2": "string2"
+    },
+    "name": "acme-corp"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

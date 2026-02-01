@@ -2,11 +2,11 @@ package com.onetattva.infron.core.orch;
 
 import com.onetattva.infron.core.providers.VmProvider;
 import com.onetattva.infron.core.providers.VmProviderRegistry;
-import com.onetattva.infron.db.enums.EntityType;
-import com.onetattva.infron.db.enums.QueueCategory;
-import com.onetattva.infron.db.enums.QueueStatus;
-import com.onetattva.infron.db.enums.VmPowerState;
-import com.onetattva.infron.db.enums.VmStatus;
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueCategory;
+import com.onetattva.infron.api.enums.QueueStatus;
+import com.onetattva.infron.api.enums.VmPowerState;
+import com.onetattva.infron.api.enums.VmStatus;
 import com.onetattva.infron.db.model.*;
 import com.onetattva.infron.db.repository.VmRepository;
 import com.onetattva.infron.db.repository.QueueEntryRepository;

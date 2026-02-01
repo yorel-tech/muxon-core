@@ -68,4 +68,9 @@ public interface VmRepository extends JpaRepository<VmEntity, UUID> {
      * Count VMs by tenant datacenter grant
      */
     long countByTenantDatacenterGrantId(UUID tenantDatacenterGrantId);
+
+    /**
+     * Count VMs by provider
+     */
+    long countByProviderId(UUID providerId);
 }
