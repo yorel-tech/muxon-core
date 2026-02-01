@@ -80,12 +80,6 @@ public class UserRoleBindingViewEntity {
     @Column(name = "role_description")
     private String roleDescription;
 
-    @Column(name = "role_scope_type")
-    private String roleScopeType;
-
-    @Column(name = "role_scope_id")
-    private UUID roleScopeId;
-
     // Constructors
     public UserRoleBindingViewEntity() {
     }
@@ -242,28 +236,12 @@ public class UserRoleBindingViewEntity {
     public void setRoleName(String roleName) {
         this.roleName = roleName;
     }
+public String getRoleDescription() {
+    return roleDescription;
+}
 
-    public String getRoleDescription() {
-        return roleDescription;
-    }
+public void setRoleDescription(String roleDescription) {
+    this.roleDescription = roleDescription;
+}
 
-    public void setRoleDescription(String roleDescription) {
-        this.roleDescription = roleDescription;
-    }
-
-    public String getRoleScopeType() {
-        return roleScopeType;
-    }
-
-    public void setRoleScopeType(String roleScopeType) {
-        this.roleScopeType = roleScopeType;
-    }
-
-    public UUID getRoleScopeId() {
-        return roleScopeId;
-    }
-
-    public void setRoleScopeId(UUID roleScopeId) {
-        this.roleScopeId = roleScopeId;
-    }
 }

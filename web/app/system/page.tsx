@@ -21,7 +21,7 @@ import {
   Loader2,
   Cloud
 } from 'lucide-react';
-import { apiGet } from '@/lib/api';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface SetupStep {
   id: string;
@@ -41,13 +41,32 @@ interface BootstrapStatusDto {
   clientId: string;
   clientSecret: string;
   realm: string;
+  name?: string;
 }
 
-interface SystemUserConfig {
-  username: string;
+interface IdpServer {
+  id: string;
+  name: string;
+  protocol?: string;
+  enabled: boolean;
+  isSystem: boolean;
+}
+
+interface IdpUser {
+  sub: string;
+  preferredUsername: string;
+  preferred_username?: string; // API returns snake_case, but we'll map to camelCase
   email: string;
-  firstName: string;
-  lastName: string;
+  name?: string;
+}
+
+interface RoleBindingCreateItem {
+  roleId: string;
+  subjectType: 'user' | 'group' | 'service_account';
+  subjectId: string;
+  scopeType: 'system' | 'tenant' | 'tenant_global';
+  scopeId?: string;
+  expiresAt?: string;
 }
 
 export default function SystemDashboardPage() {
@@ -61,8 +80,8 @@ export default function SystemDashboardPage() {
     },
     {
       id: 'system-users',
-      title: 'Create System Users',
-      description: 'Add system user accounts with appropriate roles to manage your Infron installation.',
+      title: 'Add System Users',
+      description: 'Select users from your configured Identity Provider to add as system users.',
       icon: <Users className="h-6 w-6" />,
       completed: false,
     },
@@ -94,8 +113,16 @@ export default function SystemDashboardPage() {
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatusDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [idpConfig, setIdpConfig] = useState<IdpConfig | null>(null);
-  const [systemUserConfig, setSystemUserConfig] = useState<SystemUserConfig | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<IdpUser[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [existingSystemUserIds, setExistingSystemUserIds] = useState<Set<string>>(new Set());
+  const [selectedIdp, setSelectedIdp] = useState<string>(''); // ID of selected IDP
+  const [idpServers, setIdpServers] = useState<IdpServer[]>([]); // List of available IDP servers
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isFetchingConfig, setIsFetchingConfig] = useState(false);
+  const [isFetchingIdpServers, setIsFetchingIdpServers] = useState(false);
+  const DEFAULT_IDP_ID = '62083d54-cb8c-521f-9374-65e9f21c8991';
+  const SYSTEM_ADMIN_ROLE_ID = 'system:admin';
 
   // Derived state from bootstrapStatus
   const isBootstrapped = bootstrapStatus?.systemStatus === 'BOOTSTRAPPED' || bootstrapStatus?.systemStatus === 'READY';
@@ -108,7 +135,7 @@ export default function SystemDashboardPage() {
   // Action text constants to avoid JSX parsing issues with curly braces
   const idpActionText = isBootstrapped ? 'Edit' : 'Set up';
   const providerActionText = isBootstrapped ? 'Add' : 'Connect';
-  const systemUsersActionText = isBootstrapped ? 'Edit' : 'Create';
+  const systemUsersActionText = isBootstrapped ? 'Edit' : 'Add';
 
   // Check bootstrap status on mount
   useEffect(() => {
@@ -133,6 +160,25 @@ export default function SystemDashboardPage() {
     }
   }, [bootstrapStatus]);
 
+  // Fetch IDP servers when bootstrapped
+  useEffect(() => {
+    if (isBootstrapped) {
+      fetchIdpServers();
+    }
+  }, [isBootstrapped]);
+
+  // Fetch IDP users when system-users wizard is opened
+  useEffect(() => {
+    if (activeWizard === 'system-users' && isBootstrapped) {
+      // Fetch existing system users to mark them as selected
+      fetchExistingSystemUsers();
+      // Fetch IDP users for the selected IDP
+      if (selectedIdp) {
+        fetchIdpUsers();
+      }
+    }
+  }, [activeWizard, isBootstrapped, selectedIdp]);
+
   const fetchBootstrapStatus = async () => {
     try {
       const status: BootstrapStatusDto = await apiGet('/api/v1/status');
@@ -142,6 +188,32 @@ export default function SystemDashboardPage() {
       setBootstrapStatus({ systemStatus: 'NOTREADY' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchIdpServers = async () => {
+    setIsFetchingIdpServers(true);
+    try {
+      // Fetch IDP settings to get the configured IDP
+      const idpData = await apiGet('/api/v1/system-settings/idp');
+      if (idpData && idpData.name) {
+        // Create IDP server entry from the configured IDP
+        const idpServer: IdpServer = {
+          id: DEFAULT_IDP_ID,
+          name: idpData.name,
+          protocol: idpData.type || 'OIDC',
+          enabled: idpData.enabled || false,
+          isSystem: true,
+        };
+        setIdpServers([idpServer]);
+        // Set the IDP as selected
+        setSelectedIdp(DEFAULT_IDP_ID);
+      }
+    } catch (error) {
+      console.error('Error fetching IDP servers:', error);
+      setIdpServers([]);
+    } finally {
+      setIsFetchingIdpServers(false);
     }
   };
 
@@ -156,23 +228,91 @@ export default function SystemDashboardPage() {
         clientId: idpData.clientId || '',
         clientSecret: idpData.clientSecret || '',
         realm: idpData.realm || '',
+        name: idpData.name,
       });
 
-      // Fetch system user configuration
+      // Set selected IDP from config (use the IDP ID)
+      if (idpData.name) {
+        setSelectedIdp(DEFAULT_IDP_ID);
+      }
+
+      // Fetch existing system users
       const usersData = await apiGet('/api/v1/system-users');
-      if (usersData && usersData.length > 0) {
-        const firstUser = usersData[0];
-        setSystemUserConfig({
-          username: firstUser.username || '',
-          email: firstUser.email || '',
-          firstName: firstUser.firstName || '',
-          lastName: firstUser.lastName || '',
-        });
+      const users = usersData.items || [];
+      if (users.length > 0) {
+        const existingUserIds = users.map((u: any) => u.external_id);
+        setSelectedUserIds(new Set(existingUserIds));
       }
     } catch (error) {
       console.error('Error fetching existing configurations:', error);
     } finally {
       setIsFetchingConfig(false);
+    }
+  };
+
+  const fetchExistingSystemUsers = async () => {
+    try {
+      // Fetch existing system users to mark them as selected
+      const usersData = await apiGet('/api/v1/system-users');
+      const users = usersData.items || [];
+      if (users.length > 0) {
+        const existingUserIds = users.map((u: any) => u.external_id);
+        setExistingSystemUserIds(new Set(existingUserIds));
+        setSelectedUserIds(new Set(existingUserIds));
+      } else {
+        setExistingSystemUserIds(new Set());
+        setSelectedUserIds(new Set());
+      }
+    } catch (error) {
+      console.error('Error fetching existing system users:', error);
+    }
+  };
+
+  const fetchIdpUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Use the selected IDP's ID to fetch users
+      const data = await apiGet(`/api/v1/idp/${selectedIdp}/users`);
+      // Handle both array and wrapped response formats
+      // API returns OidcUserList with 'items' property
+      const users = Array.isArray(data) ? data : (data.items || []);
+      // Map snake_case properties to camelCase if needed
+      const mappedUsers = users.map((user: any) => ({
+        sub: user.sub,
+        preferredUsername: user.preferredUsername || user.preferred_username,
+        email: user.email,
+        name: user.name,
+      }));
+      setAvailableUsers(mappedUsers);
+    } catch (error) {
+      console.error('Error fetching IDP users:', error);
+      setAvailableUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    // Prevent deselecting existing system users
+    if (existingSystemUserIds.has(userId)) {
+      return; // Cannot deselect already added system users
+    }
+    setSelectedUserIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleIdpChange = (idpId: string) => {
+    setSelectedIdp(idpId);
+    // Fetch users for the selected IDP
+    if (idpId) {
+      fetchIdpUsers();
     }
   };
 
@@ -185,14 +325,28 @@ export default function SystemDashboardPage() {
   };
 
   const handleSkipToDashboard = () => {
-    window.location.href = '/dashboard/system';
+    window.location.href = '/system/dashboard';
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (activeWizard === 'system-users') {
+        // Only save newly selected users (not existing system users)
+        const newUserIds = Array.from(selectedUserIds).filter(id => !existingSystemUserIds.has(id));
+        const bindings: RoleBindingCreateItem[] = newUserIds.map(subjectId => ({
+          roleId: SYSTEM_ADMIN_ROLE_ID,
+          subjectType: 'user',
+          subjectId: subjectId,
+          scopeType: 'system',
+        }));
+        if (bindings.length > 0) {
+          await apiPost('/api/v1/system-users', { bindings });
+        }
+      } else {
+        // Simulate API call for other steps
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
 
       // Mark step as completed
       setSetupSteps(prev => prev.map(step =>
@@ -248,6 +402,11 @@ export default function SystemDashboardPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Configured IDP: {idpConfig?.name || 'None'}
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Issuer URL
               </label>
               <Input
@@ -294,52 +453,91 @@ export default function SystemDashboardPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+                Identity Provider
               </label>
-              <Input
-                type="text"
-                placeholder="admin"
-                defaultValue={systemUserConfig?.username || ''}
-              />
+              <select
+                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={selectedIdp}
+                onChange={(e) => handleIdpChange(e.target.value)}
+                disabled={isFetchingIdpServers || idpServers.length === 0}
+              >
+                {isFetchingIdpServers ? (
+                  <option value="" disabled>Loading...</option>
+                ) : idpServers.length === 0 ? (
+                  <option value="" disabled>No IDP configured</option>
+                ) : (
+                  idpServers.map((idp) => (
+                    <option key={idp.id} value={idp.id}>
+                      {idp.name} {idp.protocol ? ` (${idp.protocol})` : ''}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <Input
-                type="email"
-                placeholder="admin@infron.com"
-                defaultValue={systemUserConfig?.email || ''}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <Input
-                type="password"
-                placeholder={systemUserConfig ? "••••••••••••••" : "Enter new password"}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                First Name
-              </label>
-              <Input
-                type="text"
-                placeholder="System"
-                defaultValue={systemUserConfig?.firstName || ''}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Last Name
-              </label>
-              <Input
-                type="text"
-                placeholder="Administrator"
-                defaultValue={systemUserConfig?.lastName || ''}
-              />
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Available Users
+                </label>
+                <span className="text-sm text-gray-500">
+                  Selected: {selectedUserIds.size} user(s)
+                </span>
+              </div>
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : !selectedIdp ? (
+                <div className="text-center py-8 text-gray-500">
+                  Please select an Identity Provider first.
+                </div>
+              ) : availableUsers.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No users found. Make sure your Identity Provider is configured correctly.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {availableUsers.map(user => {
+                    const isExisting = existingSystemUserIds.has(user.sub);
+                    const isSelected = selectedUserIds.has(user.sub);
+                    return (
+                      <div
+                        key={user.sub}
+                        onClick={() => toggleUserSelection(user.sub)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-white border-gray-200 hover:border-primary-300'
+                        } ${isExisting ? 'cursor-default' : ''}`}
+                      >
+                        <div className="flex-shrink-0">
+                          {isSelected ? (
+                            <CheckCircle2 className={`h-5 w-5 ${isExisting ? 'text-green-600' : 'text-green-600'}`} />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-gray-300 rounded" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900">
+                            {user.name || user.preferredUsername}
+                          </div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </div>
+                        {isExisting ? (
+                          <span className="text-xs font-medium bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                            Added
+                          </span>
+                        ) : isSelected ? (
+                          <span className="text-xs font-medium bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                            Selected
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -401,39 +599,23 @@ export default function SystemDashboardPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Datacenter Type
+                Datacenter Name *
+              </label>
+              <Input
+                type="text"
+                placeholder="Main Production Datacenter"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider Type *
               </label>
               <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                <option value="proxmox">Proxmox</option>
-                <option value="libvirt">Libvirt</option>
+                <option value="kvm">KVM</option>
+                <option value="vcenter">vCenter</option>
+                <option value="k8s">Kubernetes</option>
+                <option value="mixed">Mixed</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hostname / IP
-              </label>
-              <Input
-                type="text"
-                placeholder="192.168.1.100"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
-              <Input
-                type="text"
-                placeholder="root"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <Input
-                type="password"
-                placeholder="•••••••••••••"
-              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -441,8 +623,58 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="text"
-                placeholder="Main production datacenter"
+                placeholder="Main production datacenter for VM workloads"
               />
+            </div>
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Datacenter Settings (Optional)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CPU Overcommit Ratio
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="4.0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Memory Overcommit Ratio
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="1.5"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VM Classes (comma-separated)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="small,medium,large"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Storage Classes (comma-separated)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="gold,silver,bronze"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Network Domains (comma-separated)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="private,public"
+                />
+              </div>
             </div>
           </div>
         );
@@ -531,7 +763,7 @@ export default function SystemDashboardPage() {
             <Button
               variant="secondary"
               onClick={handleSkipToDashboard}
-              disabled={!isReady}
+              disabled={!setupSteps.find(s => s.id === 'idp')?.completed || !setupSteps.find(s => s.id === 'system-users')?.completed}
               className="flex items-center gap-2"
             >
               Skip to Dashboard
@@ -578,19 +810,16 @@ export default function SystemDashboardPage() {
                     whileTap={{ scale: 0.99 }}
                   >
                     <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${getIconColorClass(step)}`}>
-                      {step.completed ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        step.icon
-                      )}
+                      {step.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold ${getTextColorClass(step)}`}>
                         {step.title}
                       </h3>
                       {step.completed && (
-                        <span className="text-xs font-medium bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-medium bg-green-100 text-green-600 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                           Complete
+                          <CheckCircle2 className="h-3 w-3" />
                         </span>
                       )}
                       <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">
@@ -654,7 +883,7 @@ export default function SystemDashboardPage() {
                 >
                   <span className="font-medium">{systemUsersActionText}</span>
                   <span className="text-sm text-gray-500">
-                    {systemUsersActionText}
+                    {systemUsersActionText} system users
                   </span>
                 </Button>
                 <Button
@@ -786,7 +1015,7 @@ export default function SystemDashboardPage() {
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={isSaving}
+                    disabled={isSaving || Array.from(selectedUserIds).filter(id => !existingSystemUserIds.has(id)).length === 0}
                   >
                     {isSaving ? (
                       <>

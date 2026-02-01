@@ -8,6 +8,8 @@ import com.onetattva.infron.api.model.RoleBindingList;
 import com.onetattva.infron.api.model.RoleUpdateRequest;
 import com.onetattva.infron.api.model.User;
 import com.onetattva.infron.api.model.UserList;
+import com.onetattva.infron.core.common.Constants;
+import com.onetattva.infron.core.common.EncryptionUtil;
 import com.onetattva.infron.core.services.model.OidcUserInfo;
 import com.onetattva.infron.db.model.IdentityProviderEntity;
 import com.onetattva.infron.db.model.IdpUserEntity;
@@ -78,10 +80,10 @@ public class UsersService {
             // Search by username or email
             String searchPattern = "%" + query.toLowerCase() + "%";
             resultPage = userRoleBindingViewRepository.findByScopeTypeAndScopeIdAndUsernameOrEmail(
-                "SYSTEM", null, searchPattern, pageable);
+                "SYSTEM", UUID.fromString(Constants.SYSTEM_ID), searchPattern, pageable);
         } else {
             resultPage = userRoleBindingViewRepository.findByScopeTypeAndScopeId(
-                "SYSTEM", null, pageable);
+                "SYSTEM", UUID.fromString(Constants.SYSTEM_ID), pageable);
         }
 
         UserList response = new UserList();
@@ -140,8 +142,11 @@ public class UsersService {
             throw new RuntimeException("Identity provider credentials not configured for user lookup");
         }
 
+        // Decrypt client secret before using it
+        String decryptedClientSecret = EncryptionUtil.decrypt(oidcMetadata.getClientSecret());
+
         List<OidcUserInfo> oidcUsers = oidcUserService.getUsers(
-                oidcMetadata.getIssuerUri(), oidcMetadata.getClientId(), oidcMetadata.getClientSecret());
+                oidcMetadata.getIssuerUri(), oidcMetadata.getClientId(), decryptedClientSecret);
 
         // Filter by query if provided
         List<OidcUserInfo> filteredUsers;
@@ -346,7 +351,7 @@ public class UsersService {
         // Check if idp_user already exists
         List<IdpUserEntity> existingUsers = idpUserRepository.findAll().stream()
                 .filter(u -> externalId.equals(u.getExternalId()))
-                .collect(Collectors.toList());
+                .toList();
 
         if (!existingUsers.isEmpty()) {
             // User already exists, no need to create
@@ -370,9 +375,12 @@ public class UsersService {
             throw new RuntimeException("Identity provider credentials not configured for user lookup");
         }
 
+        // Decrypt client secret before using it
+        String decryptedClientSecret = EncryptionUtil.decrypt(oidcMetadata.getClientSecret());
+
         // Fetch user info from Keycloak to populate the idp_user entry
         OidcUserInfo userInfo = oidcUserService.getUserByExternalId(
-                externalId, oidcMetadata.getIssuerUri(), oidcMetadata.getClientId(), oidcMetadata.getClientSecret());
+                externalId, oidcMetadata.getIssuerUri(), oidcMetadata.getClientId(), decryptedClientSecret);
 
         if (userInfo == null) {
             throw new RuntimeException("User not found in Keycloak: " + externalId);

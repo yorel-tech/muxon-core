@@ -7,11 +7,13 @@ import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.core.services.SystemSettingsService;
+import com.onetattva.infron.db.model.IdentityProviderEntity;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -83,6 +85,28 @@ public class SystemSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok(settingsService.updateSecuritySettings(UUID.fromString(Constants.SYSTEM_ID), settings));
     }
 
+    // ==================== Appearance Settings Endpoints ====================
+
+    @Override
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
+    public ResponseEntity<AppearanceSettings> getAppearanceSettings() {
+        return ResponseEntity.ok(settingsService.getAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID)));
+    }
+
+    @Override
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
+    public ResponseEntity<AppearanceSettings> updateAppearanceSettings(
+            @Valid @RequestBody AppearanceSettings settings) {
+        return ResponseEntity.ok(settingsService.updateAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID), settings));
+    }
+
+    @Override
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
+    public ResponseEntity<AppearanceSettings> patchAppearanceSettings(
+            @Valid @RequestBody AppearanceSettings settings) {
+        return ResponseEntity.ok(settingsService.updateAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID), settings));
+    }
+
     // ==================== Notification Settings Endpoints ====================
 
     @Override
@@ -147,120 +171,4 @@ public class SystemSettingsController implements SystemSettingsApi {
         return ResponseEntity.ok().build();
     }
 
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SchemasIdpSettings> getTenantIdpSettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getIdpSettings(tenantId));
-    }
-
-    // ==================== Appearance Settings Endpoints ====================
-
-    @Override
-    @RequiresPermission(Permission.SYSTEM_SETTINGS)
-    public ResponseEntity<AppearanceSettings> getAppearanceSettings() {
-        return ResponseEntity.ok(settingsService.getAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID)));
-    }
-
-    @Override
-    @RequiresPermission(Permission.SYSTEM_SETTINGS)
-    public ResponseEntity<AppearanceSettings> updateAppearanceSettings(
-            @Valid @RequestBody AppearanceSettings settings) {
-        return ResponseEntity.ok(settingsService.updateAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID), settings));
-    }
-
-    @Override
-    @RequiresPermission(Permission.SYSTEM_SETTINGS)
-    public ResponseEntity<AppearanceSettings> patchAppearanceSettings(
-            @Valid @RequestBody AppearanceSettings settings) {
-        return ResponseEntity.ok(settingsService.updateAppearanceSettings(UUID.fromString(Constants.SYSTEM_ID), settings));
-    }
-
-    // ==================== Tenant Settings Endpoints ====================
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SystemSettings> getTenantSettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getTenantSettings(tenantId));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SystemSettings> updateTenantSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody SystemSettings settings) {
-        return ResponseEntity.ok(settingsService.updateTenantSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<GeneralSettings> getTenantGeneralSettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getGeneralSettings(tenantId));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<GeneralSettings> updateTenantGeneralSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody GeneralSettings settings) {
-        return ResponseEntity.ok(settingsService.updateGeneralSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<GeneralSettings> patchTenantGeneralSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody GeneralSettings settings) {
-        return ResponseEntity.ok(settingsService.updateGeneralSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SecuritySettings> getTenantSecuritySettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getSecuritySettings(tenantId));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SecuritySettings> updateTenantSecuritySettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody SecuritySettings settings) {
-        return ResponseEntity.ok(settingsService.updateSecuritySettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SecuritySettings> patchTenantSecuritySettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody SecuritySettings settings) {
-        return ResponseEntity.ok(settingsService.updateSecuritySettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SchemasNotificationSettings> getTenantNotificationSettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getNotificationSettings(tenantId));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SchemasNotificationSettings> updateTenantNotificationSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody SchemasNotificationSettings settings) {
-        return ResponseEntity.ok(settingsService.updateNotificationSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<SchemasNotificationSettings> patchTenantNotificationSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody SchemasNotificationSettings settings) {
-        return ResponseEntity.ok(settingsService.updateNotificationSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<AppearanceSettings> getTenantAppearanceSettings(@PathVariable UUID tenantId) {
-        return ResponseEntity.ok(settingsService.getAppearanceSettings(tenantId));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<AppearanceSettings> updateTenantAppearanceSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody AppearanceSettings settings) {
-        return ResponseEntity.ok(settingsService.updateAppearanceSettings(tenantId, settings));
-    }
-
-    @RequiresPermission(Permission.TENANT_SETTINGS)
-    public ResponseEntity<AppearanceSettings> patchTenantAppearanceSettings(
-            @PathVariable UUID tenantId,
-            @Valid @RequestBody AppearanceSettings settings) {
-        return ResponseEntity.ok(settingsService.updateAppearanceSettings(tenantId, settings));
-    }
 }

@@ -7,6 +7,7 @@ import com.onetattva.infron.core.services.model.OidcUserInfo;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -116,12 +117,26 @@ public class OidcUserService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
         try {
-            JsonNode json = objectMapper.readTree(response.getBody());
-            return json.get("access_token").asText();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to parse token response", e);
+            ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
+            try {
+                JsonNode json = objectMapper.readTree(response.getBody());
+                return json.get("access_token").asText();
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to parse token response", e);
+            }
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new RuntimeException(
+                    "Failed to authenticate with Keycloak. Please verify that the client credentials (client_id and client_secret) are correctly configured in the identity provider settings. " +
+                    "The client should have 'Service Accounts Enabled' and appropriate roles assigned.", e);
+            } else if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new RuntimeException(
+                    "Keycloak token endpoint not found at: " + tokenUrl + ". Please verify the issuer URI is correct.", e);
+            } else {
+                throw new RuntimeException(
+                    "Failed to obtain access token from Keycloak. HTTP " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+            }
         }
     }
 

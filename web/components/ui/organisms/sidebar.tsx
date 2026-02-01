@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronLeft,
   LogOut,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -82,6 +83,12 @@ const systemUserItems: SidebarItem[] = [
     label: 'Settings',
     icon: <Settings size={20} />,
     href: '/settings',
+  },
+  {
+    id: 'swagger',
+    label: 'API Documentation',
+    icon: <BookOpen size={20} />,
+    href: '/swagger-ui',
   },
 ];
 

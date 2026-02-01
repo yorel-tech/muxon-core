@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,33 @@ public class GlobalExceptionHandler {
         body.put("path", request.getDescription(false).replace("uri=", ""));
 
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpClientErrorException.class)
+    public ResponseEntity<Object> handleHttpClientErrorException(HttpClientErrorException ex, WebRequest request) {
+        logger.debug("HTTP client exception occurred", ex);
+        
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        
+        // Map upstream HTTP errors to appropriate status codes
+        HttpStatus status;
+        if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            status = HttpStatus.BAD_GATEWAY;
+            body.put("error", "Bad Gateway - Upstream Authentication Failed");
+        } else if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+            status = HttpStatus.BAD_GATEWAY;
+            body.put("error", "Bad Gateway - Upstream Service Not Found");
+        } else {
+            status = HttpStatus.BAD_GATEWAY;
+            body.put("error", "Bad Gateway - Upstream Service Error");
+        }
+        
+        body.put("status", status.value());
+        body.put("message", ex.getMessage());
+        body.put("path", request.getDescription(false).replace("uri=", ""));
+
+        return new ResponseEntity<>(body, status);
     }
 
     @ExceptionHandler(RuntimeException.class)
