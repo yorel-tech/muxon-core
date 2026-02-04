@@ -7,6 +7,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   checkAuth: () => Promise<void>;
+  user?: {
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  userRole?: 'system' | 'tenant';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,6 +20,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<{ name: string; email: string; avatar?: string }>();
+  const [userRole, setUserRole] = useState<'system' | 'tenant'>('tenant');
 
   const checkAuth = async () => {
     setIsLoading(true);
@@ -21,13 +29,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const um = getUserManager();
       if (!um) {
         setIsAuthenticated(false);
+        setUser(undefined);
         return;
       }
-      const user = await um.getUser();
-      setIsAuthenticated(!!user);
+      const userData = await um.getUser();
+      if (userData) {
+        setIsAuthenticated(true);
+        setUser({
+          name: userData.profile.name || userData.profile.preferred_username || 'User',
+          email: userData.profile.email || '',
+          avatar: userData.profile.picture,
+        });
+        
+        // Extract roles from OIDC token
+        // Roles can be in different locations depending on IDP configuration
+        const roles = userData.profile.roles || userData.profile.realm_access?.roles || [];
+        
+        // Determine user role based on roles
+        // 'system:admin' maps to 'system', other roles map to 'tenant'
+        const hasSystemRole = roles.some((role: string) =>
+          role === 'system:admin' || role.startsWith('system:')
+        );
+        setUserRole(hasSystemRole ? 'system' : 'tenant');
+      } else {
+        setIsAuthenticated(false);
+        setUser(undefined);
+      }
     } catch (error) {
       console.error('Error checking auth:', error);
       setIsAuthenticated(false);
+      setUser(undefined);
     } finally {
       setIsLoading(false);
     }
@@ -38,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, checkAuth }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, checkAuth, user, userRole }}>
       {children}
     </AuthContext.Provider>
   );

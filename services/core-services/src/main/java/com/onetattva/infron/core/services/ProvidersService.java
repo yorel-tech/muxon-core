@@ -73,6 +73,17 @@ public class ProvidersService {
         // Save to database
         ProviderEntity savedEntity = providerRepository.save(entity);
 
+        // Discover and store capabilities
+        try {
+            Map<String, String> discoveredCapabilities = discoverCapabilities(savedEntity);
+            savedEntity.setCapabilities(discoveredCapabilities);
+            savedEntity = providerRepository.save(savedEntity);
+            logger.info("Discovered capabilities for provider {}: {}", savedEntity.getId(), discoveredCapabilities);
+        } catch (Exception e) {
+            logger.warn("Failed to discover capabilities for provider {}: {}", savedEntity.getId(), e.getMessage());
+            // Continue with provider creation even if capability discovery fails
+        }
+
         // Register with VmProviderRegistry
         vmProviderRegistry.registerProvider(new VmProviderAdapter(savedEntity));
 
@@ -293,15 +304,13 @@ public class ProvidersService {
         long startTime = System.currentTimeMillis();
 
         try {
-            // Get provider from registry and test connection
-            // Note: This is a simplified implementation
-            // Real implementation would use the actual VmProvider to test
-            
-            // Simulate connection test
-            Thread.sleep(100); // Simulate network latency
-            
+            // Discover fresh capabilities during connection test
+            Map<String, String> discoveredCapabilities = discoverCapabilities(entity);
+            entity.setCapabilities(discoveredCapabilities);
+            providerRepository.save(entity);
+
             long latency = System.currentTimeMillis() - startTime;
-            
+
             ProviderConnectionTestResult result = new ProviderConnectionTestResult();
             result.setSuccess(true);
             result.setStatus(ProviderStatus.ACTIVE);
@@ -457,29 +466,110 @@ public class ProvidersService {
      * Map entity capabilities to API model
      */
     private ProviderCapabilities mapEntityCapabilitiesToApi(Map<String, String> entityCapabilities) {
-        if (entityCapabilities == null) {
-            return new ProviderCapabilities();
-        }
-
-        ProviderCapabilities api = new ProviderCapabilities();
-        
         // Parse JSONB capabilities into typed object
         // This is a simplified implementation
         // Real implementation would properly deserialize the JSONB structure
-        api.setSupportedCpuTypes(List.of("kvm64", "host"));
-        api.setSupportedStorageClasses(List.of("local", "nfs"));
-        api.setSupportedNetworkTypes(List.of("bridge", "ovs"));
-        api.setSupportedOsTypes(List.of("linux", "windows"));
-        
-        // Parse resource limits
-        ResourceLimits limits = new ResourceLimits();
-        limits.setMaxCpus(1000);
-        limits.setMaxMemoryGb(409600);
-        limits.setMaxStorageGb(20000);
-        limits.setMaxVms(500);
-        api.setResourceLimits(limits);
-        
-        return api;
+        return ProviderCapabilities.builder()
+                .supportedCpuTypes(List.of("kvm64", "host"))
+                .supportedStorageClasses(List.of("local", "nfs"))
+                .supportedNetworkTypes(List.of("bridge", "ovs"))
+                .supportedOsTypes(List.of("linux", "windows"))
+                .resourceLimits(ResourceLimits.builder()
+                        .maxCpus(entityCapabilities != null && entityCapabilities.containsKey("maxCpus")
+                                ? Integer.parseInt(entityCapabilities.get("maxCpus")) : 1000)
+                        .maxMemoryGb(entityCapabilities != null && entityCapabilities.containsKey("maxMemoryGb")
+                                ? Integer.parseInt(entityCapabilities.get("maxMemoryGb")) : 409600)
+                        .maxStorageGb(entityCapabilities != null && entityCapabilities.containsKey("maxStorageGb")
+                                ? Integer.parseInt(entityCapabilities.get("maxStorageGb")) : 20000)
+                        .maxVms(entityCapabilities != null && entityCapabilities.containsKey("maxVms"))
+                                ? Integer.parseInt(entityCapabilities.get("maxVms")) : 500)
+                        .build())
+                .features(entityCapabilities != null ? new java.util.HashMap<>(entityCapabilities) : Map.of())
+                .build();
+    }
+
+    /**
+     * Discover capabilities from the actual provider implementation
+     */
+    private Map<String, String> discoverCapabilities(ProviderEntity entity) {
+        logger.debug("Discovering capabilities for provider: {}", entity.getId());
+
+        try {
+            // Try to get provider from registry
+            String providerId = entity.getId().toString();
+            java.util.Optional<com.onetattva.infron.core.providers.VmProvider> providerOpt = vmProviderRegistry.getProvider(providerId);
+
+            if (providerOpt.isEmpty()) {
+                logger.warn("Provider not found in registry: {}", providerId);
+                return getDefaultCapabilities();
+            }
+
+            // Get capabilities from provider
+            com.onetattva.infron.core.providers.ProviderCapabilities caps =
+                providerOpt.get().getCapabilities().join();
+
+            // Convert to Map<String, String> for storage
+            Map<String, String> capabilitiesMap = new java.util.HashMap<>();
+
+            // Store CPU types as comma-separated string
+            if (caps.supportedCpuTypes() != null && !caps.supportedCpuTypes().isEmpty()) {
+                capabilitiesMap.put("supportedCpuTypes", String.join(",", caps.supportedCpuTypes()));
+            }
+
+            // Store storage classes as comma-separated string
+            if (caps.supportedStorageClasses() != null && !caps.supportedStorageClasses().isEmpty()) {
+                capabilitiesMap.put("supportedStorageClasses", String.join(",", caps.supportedStorageClasses()));
+            }
+
+            // Store network types as comma-separated string
+            if (caps.supportedNetworkTypes() != null && !caps.supportedNetworkTypes().isEmpty()) {
+                capabilitiesMap.put("supportedNetworkTypes", String.join(",", caps.supportedNetworkTypes()));
+            }
+
+            // Store OS types as comma-separated string
+            if (caps.supportedOsTypes() != null && !caps.supportedOsTypes().isEmpty()) {
+                capabilitiesMap.put("supportedOsTypes", String.join(",", caps.supportedOsTypes()));
+            }
+
+            // Store resource limits
+            if (caps.resourceLimits() != null) {
+                com.onetattva.infron.core.providers.ResourceLimits limits = caps.resourceLimits();
+                capabilitiesMap.put("maxCpus", String.valueOf(limits.maxCpuCores()));
+                capabilitiesMap.put("maxMemoryMb", String.valueOf(limits.maxMemoryMb()));
+                capabilitiesMap.put("maxStorageGb", String.valueOf(limits.maxStorageGb()));
+                capabilitiesMap.put("maxVms", String.valueOf(limits.maxVms()));
+            }
+
+            // Store features
+            if (caps.features() != null && !caps.features().isEmpty()) {
+                caps.features().forEach((key, value) -> {
+                    capabilitiesMap.put("feature_" + key, String.valueOf(value));
+                });
+            }
+
+            logger.debug("Discovered capabilities for provider {}: {}", entity.getId(), capabilitiesMap);
+            return capabilitiesMap;
+
+        } catch (Exception e) {
+            logger.error("Failed to discover capabilities for provider {}: {}", entity.getId(), e.getMessage(), e);
+            return getDefaultCapabilities();
+        }
+    }
+
+    /**
+     * Get default capabilities for providers that don't support discovery
+     */
+    private Map<String, String> getDefaultCapabilities() {
+        Map<String, String> defaults = new java.util.HashMap<>();
+        defaults.put("supportedCpuTypes", "kvm64,host");
+        defaults.put("supportedStorageClasses", "local,nfs");
+        defaults.put("supportedNetworkTypes", "bridge,ovs");
+        defaults.put("supportedOsTypes", "linux,windows");
+        defaults.put("maxCpus", "1000");
+        defaults.put("maxMemoryMb", "409600");
+        defaults.put("maxStorageGb", "20000");
+        defaults.put("maxVms", "500");
+        return defaults;
     }
 
     /**
@@ -582,7 +672,6 @@ public class ProvidersService {
         private com.onetattva.infron.core.providers.ProviderCapabilities mapEntityCapabilitiesToSpi(Map<String, String> entityCapabilities) {
             if (entityCapabilities == null) {
                 return new com.onetattva.infron.core.providers.ProviderCapabilities(
-                    List.of(),
                     List.of(),
                     List.of(),
                     List.of(),

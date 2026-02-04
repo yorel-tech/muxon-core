@@ -1,9 +1,10 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSidebarCounts } from '@/lib/use-sidebar-counts';
 import {
   LayoutDashboard,
   Settings,
@@ -39,7 +40,8 @@ export interface SidebarProps {
   className?: string;
 }
 
-const systemUserItems: SidebarItem[] = [
+// Base sidebar items without badges
+const baseSystemUserItems: Omit<SidebarItem, 'badge'>[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -69,14 +71,12 @@ const systemUserItems: SidebarItem[] = [
     label: 'Users',
     icon: <Users size={20} />,
     href: '/users',
-    badge: 5,
   },
   {
     id: 'tenants',
     label: 'Tenants',
     icon: <Building2 size={20} />,
     href: '/tenants',
-    badge: 3,
   },
   {
     id: 'settings',
@@ -92,7 +92,7 @@ const systemUserItems: SidebarItem[] = [
   },
 ];
 
-const tenantUserItems: SidebarItem[] = [
+const baseTenantUserItems: Omit<SidebarItem, 'badge'>[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -110,7 +110,6 @@ const tenantUserItems: SidebarItem[] = [
     label: 'Virtual Machines',
     icon: <Database size={20} />,
     href: '/tenant/vms',
-    badge: 12,
   },
   {
     id: 'networks',
@@ -139,7 +138,8 @@ const enterpriseItems: SidebarItem[] = [
 export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
   ({ isOpen, onClose, userRole, isEnterprise = false, className = '' }: SidebarProps, ref) => {
     const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+    const { counts } = useSidebarCounts(userRole, isOpen);
 
     const toggleExpand = (id: string) => {
       setExpandedItems((prev) => {
@@ -218,7 +218,25 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       );
     };
 
-    const items = userRole === 'system' ? systemUserItems : tenantUserItems;
+    // Build sidebar items with dynamic badges
+    const items: SidebarItem[] = (userRole === 'system' ? baseSystemUserItems : baseTenantUserItems).map((item) => {
+      const newItem = { ...item } as SidebarItem;
+      
+      // Add badges based on item ID and user role
+      if (userRole === 'system') {
+        if (item.id === 'users' && counts.users > 0) {
+          newItem.badge = counts.users;
+        } else if (item.id === 'tenants' && counts.tenants > 0) {
+          newItem.badge = counts.tenants;
+        }
+      } else {
+        if (item.id === 'vms' && counts.vms > 0) {
+          newItem.badge = counts.vms;
+        }
+      }
+      
+      return newItem;
+    });
     const enterpriseFeatures = isEnterprise ? enterpriseItems : [];
 
     return (

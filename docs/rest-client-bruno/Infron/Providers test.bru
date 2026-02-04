@@ -1,0 +1,29 @@
+meta {
+  name: Providers test
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{url}}/providers
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "libvirt-local",
+    "type": "LIBVIRT",
+    "endpoint": "ssh://krishnac@127.0.0.1:22",
+    "credentials": {
+      "sshPrivateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHIAAAAGYmNyeXB0AAAAGAAAABDLLibsb5n6njziQB+ITGQZAAAAGAAAAAEAAAAzAAAAC3NzaC1lZDI1NTE5AAAAIDiE8ZiT/zsUuGsBiE+FUYcrx9B1sFtKm417HvEqJ0toAAAAkNFCZTuBdfeZR9tkBlyqamJ/bwgxPelHXiFBQqxZrs+gEtlRP+iRZFJs5u8L/tMMGIDmLfwC7e/wWyl2d0UZLY63ALQ34JsgPfj7JJJdXf2uf9tCApXegNCm1vC92AY8NuU40nXJpzexjIam6sanqix/Rao/Zfqjv9j9PiAE9aZk8Hc5maqzv0wGuUpUXQUyEw==\n-----END OPENSSH PRIVATE KEY-----",
+      "sshPassphrase": "Cha3it2u1!",
+      "sshPort": "22"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -19,23 +19,51 @@
     /* Semantic Colors */
     /* Success - Green */
     --color-success-50: #f0fdf4;
+    --color-success-100: #dcfce7;
+    --color-success-200: #bbf7d0;
+    --color-success-300: #86efac;
+    --color-success-400: #4ade80;
     --color-success-500: #22c55e;
     --color-success-600: #16a34a;
+    --color-success-700: #15803d;
+    --color-success-800: #166534;
+    --color-success-900: #14532d;
 
     /* Warning - Amber */
     --color-warning-50: #fefce8;
+    --color-warning-100: #fef9c3;
+    --color-warning-200: #fef08a;
+    --color-warning-300: #fde047;
+    --color-warning-400: #facc15;
     --color-warning-500: #f59e0b;
     --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+    --color-warning-800: #92400e;
+    --color-warning-900: #78350f;
 
     /* Error - Red */
     --color-error-50: #fef2f2;
+    --color-error-100: #fee2e2;
+    --color-error-200: #fecaca;
+    --color-error-300: #fca5a5;
+    --color-error-400: #f87171;
     --color-error-500: #ef4444;
     --color-error-600: #dc2626;
+    --color-error-700: #b91c1c;
+    --color-error-800: #991b1b;
+    --color-error-900: #7f1d1d;
 
     /* Info - Cyan */
     --color-info-50: #ecfeff;
+    --color-info-100: #cffafe;
+    --color-info-200: #a5f3fc;
+    --color-info-300: #67e8f9;
+    --color-info-400: #22d3ee;
     --color-info-500: #06b6d4;
     --color-info-600: #0891b2;
+    --color-info-700: #0e7490;
+    --color-info-800: #155e75;
+    --color-info-900: #164e63;
 
     /* Neutral Colors - Gray Scale */
     --color-gray-50: #f9fafb;   /* Background light */
@@ -51,8 +79,15 @@
 
     /* Enterprise Accent (Nexus) - Purple */
     --color-nexus-50: #faf5ff;
+    --color-nexus-100: #f3e8ff;
+    --color-nexus-200: #e9d5ff;
+    --color-nexus-300: #d8b4fe;
+    --color-nexus-400: #c084fc;
     --color-nexus-500: #a855f7;
     --color-nexus-600: #9333ea;
+    --color-nexus-700: #7e22ce;
+    --color-nexus-800: #6b21a8;
+    --color-nexus-900: #581c87;
 
     /* Typography */
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -135,10 +170,45 @@
   }
 
   .dark {
+    /* Backgrounds */
     --bg-primary: #111827;
     --bg-secondary: #1f2937;
+    --bg-tertiary: #374151;
+
+    /* Text */
     --text-primary: #f9fafb;
     --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+
+    /* Primary Colors - Lighter in dark mode */
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+
+    /* Success Colors - Lighter in dark mode */
+    --color-success-400: #4ade80;
+    --color-success-500: #22c55e;
+    --color-success-600: #16a34a;
+
+    /* Warning Colors - Lighter in dark mode */
+    --color-warning-400: #facc15;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+
+    /* Error Colors - Lighter in dark mode */
+    --color-error-400: #f87171;
+    --color-error-500: #ef4444;
+    --color-error-600: #dc2626;
+
+    /* Info Colors - Lighter in dark mode */
+    --color-info-400: #22d3ee;
+    --color-info-500: #06b6d4;
+    --color-info-600: #0891b2;
+
+    /* Nexus Colors - Lighter in dark mode */
+    --color-nexus-400: #c084fc;
+    --color-nexus-500: #a855f7;
+    --color-nexus-600: #9333ea;
   }
 }
 

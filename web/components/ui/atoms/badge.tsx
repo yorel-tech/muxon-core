@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { forwardRef } from 'react';
 
 export interface BadgeProps {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'nexus';
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'nexus' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
   dot?: boolean;
@@ -17,6 +17,7 @@ const variantStyles: Record<string, string> = {
   error: 'bg-error-100 text-error-700',
   info: 'bg-info-100 text-info-700',
   nexus: 'bg-nexus-100 text-nexus-700',
+  secondary: 'bg-gray-200 text-gray-600',
 };
 
 const sizeStyles: Record<string, string> = {

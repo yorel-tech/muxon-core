@@ -3,13 +3,9 @@ package com.onetattva.infron.core.controllers;
 import com.onetattva.infron.api.*;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.services.ProvidersService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -18,36 +14,33 @@ import java.util.UUID;
 @RestController
 public class ProvidersController implements ProvidersApi {
 
-    @Autowired
-    private ProvidersService providersService;
+    private final ProvidersService providersService;
+
+    public ProvidersController(final ProvidersService providersService) {
+        this.providersService = providersService;
+    }
 
     @Override
-    public ResponseEntity<ProviderList> listProviders(
-            @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-            @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
-            @RequestParam(value = "type", required = false) ProviderType type,
-            @RequestParam(value = "status", required = false) ProviderStatus status
+    public ResponseEntity<ProviderList> listProviders(Integer page, Integer perPage, ProviderType type, ProviderStatus status
     ) {
         ProviderList providerList = providersService.listProviders(page, perPage, type, status, null);
         return ResponseEntity.ok(providerList);
     }
 
     @Override
-    public ResponseEntity<Provider> createProvider(@Valid @RequestBody ProviderCreate providerCreate) {
+    public ResponseEntity<Provider> createProvider(ProviderCreate providerCreate) {
         Provider provider = providersService.createProvider(providerCreate);
         return ResponseEntity.status(201).body(provider);
     }
 
     @Override
-    public ResponseEntity<Provider> getProvider(@NotNull @PathVariable("providerId") UUID providerId) {
+    public ResponseEntity<Provider> getProvider(UUID providerId) {
         Provider provider = providersService.getProvider(providerId);
         return ResponseEntity.ok(provider);
     }
 
     @Override
-    public ResponseEntity<Provider> replaceProvider(
-            @NotNull @PathVariable("providerId") UUID providerId,
-            @Valid @RequestBody ProviderUpdate providerUpdate
+    public ResponseEntity<Provider> replaceProvider(UUID providerId, ProviderUpdate providerUpdate
     ) {
         Provider provider = providersService.replaceProvider(providerId, providerUpdate);
         return ResponseEntity.ok(provider);
@@ -55,29 +48,27 @@ public class ProvidersController implements ProvidersApi {
 
     @Override
     public ResponseEntity<Provider> updateProvider(
-            @NotNull @PathVariable("providerId") UUID providerId,
-            @Valid @RequestBody ProviderUpdate providerUpdate
+            UUID providerId,
+            ProviderUpdate providerUpdate
     ) {
         Provider provider = providersService.updateProvider(providerId, providerUpdate);
         return ResponseEntity.ok(provider);
     }
 
     @Override
-    public ResponseEntity<Void> deleteProvider(@NotNull @PathVariable("providerId") UUID providerId) {
+    public ResponseEntity<Void> deleteProvider(UUID providerId) {
         providersService.deleteProvider(providerId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
-    public ResponseEntity<ProviderConnectionTestResult> testProviderConnection(@NotNull @PathVariable("providerId") UUID providerId) {
+    public ResponseEntity<ProviderConnectionTestResult> testProviderConnection(UUID providerId) {
         ProviderConnectionTestResult result = providersService.testProviderConnection(providerId);
         return ResponseEntity.ok(result);
     }
 
     @Override
-    public ResponseEntity<ProviderCapabilities> getProviderCapabilities(
-            @NotNull @PathVariable("providerId") UUID providerId,
-            @RequestParam(value = "refresh", required = false, defaultValue = "false") Boolean refresh
+    public ResponseEntity<ProviderCapabilities> getProviderCapabilities(UUID providerId, Boolean refresh
     ) {
         ProviderCapabilities capabilities = providersService.getProviderCapabilities(providerId, refresh);
         return ResponseEntity.ok(capabilities);

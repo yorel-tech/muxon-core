@@ -25,7 +25,7 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
 ) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isAuthenticated, checkAuth } = useAuth();
+  const { isAuthenticated, user, userRole } = useAuth();
 
   return (
     <header
@@ -41,7 +41,7 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }} />
             <span className="text-xl font-bold text-gray-900">infron</span>
-            {user?.email === 'admin@infron.dev' && (
+            {userRole === 'system' && (
               <span className="ml-2 text-xs px-2 py-0.5 bg-nexus-100 text-nexus-700 rounded-full font-medium">
                 Enterprise
               </span>
@@ -98,9 +98,9 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
           </button>
 
           {/* User */}
-          {isAuthenticated ? (
+          {isAuthenticated && user ? (
             <button className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 transition-colors">
-              {user?.avatar ? (
+              {user.avatar ? (
                 <img
                   src={user.avatar}
                   alt={user.name}
@@ -108,7 +108,7 @@ export const Header = forwardRef<HTMLDivElement, HeaderProps>(
                 />
               ) : (
                 <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-medium" style={{ background: 'linear-gradient(to bottom right, #3b82f6, #9333ea)' }}>
-                  {user?.name?.charAt(0).toUpperCase()}
+                  {user.name?.charAt(0).toUpperCase()}
                 </div>
               )}
               <ChevronDown size={16} className="text-gray-400" />

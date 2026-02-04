@@ -28,13 +28,11 @@ import { Badge } from '@components/ui/atoms/badge';
 import { Switch } from '@components/ui/atoms/switch';
 import { Dropdown } from '@components/ui/molecules/dropdown';
 import { Table } from '@components/ui/organisms/table';
-import { Sidebar } from '@components/ui/organisms/sidebar';
-import { Header } from '@components/ui/organisms/header';
 
 interface Datacenter {
   id: string;
   name: string;
-  type: 'libvirt' | 'proxmox' | 'vsphere' | 'aws' | 'azure' | 'gcp';
+  type: 'libvirt' | 'proxmox' | 'kubernetes';
   status: 'connected' | 'disconnected' | 'syncing' | 'error';
   health: 'healthy' | 'degraded' | 'down';
   region: string;
@@ -61,12 +59,12 @@ const mockDatacenters: Datacenter[] = [
   {
     id: 'dc-1',
     name: 'US-East-Primary',
-    type: 'aws',
+    type: 'proxmox',
     status: 'connected',
     health: 'healthy',
     region: 'us-east-1',
     location: 'Virginia, USA',
-    providerId: 'aws-1',
+    providerId: 'proxmox-1',
     totalCapacity: 1000,
     usedCapacity: 642,
     totalNodes: 50,
@@ -77,12 +75,12 @@ const mockDatacenters: Datacenter[] = [
   {
     id: 'dc-2',
     name: 'US-West-Secondary',
-    type: 'aws',
+    type: 'proxmox',
     status: 'connected',
     health: 'healthy',
     region: 'us-west-2',
     location: 'Oregon, USA',
-    providerId: 'aws-1',
+    providerId: 'proxmox-1',
     totalCapacity: 500,
     usedCapacity: 234,
     totalNodes: 25,
@@ -109,12 +107,12 @@ const mockDatacenters: Datacenter[] = [
   {
     id: 'dc-4',
     name: 'Asia-Pacific',
-    type: 'aws',
+    type: 'kubernetes',
     status: 'disconnected',
     health: 'down',
     region: 'ap-southeast-1',
     location: 'Singapore',
-    providerId: 'aws-2',
+    providerId: 'k8s-1',
     totalCapacity: 300,
     usedCapacity: 0,
     totalNodes: 15,
@@ -359,187 +357,179 @@ export default function DatacentersPage() {
   ];
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar isOpen={false} onClose={() => {}} userRole="system" />
-      <div className="flex flex-col">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto p-8">
-            {/* Page Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-8"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Datacenters</h1>
-                  <p className="text-gray-600 mt-1">Manage and monitor your cloud infrastructure datacenters</p>
-                </div>
-                <Button onClick={handleAddDatacenter} leftIcon={<Plus size={16} />}>
-                  Add Datacenter
-                </Button>
-              </div>
-            </motion.div>
-            
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <Server className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                    <p className="text-sm text-gray-600">Total Datacenters</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.connected}</p>
-                    <p className="text-sm text-gray-600">Connected</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-red-50 rounded-lg">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.disconnected}</p>
-                    <p className="text-sm text-gray-600">Disconnected</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-yellow-50 rounded-lg">
-                    <AlertCircle className="w-8 h-8 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.degraded}</p>
-                    <p className="text-sm text-gray-600">Degraded</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gray-100 rounded-lg">
-                    <HardDrive className="w-8 h-8 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{stats.down}</p>
-                    <p className="text-sm text-gray-600">Down</p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-            
-            {/* Filter Bar */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-6"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      variant="search"
-                      placeholder="Search datacenters..."
-                      value={filterQuery}
-                      onChange={(e) => setFilterQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Dropdown
-                    options={[
-                      { label: 'All Statuses', value: 'all' },
-                      { label: 'Connected', value: 'connected' },
-                      { label: 'Disconnected', value: 'disconnected' },
-                      { label: 'Syncing', value: 'syncing' },
-                      { label: 'Error', value: 'error' },
-                    ]}
-                    value={filterStatus}
-                    onChange={setFilterStatus}
-                    placeholder="All Statuses"
-                  />
-                  <Button variant="ghost" size="sm" leftIcon={<Filter className="w-4 h-4" />}>
-                    Filter
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-            
-            {/* Datacenters Table */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Datacenters ({filteredDatacenters.length})</h2>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
-                      Refresh
-                    </Button>
-                    <Button variant="ghost" size="sm" leftIcon={<Settings className="w-4 h-4" />}>
-                      Settings
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table
-                  columns={datacentersColumns}
-                  data={filteredDatacenters}
-                  onRowClick={(row) => setSelectedDatacenter(row)}
-                  emptyMessage="No datacenters found matching your search criteria."
-                  isLoading={false}
-                />
-              </CardContent>
-            </Card>
+    <>
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-8"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Datacenters</h1>
+            <p className="text-gray-600 mt-1">Manage and monitor your cloud infrastructure datacenters</p>
           </div>
-        </main>
+          <Button onClick={handleAddDatacenter} leftIcon={<Plus size={16} />}>
+            Add Datacenter
+          </Button>
+        </div>
+      </motion.div>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <Server className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-sm text-gray-600">Total Datacenters</p>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-50 rounded-lg">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.connected}</p>
+              <p className="text-sm text-gray-600">Connected</p>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-red-50 rounded-lg">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.disconnected}</p>
+              <p className="text-sm text-gray-600">Disconnected</p>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-yellow-50 rounded-lg">
+              <AlertCircle className="w-8 h-8 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.degraded}</p>
+              <p className="text-sm text-gray-600">Degraded</p>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gray-100 rounded-lg">
+              <HardDrive className="w-8 h-8 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.down}</p>
+              <p className="text-sm text-gray-600">Down</p>
+            </div>
+          </div>
+        </motion.div>
       </div>
       
+      {/* Filter Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-6"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                variant="search"
+                placeholder="Search datacenters..."
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Dropdown
+              options={[
+                { label: 'All Statuses', value: 'all' },
+                { label: 'Connected', value: 'connected' },
+                { label: 'Disconnected', value: 'disconnected' },
+                { label: 'Syncing', value: 'syncing' },
+                { label: 'Error', value: 'error' },
+              ]}
+              value={filterStatus}
+              onChange={setFilterStatus}
+              placeholder="All Statuses"
+            />
+            <Button variant="ghost" size="sm" leftIcon={<Filter className="w-4 h-4" />}>
+              Filter
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+      
+      {/* Datacenters Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Datacenters ({filteredDatacenters.length})</h2>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
+                Refresh
+              </Button>
+              <Button variant="ghost" size="sm" leftIcon={<Settings className="w-4 h-4" />}>
+                Settings
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table
+            columns={datacentersColumns}
+            data={filteredDatacenters}
+            onRowClick={(row) => setSelectedDatacenter(row)}
+            emptyMessage="No datacenters found matching your search criteria."
+            isLoading={false}
+          />
+        </CardContent>
+      </Card>
+    
       {/* Add/Edit Datacenter Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -570,10 +560,7 @@ export default function DatacentersPage() {
                     options={[
                       { label: 'Libvirt', value: 'libvirt' },
                       { label: 'Proxmox', value: 'proxmox' },
-                      { label: 'VMware vSphere', value: 'vsphere' },
-                      { label: 'AWS', value: 'aws' },
-                      { label: 'Azure', value: 'azure' },
-                      { label: 'Google Cloud', value: 'gcp' },
+                      { label: 'Kubernetes', value: 'kubernetes' },
                     ]}
                     value={editingDatacenter?.type || ''}
                   />
@@ -611,11 +598,9 @@ export default function DatacentersPage() {
                   <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
                   <Dropdown
                     options={[
-                      { label: 'AWS', value: 'aws-1' },
-                      { label: 'Azure', value: 'azure-1' },
-                      { label: 'GCP', value: 'gcp-1' },
                       { label: 'Libvirt', value: 'libvirt-1' },
                       { label: 'Proxmox', value: 'proxmox-1' },
+                      { label: 'Kubernetes', value: 'kubernetes-1' },
                     ]}
                     value={editingDatacenter?.providerId || ''}
                   />
@@ -697,6 +682,6 @@ export default function DatacentersPage() {
           </motion.div>
         </div>
       )}
-    </div>
+    </>
   );
 }

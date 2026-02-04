@@ -35,7 +35,7 @@ interface BootstrapStatusDto {
   systemStatus: 'NOTREADY' | 'BOOTSTRAPPED' | 'READY';
 }
 
-  interface IdpConfig {
+interface IdpConfig {
   providerType: string;
   issuerUrl: string;
   clientId: string;
@@ -123,25 +123,55 @@ export default function SystemDashboardPage() {
   const [isFetchingIdpServers, setIsFetchingIdpServers] = useState(false);
   const DEFAULT_IDP_ID = '62083d54-cb8c-521f-9374-65e9f21c8991';
   const SYSTEM_ADMIN_ROLE_ID = 'system:admin';
-
+  
+  // Datacenter wizard state
+  const [selectedProviderType, setSelectedProviderType] = useState<string>('libvirt');
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [availableProviders, setAvailableProviders] = useState<any[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+  
+  // Provider wizard form state
+  const [providerName, setProviderName] = useState<string>('');
+  const [providerEndpoint, setProviderEndpoint] = useState<string>('');
+  const [providerUsername, setProviderUsername] = useState<string>('');
+  const [providerPassword, setProviderPassword] = useState<string>('');
+  const [providerDescription, setProviderDescription] = useState<string>('');
+  
+  // Datacenter wizard form state
+  const [datacenterName, setDatacenterName] = useState<string>('');
+  const [datacenterDescription, setDatacenterDescription] = useState<string>('');
+  const [datacenterCpuOvercommit, setDatacenterCpuOvercommit] = useState<string>('4.0');
+  const [datacenterMemoryOvercommit, setDatacenterMemoryOvercommit] = useState<string>('1.5');
+  const [datacenterVmClasses, setDatacenterVmClasses] = useState<string>('small,medium,large');
+  const [datacenterStorageClasses, setDatacenterStorageClasses] = useState<string>('gold,silver,bronze');
+  const [datacenterNetworkDomains, setDatacenterNetworkDomains] = useState<string>('private,public');
+  
+  // Tenant wizard form state
+  const [tenantName, setTenantName] = useState<string>('');
+  const [tenantDisplayName, setTenantDisplayName] = useState<string>('');
+  const [tenantDescription, setTenantDescription] = useState<string>('');
+  const [tenantAdminEmail, setTenantAdminEmail] = useState<string>('');
+  const [tenantAdminPassword, setTenantAdminPassword] = useState<string>('');
+  
   // Derived state from bootstrapStatus
   const isBootstrapped = bootstrapStatus?.systemStatus === 'BOOTSTRAPPED' || bootstrapStatus?.systemStatus === 'READY';
   const isReady = bootstrapStatus?.systemStatus === 'READY';
-
+  
   // Message constants to avoid JSX parsing issues with curly braces
   const bootstrappedMessage = 'Your system has been pre-configured. Review and complete the remaining setup steps below.';
   const notBootstrappedMessage = 'Get started by configuring your cloud infrastructure';
-
+  
   // Action text constants to avoid JSX parsing issues with curly braces
   const idpActionText = isBootstrapped ? 'Edit' : 'Set up';
   const providerActionText = isBootstrapped ? 'Add' : 'Connect';
   const systemUsersActionText = isBootstrapped ? 'Edit' : 'Add';
-
+  
   // Check bootstrap status on mount
   useEffect(() => {
     fetchBootstrapStatus();
+    fetchExistingEntities();
   }, []);
-
+  
   // Update setup steps when bootstrap status changes
   useEffect(() => {
     if (bootstrapStatus) {
@@ -159,14 +189,80 @@ export default function SystemDashboardPage() {
       }
     }
   }, [bootstrapStatus]);
+  
+  // Fetch existing entities to mark steps as completed
+  const [existingProviders, setExistingProviders] = useState(false);
+  const [existingDatacenters, setExistingDatacenters] = useState(false);
+  const [existingTenants, setExistingTenants] = useState(false);
+  
+  const fetchExistingEntities = async () => {
+    try {
+      // Check if providers exist
+      const providersData = await apiGet('/api/v1/providers');
+      const providers = Array.isArray(providersData) ? providersData : (providersData?.items || []);
+      const hasProviders = providers.length > 0;
+      setExistingProviders(hasProviders);
+      console.log('Providers data:', providersData, 'Has providers:', hasProviders);
 
+      // Check if datacenters exist
+      const datacentersData = await apiGet('/api/v1/datacenters');
+      const datacenters = Array.isArray(datacentersData) ? datacentersData : (datacentersData?.items || []);
+      const hasDatacenters = datacenters.length > 0;
+      setExistingDatacenters(hasDatacenters);
+      console.log('Datacenters data:', datacentersData, 'Has datacenters:', hasDatacenters);
+
+      // Check if tenants exist
+      const tenantsData = await apiGet('/api/v1/tenants');
+      const tenants = Array.isArray(tenantsData) ? tenantsData : (tenantsData?.items || []);
+      const hasTenants = tenants.length > 0;
+      setExistingTenants(hasTenants);
+      console.log('Tenants data:', tenantsData, 'Has tenants:', hasTenants);
+    } catch (error) {
+      console.error('Error fetching existing entities:', error);
+    }
+  };
+  
+  // Update setup steps when existing entities change
+  useEffect(() => {
+    if (existingProviders) {
+      setSetupSteps(prev => prev.map(step => {
+        if (step.id === 'provider') {
+          return { ...step, completed: true };
+        }
+        return step;
+      }));
+    }
+  }, [existingProviders]);
+  
+  useEffect(() => {
+    if (existingDatacenters) {
+      setSetupSteps(prev => prev.map(step => {
+        if (step.id === 'datacenter') {
+          return { ...step, completed: true };
+        }
+        return step;
+      }));
+    }
+  }, [existingDatacenters]);
+  
+  useEffect(() => {
+    if (existingTenants) {
+      setSetupSteps(prev => prev.map(step => {
+        if (step.id === 'tenant') {
+          return { ...step, completed: true };
+        }
+        return step;
+      }));
+    }
+  }, [existingTenants]);
+  
   // Fetch IDP servers when bootstrapped
   useEffect(() => {
     if (isBootstrapped) {
       fetchIdpServers();
     }
   }, [isBootstrapped]);
-
+  
   // Fetch IDP users when system-users wizard is opened
   useEffect(() => {
     if (activeWizard === 'system-users' && isBootstrapped) {
@@ -178,7 +274,31 @@ export default function SystemDashboardPage() {
       }
     }
   }, [activeWizard, isBootstrapped, selectedIdp]);
-
+  
+  // Fetch providers when datacenter wizard is opened and provider type changes
+  useEffect(() => {
+    if (activeWizard === 'datacenter' && selectedProviderType) {
+      fetchProvidersByType(selectedProviderType);
+    }
+  }, [activeWizard, selectedProviderType]);
+  
+  const fetchProvidersByType = async (type: string) => {
+    setIsLoadingProviders(true);
+    try {
+      // Backend expects uppercase enum values
+      const data = await apiGet(`/api/v1/providers?type=${type.toUpperCase()}`);
+      const providers = Array.isArray(data) ? data : (data?.items || []);
+      setAvailableProviders(providers);
+      // Reset selected provider when type changes
+      setSelectedProvider('');
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+      setAvailableProviders([]);
+    } finally {
+      setIsLoadingProviders(false);
+    }
+  };
+  
   const fetchBootstrapStatus = async () => {
     try {
       const status: BootstrapStatusDto = await apiGet('/api/v1/status');
@@ -190,7 +310,7 @@ export default function SystemDashboardPage() {
       setIsLoading(false);
     }
   };
-
+  
   const fetchIdpServers = async () => {
     setIsFetchingIdpServers(true);
     try {
@@ -216,7 +336,7 @@ export default function SystemDashboardPage() {
       setIsFetchingIdpServers(false);
     }
   };
-
+  
   const fetchExistingConfigs = async () => {
     setIsFetchingConfig(true);
     try {
@@ -249,7 +369,7 @@ export default function SystemDashboardPage() {
       setIsFetchingConfig(false);
     }
   };
-
+  
   const fetchExistingSystemUsers = async () => {
     try {
       // Fetch existing system users to mark them as selected
@@ -267,7 +387,7 @@ export default function SystemDashboardPage() {
       console.error('Error fetching existing system users:', error);
     }
   };
-
+  
   const fetchIdpUsers = async () => {
     setIsLoadingUsers(true);
     try {
@@ -291,7 +411,7 @@ export default function SystemDashboardPage() {
       setIsLoadingUsers(false);
     }
   };
-
+  
   const toggleUserSelection = (userId: string) => {
     // Prevent deselecting existing system users
     if (existingSystemUserIds.has(userId)) {
@@ -307,7 +427,7 @@ export default function SystemDashboardPage() {
       return newSet;
     });
   };
-
+  
   const handleIdpChange = (idpId: string) => {
     setSelectedIdp(idpId);
     // Fetch users for the selected IDP
@@ -315,19 +435,19 @@ export default function SystemDashboardPage() {
       fetchIdpUsers();
     }
   };
-
+  
   const handleStepClick = (stepId: string) => {
     setActiveWizard(stepId);
   };
-
+  
   const handleWizardClose = () => {
     setActiveWizard(null);
   };
-
+  
   const handleSkipToDashboard = () => {
     window.location.href = '/system/dashboard';
   };
-
+  
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -343,8 +463,54 @@ export default function SystemDashboardPage() {
         if (bindings.length > 0) {
           await apiPost('/api/v1/system-users', { bindings });
         }
-      } else {
-        // Simulate API call for other steps
+      } else if (activeWizard === 'provider') {
+        // Create provider
+        if (!providerName || !providerEndpoint) {
+          throw new Error('Provider name and endpoint are required');
+        }
+        const providerData = {
+          name: providerName,
+          type: selectedProviderType.toUpperCase(),
+          endpoint: providerEndpoint,
+          credentials: {
+            username: providerUsername,
+            password: providerPassword,
+          },
+          description: providerDescription,
+        };
+        await apiPost('/api/v1/providers', providerData);
+      } else if (activeWizard === 'datacenter') {
+        // Create datacenter
+        if (!datacenterName || !selectedProvider) {
+          throw new Error('Datacenter name and provider are required');
+        }
+        const datacenterData = {
+          name: datacenterName,
+          providerType: selectedProviderType.toUpperCase(),
+          providerId: selectedProvider,
+          description: datacenterDescription,
+          settings: {
+            defaultCpuOvercommitRatio: parseFloat(datacenterCpuOvercommit) || 4.0,
+            defaultMemoryOvercommitRatio: parseFloat(datacenterMemoryOvercommit) || 1.5,
+            vmClasses: datacenterVmClasses.split(',').map(s => s.trim()),
+            storageClasses: datacenterStorageClasses.split(',').map(s => s.trim()),
+            networkDomains: datacenterNetworkDomains.split(',').map(s => s.trim()),
+          },
+        };
+        await apiPost('/api/v1/datacenters', datacenterData);
+      } else if (activeWizard === 'tenant') {
+        // Create tenant
+        if (!tenantName) {
+          throw new Error('Tenant name is required');
+        }
+        const tenantData = {
+          name: tenantName,
+          displayName: tenantDisplayName || undefined,
+          description: tenantDescription,
+        };
+        await apiPost('/api/v1/tenants', tenantData);
+      } else if (activeWizard === 'idp') {
+        // IDP configuration is handled separately
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
@@ -356,27 +522,30 @@ export default function SystemDashboardPage() {
       setActiveWizard(null);
       // Refresh configuration status
       fetchBootstrapStatus();
+      // Refresh existing entities to mark steps as completed
+      fetchExistingEntities();
     } catch (error) {
       console.error('Error saving configuration:', error);
+      alert(error instanceof Error ? error.message : 'Failed to save configuration');
     } finally {
       setIsSaving(false);
     }
   };
-
+  
   const getIconColorClass = (step: SetupStep) => {
     if (step.completed) {
       return 'bg-green-100 text-green-600';
     }
     return 'bg-gray-100 text-gray-400';
   };
-
+  
   const getTextColorClass = (step: SetupStep) => {
     if (step.completed) {
       return 'text-green-600';
     }
     return 'text-gray-400';
   };
-
+  
   const renderWizard = () => {
     if (!activeWizard) return null;
 
@@ -431,7 +600,7 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="password"
-                placeholder="••••••••••••••"
+                placeholder="•••••••••••••"
                 defaultValue={idpConfig?.clientSecret || ''}
               />
             </div>
@@ -447,7 +616,7 @@ export default function SystemDashboardPage() {
             </div>
           </div>
         );
-
+ 
       case 'system-users':
         return (
           <div className="space-y-4">
@@ -474,7 +643,7 @@ export default function SystemDashboardPage() {
                 )}
               </select>
             </div>
-
+ 
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -541,7 +710,7 @@ export default function SystemDashboardPage() {
             </div>
           </div>
         );
-
+ 
       case 'provider':
         return (
           <div className="space-y-4">
@@ -549,19 +718,36 @@ export default function SystemDashboardPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Provider Type
               </label>
-              <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                <option value="proxmox">Proxmox</option>
-                <option value="libvirt">Libvirt</option>
-                <option value="vmware">VMware</option>
+              <select 
+                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={selectedProviderType}
+                onChange={(e) => setSelectedProviderType(e.target.value)}
+              >
+                <option value="PROXMOX">Proxmox</option>
+                <option value="LIBVIRT">Libvirt</option>
+                <option value="KUBERNETES">Kubernetes</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hostname / IP
+                Provider Name *
               </label>
               <Input
                 type="text"
-                placeholder="192.168.1.100"
+                placeholder="My Libvirt Provider"
+                value={providerName}
+                onChange={(e) => setProviderName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Endpoint *
+              </label>
+              <Input
+                type="text"
+                placeholder="ssh://user@host:port or https://proxmox.example.com:8006/api2/json"
+                value={providerEndpoint}
+                onChange={(e) => setProviderEndpoint(e.target.value)}
               />
             </div>
             <div>
@@ -571,6 +757,8 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder="root"
+                value={providerUsername}
+                onChange={(e) => setProviderUsername(e.target.value)}
               />
             </div>
             <div>
@@ -579,7 +767,9 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="password"
-                placeholder="••••••••••••••"
+                placeholder="••••••••••••"
+                value={providerPassword}
+                onChange={(e) => setProviderPassword(e.target.value)}
               />
             </div>
             <div>
@@ -589,11 +779,13 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder="Main production datacenter"
+                value={providerDescription}
+                onChange={(e) => setProviderDescription(e.target.value)}
               />
             </div>
           </div>
         );
-
+ 
       case 'datacenter':
         return (
           <div className="space-y-4">
@@ -604,17 +796,45 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder="Main Production Datacenter"
+                value={datacenterName}
+                onChange={(e) => setDatacenterName(e.target.value)}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Provider Type *
               </label>
-              <select className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                <option value="kvm">KVM</option>
-                <option value="vcenter">vCenter</option>
-                <option value="k8s">Kubernetes</option>
-                <option value="mixed">Mixed</option>
+              <select
+                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={selectedProviderType}
+                onChange={(e) => setSelectedProviderType(e.target.value)}
+              >
+                <option value="LIBVIRT">Libvirt</option>
+                <option value="PROXMOX">Proxmox</option>
+                <option value="KUBERNETES">Kubernetes</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider *
+              </label>
+              <select
+                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+                disabled={isLoadingProviders || availableProviders.length === 0}
+              >
+                {isLoadingProviders ? (
+                  <option value="" disabled>Loading providers...</option>
+                ) : availableProviders.length === 0 ? (
+                  <option value="" disabled>No providers available. Please add a provider first.</option>
+                ) : (
+                  availableProviders.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div>
@@ -624,6 +844,8 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder="Main production datacenter for VM workloads"
+                value={datacenterDescription}
+                onChange={(e) => setDatacenterDescription(e.target.value)}
               />
             </div>
             <div className="border-t border-gray-200 pt-4">
@@ -636,6 +858,8 @@ export default function SystemDashboardPage() {
                   <Input
                     type="text"
                     placeholder="4.0"
+                    value={datacenterCpuOvercommit}
+                    onChange={(e) => setDatacenterCpuOvercommit(e.target.value)}
                   />
                 </div>
                 <div>
@@ -645,40 +869,48 @@ export default function SystemDashboardPage() {
                   <Input
                     type="text"
                     placeholder="1.5"
+                    value={datacenterMemoryOvercommit}
+                    onChange={(e) => setDatacenterMemoryOvercommit(e.target.value)}
                   />
                 </div>
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VM Classes (comma-separated)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="small,medium,large"
-                />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    VM Classes (comma-separated)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="small,medium,large"
+                    value={datacenterVmClasses}
+                    onChange={(e) => setDatacenterVmClasses(e.target.value)}
+                  />
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Storage Classes (comma-separated)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="gold,silver,bronze"
-                />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Storage Classes (comma-separated)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="gold,silver,bronze"
+                    value={datacenterStorageClasses}
+                    onChange={(e) => setDatacenterStorageClasses(e.target.value)}
+                  />
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Network Domains (comma-separated)
-                </label>
-                <Input
-                  type="text"
-                  placeholder="private,public"
-                />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Network Domains (comma-separated)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="private,public"
+                    value={datacenterNetworkDomains}
+                    onChange={(e) => setDatacenterNetworkDomains(e.target.value)}
+                  />
               </div>
             </div>
           </div>
         );
-
+ 
       case 'tenant':
         return (
           <div className="space-y-4">
@@ -693,11 +925,24 @@ export default function SystemDashboardPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tenant Name
+                Tenant Name *
               </label>
               <Input
                 type="text"
                 placeholder="Acme Corp"
+                value={tenantName}
+                onChange={(e) => setTenantName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Display Name (optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="ACME Corporation"
+                value={tenantDisplayName}
+                onChange={(e) => setTenantDisplayName(e.target.value)}
               />
             </div>
             <div>
@@ -707,6 +952,8 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder="Acme Corporation tenant"
+                value={tenantDescription}
+                onChange={(e) => setTenantDescription(e.target.value)}
               />
             </div>
             <div>
@@ -716,6 +963,8 @@ export default function SystemDashboardPage() {
               <Input
                 type="email"
                 placeholder="admin@acme.com"
+                value={tenantAdminEmail}
+                onChange={(e) => setTenantAdminEmail(e.target.value)}
               />
             </div>
             <div>
@@ -724,19 +973,21 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="password"
-                placeholder="••••••••••••••"
+                placeholder="••••••••••••"
+                value={tenantAdminPassword}
+                onChange={(e) => setTenantAdminPassword(e.target.value)}
               />
             </div>
           </div>
         );
-
+ 
       default:
         return null;
     }
   };
-
+  
   const completedCount = setupSteps.filter((s) => s.completed).length;
-
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -771,7 +1022,7 @@ export default function SystemDashboardPage() {
             </Button>
           </div>
         </motion.div>
-
+ 
         {/* Setup Progress */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -835,7 +1086,7 @@ export default function SystemDashboardPage() {
             </CardContent>
           </Card>
         </motion.div>
-
+ 
         {/* Quick Actions */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -914,7 +1165,7 @@ export default function SystemDashboardPage() {
             </CardContent>
           </Card>
         </motion.div>
-
+ 
         {/* Resources */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -964,7 +1215,7 @@ export default function SystemDashboardPage() {
                         Community Support
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Get help from the Infron community
+                        Get help from Infron community
                       </p>
                     </div>
                   </div>
@@ -973,7 +1224,7 @@ export default function SystemDashboardPage() {
             </CardContent>
           </Card>
         </motion.div>
-
+ 
         {/* Inline Wizard Modal */}
         <AnimatePresence mode="wait">
           {activeWizard && (
@@ -1015,7 +1266,7 @@ export default function SystemDashboardPage() {
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={isSaving || Array.from(selectedUserIds).filter(id => !existingSystemUserIds.has(id)).length === 0}
+                    disabled={isSaving || (activeWizard === 'system-users' && Array.from(selectedUserIds).filter(id => !existingSystemUserIds.has(id)).length === 0)}
                   >
                     {isSaving ? (
                       <>
@@ -1036,5 +1287,5 @@ export default function SystemDashboardPage() {
         </AnimatePresence>
       </div>
     </div>
-    );
+  );
 }
