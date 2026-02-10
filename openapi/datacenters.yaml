@@ -75,8 +75,8 @@ components:
 
     DatacenterType:
       type: string
-      enum: [ kvm, vcenter, k8s, mixed ]
-      example: kvm
+      enum: [libvirt, proxmox, kubernetes, mixed]
+      example: libvirt
 
     DatacenterFeature:
       type: string

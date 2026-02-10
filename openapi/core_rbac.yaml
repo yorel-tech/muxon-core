@@ -9,7 +9,7 @@ security:
 components:
   schemas:
 
-    # Role model: shared single-table model with scope_type & scope_id
+    # Role model: shared single-table model with scopeType & scopeId
     Role:
       type: object
       properties:
@@ -23,11 +23,11 @@ components:
         description:
           type: string
           example: "Manage VMs, Pods, Containers in the scope"
-        scope_type:
+        scopeType:
           type: string
           description: "system | tenant_global | tenant"
           example: "tenant"
-        scope_id:
+        scopeId:
           type: string
           format: uuid
           nullable: true
@@ -35,7 +35,7 @@ components:
         immutable:
           type: boolean
           example: false
-        created_at:
+        createdAt:
           type: string
           format: date-time
 
@@ -43,16 +43,16 @@ components:
       type: object
       required:
         - name
-        - scope_type
+        - scopeType
       properties:
         name:
           type: string
         description:
           type: string
-        scope_type:
+        scopeType:
           type: string
           description: "one of: system | tenant_global | tenant"
-        scope_id:
+        scopeId:
           type: string
           format: uuid
           nullable: true
@@ -97,54 +97,54 @@ components:
         id:
           type: string
           format: uuid
-        role_id:
+        roleId:
           type: string
           format: uuid
-        subject_type:
+        subjectType:
           type: string
           example: "user"
-        subject_id:
+        subjectId:
           type: string
           example: "1111-2222-3333"
-        scope_type:
+        scopeType:
           type: string
           example: "tenant"
-        scope_id:
+        scopeId:
           type: string
           format: uuid
           nullable: true
-        expires_at:
+        expiresAt:
           type: string
           format: date-time
           nullable: true
-        created_at:
+        createdAt:
           type: string
           format: date-time
 
     RoleBindingCreateItem:
       type: object
       required:
-        - role_id
-        - subject_type
-        - subject_id
-        - scope_type
+        - roleId
+        - subjectType
+        - subjectId
+        - scopeType
       properties:
-        role_id:
+        roleId:
           type: string
           format: uuid
-        subject_type:
+        subjectType:
           type: string
           enum: [user, group, service_account]
-        subject_id:
+        subjectId:
           type: string
-        scope_type:
+        scopeType:
           type: string
           enum: [system, tenant, tenant_global]
-        scope_id:
+        scopeId:
           type: string
           format: uuid
           nullable: true
-        expires_at:
+        expiresAt:
           type: string
           format: date-time
           nullable: true
@@ -162,9 +162,9 @@ components:
     RoleBindingUpdate:
       type: object
       required:
-        - role_id
+        - roleId
       properties:
-        role_id:
+        roleId:
           type: string
           format: uuid
           description: "The new role ID to assign to the subject. This is the only field that can be updated in a role binding."
@@ -247,15 +247,15 @@ paths:
       tags: [Roles]
       summary: List roles (platform scope or all)
       description: |
-        For system/platform admins: list roles. Use query params to filter by scope_type/scope_id.
+        For system/platform admins: list roles. Use query params to filter by scopeType/scopeId.
         Tenant admins should typically use /tenants/{tenantId}/roles to see tenant-visible roles.
       parameters:
-        - name: scope_type
+        - name: scopeType
           in: query
           schema:
             type: string
             example: tenant_global
-        - name: scope_id
+        - name: scopeId
           in: query
           schema:
             type: string
@@ -384,7 +384,7 @@ paths:
       operationId: createTenantRole
       tags: [Roles]
       summary: Create role in tenant scope (tenant admin)
-      description: "Tenant admins may create roles with scope_type='tenant' and scope_id=tenantId."
+      description: "Tenant admins may create roles with scopeType='tenant' and scopeId=tenantId."
       requestBody:
         required: true
         content:
@@ -472,9 +472,9 @@ paths:
       operationId: listPermissions
       tags: [Permissions]
       summary: List permissions (for role creation UI)
-      description: "Optional query param scope_type filters permissions valid for that scope (e.g., tenant)."
+      description: "Optional query param scopeType filters permissions valid for that scope (e.g., tenant)."
       parameters:
-        - name: scope_type
+        - name: scopeType
           in: query
           schema:
             type: string

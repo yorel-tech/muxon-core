@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/atoms/card';
 import { Badge } from '@/components/ui/atoms/badge';
@@ -81,7 +81,8 @@ const recentActivities = [
   },
 ];
 
-export default function ProviderDetailPage({ params }: { params: { id: string } }) {
+export default function ProviderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [activeTab, setActiveTab] = useState('overview');
   const [provider] = useState<Provider>(mockProvider);
 

@@ -21,7 +21,7 @@ import {
   Loader2,
   Cloud
 } from 'lucide-react';
-import { apiGet, apiPost } from '@/lib/api';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
 
 interface SetupStep {
   id: string;
@@ -113,6 +113,13 @@ export default function SystemDashboardPage() {
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatusDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [idpConfig, setIdpConfig] = useState<IdpConfig | null>(null);
+  // IDP form state
+  const [idpName, setIdpName] = useState<string>('Keycloak');
+  const [idpIssuerUrl, setIdpIssuerUrl] = useState<string>('');
+  const [idpClientId, setIdpClientId] = useState<string>('');
+  const [idpClientSecret, setIdpClientSecret] = useState<string>('');
+  const [idpScopes, setIdpScopes] = useState<string>('openid,profile,email');
+  const [idpAutoProvisionUsers, setIdpAutoProvisionUsers] = useState<boolean>(true);
   const [availableUsers, setAvailableUsers] = useState<IdpUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [existingSystemUserIds, setExistingSystemUserIds] = useState<Set<string>>(new Set());
@@ -121,8 +128,8 @@ export default function SystemDashboardPage() {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isFetchingConfig, setIsFetchingConfig] = useState(false);
   const [isFetchingIdpServers, setIsFetchingIdpServers] = useState(false);
+  const [systemAdminRoleId, setSystemAdminRoleId] = useState<string | null>(null);
   const DEFAULT_IDP_ID = '62083d54-cb8c-521f-9374-65e9f21c8991';
-  const SYSTEM_ADMIN_ROLE_ID = 'system:admin';
   
   // Datacenter wizard state
   const [selectedProviderType, setSelectedProviderType] = useState<string>('libvirt');
@@ -171,6 +178,13 @@ export default function SystemDashboardPage() {
     fetchBootstrapStatus();
     fetchExistingEntities();
   }, []);
+
+  // Redirect to dashboard if status is READY
+  useEffect(() => {
+    if (isReady) {
+      window.location.href = '/system/dashboard';
+    }
+  }, [isReady]);
   
   // Update setup steps when bootstrap status changes
   useEffect(() => {
@@ -266,6 +280,8 @@ export default function SystemDashboardPage() {
   // Fetch IDP users when system-users wizard is opened
   useEffect(() => {
     if (activeWizard === 'system-users' && isBootstrapped) {
+      // Fetch system admin role ID
+      fetchSystemAdminRole();
       // Fetch existing system users to mark them as selected
       fetchExistingSystemUsers();
       // Fetch IDP users for the selected IDP
@@ -285,15 +301,25 @@ export default function SystemDashboardPage() {
   const fetchProvidersByType = async (type: string) => {
     setIsLoadingProviders(true);
     try {
-      // Backend expects uppercase enum values
+      // Backend expects uppercase enum values for providers API
       const data = await apiGet(`/api/v1/providers?type=${type.toUpperCase()}`);
       const providers = Array.isArray(data) ? data : (data?.items || []);
       setAvailableProviders(providers);
-      // Reset selected provider when type changes
-      setSelectedProvider('');
+      
+      // Keep the selected provider if it's still in the list, otherwise reset
+      const selectedProviderStillValid = selectedProvider && providers.some((p: any) => p.id === selectedProvider);
+      if (!selectedProviderStillValid) {
+        // Auto-select the first provider if only one is available
+        if (providers.length === 1) {
+          setSelectedProvider(providers[0].id);
+        } else {
+          setSelectedProvider('');
+        }
+      }
     } catch (error) {
       console.error('Error fetching providers:', error);
       setAvailableProviders([]);
+      setSelectedProvider('');
     } finally {
       setIsLoadingProviders(false);
     }
@@ -343,13 +369,20 @@ export default function SystemDashboardPage() {
       // Fetch IDP configuration
       const idpData = await apiGet('/api/v1/system-settings/idp');
       setIdpConfig({
-        providerType: idpData.providerType || 'keycloak',
+        providerType: idpData.type || 'oidc',
         issuerUrl: idpData.issuerUrl || '',
         clientId: idpData.clientId || '',
         clientSecret: idpData.clientSecret || '',
-        realm: idpData.realm || '',
+        realm: '',
         name: idpData.name,
       });
+      // Set form state from fetched config
+      setIdpName(idpData.name || 'Keycloak');
+      setIdpIssuerUrl(idpData.issuerUrl || '');
+      setIdpClientId(idpData.clientId || '');
+      setIdpClientSecret(idpData.clientSecret || '');
+      setIdpScopes(idpData.scopes || 'openid,profile,email');
+      setIdpAutoProvisionUsers(idpData.autoProvisionUsers !== undefined ? idpData.autoProvisionUsers : true);
 
       // Set selected IDP from config (use the IDP ID)
       if (idpData.name) {
@@ -411,6 +444,22 @@ export default function SystemDashboardPage() {
       setIsLoadingUsers(false);
     }
   };
+
+  const fetchSystemAdminRole = async () => {
+    try {
+      // Fetch roles to find the system:admin role UUID
+      const data = await apiGet('/api/v1/roles?scopeType=system');
+      const roles = Array.isArray(data) ? data : (data?.items || []);
+      const systemAdminRole = roles.find((r: any) => r.name === 'system:admin');
+      if (systemAdminRole) {
+        setSystemAdminRoleId(systemAdminRole.id);
+      } else {
+        console.error('System admin role not found');
+      }
+    } catch (error) {
+      console.error('Error fetching system admin role:', error);
+    }
+  };
   
   const toggleUserSelection = (userId: string) => {
     // Prevent deselecting existing system users
@@ -444,8 +493,16 @@ export default function SystemDashboardPage() {
     setActiveWizard(null);
   };
   
-  const handleSkipToDashboard = () => {
-    window.location.href = '/system/dashboard';
+  const handleSkipToDashboard = async () => {
+    try {
+      // Mark bootstrap as READY
+      await apiPut('/api/v1/status/ready');
+      // Redirect to dashboard
+      window.location.href = '/system/dashboard';
+    } catch (error) {
+      console.error('Error marking bootstrap as ready:', error);
+      alert('Failed to mark system as ready. Please try again.');
+    }
   };
   
   const handleSave = async () => {
@@ -454,8 +511,11 @@ export default function SystemDashboardPage() {
       if (activeWizard === 'system-users') {
         // Only save newly selected users (not existing system users)
         const newUserIds = Array.from(selectedUserIds).filter(id => !existingSystemUserIds.has(id));
+        if (!systemAdminRoleId) {
+          throw new Error('System admin role not found. Please refresh the page and try again.');
+        }
         const bindings: RoleBindingCreateItem[] = newUserIds.map(subjectId => ({
-          roleId: SYSTEM_ADMIN_ROLE_ID,
+          roleId: systemAdminRoleId,
           subjectType: 'user',
           subjectId: subjectId,
           scopeType: 'system',
@@ -486,7 +546,7 @@ export default function SystemDashboardPage() {
         }
         const datacenterData = {
           name: datacenterName,
-          providerType: selectedProviderType.toUpperCase(),
+          providerType: selectedProviderType.toLowerCase(),
           providerId: selectedProvider,
           description: datacenterDescription,
           settings: {
@@ -510,8 +570,18 @@ export default function SystemDashboardPage() {
         };
         await apiPost('/api/v1/tenants', tenantData);
       } else if (activeWizard === 'idp') {
-        // IDP configuration is handled separately
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Save IDP configuration
+        const idpData = {
+          type: 'oidc',
+          name: idpName,
+          issuerUrl: idpIssuerUrl,
+          clientId: idpClientId,
+          clientSecret: idpClientSecret,
+          scopes: idpScopes,
+          autoProvisionUsers: idpAutoProvisionUsers,
+          enabled: true,
+        };
+        await apiPut('/api/v1/system-settings/idp', idpData);
       }
 
       // Mark step as completed
@@ -526,7 +596,23 @@ export default function SystemDashboardPage() {
       fetchExistingEntities();
     } catch (error) {
       console.error('Error saving configuration:', error);
-      alert(error instanceof Error ? error.message : 'Failed to save configuration');
+      let errorMessage = 'Failed to save configuration';
+      if (error instanceof Error) {
+        // Try to extract the actual message from the error
+        errorMessage = error.message;
+        // If the error contains JSON, try to parse it and extract the message
+        if (errorMessage.includes('"message"')) {
+          try {
+            const match = errorMessage.match(/"message"\s*:\s*"([^"]+)"/);
+            if (match) {
+              errorMessage = match[1];
+            }
+          } catch (e) {
+            // If parsing fails, use the original message
+          }
+        }
+      }
+      alert(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -560,14 +646,20 @@ export default function SystemDashboardPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Provider Type
               </label>
-              <select
-                className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                defaultValue={idpConfig?.providerType || 'keycloak'}
-              >
-                <option value="keycloak">Keycloak</option>
-                <option value="azuread">Azure AD</option>
-                <option value="okta">Okta</option>
-              </select>
+              <div className="px-4 py-2 bg-gray-100 rounded-lg text-gray-700">
+                OIDC (OpenID Connect)
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Provider Name
+              </label>
+              <Input
+                type="text"
+                placeholder="Keycloak"
+                value={idpName}
+                onChange={(e) => setIdpName(e.target.value)}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -580,8 +672,9 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="text"
-                placeholder="https://keycloak.example.com/realms"
-                defaultValue={idpConfig?.issuerUrl || ''}
+                placeholder="https://keycloak.example.com/realms/infron"
+                value={idpIssuerUrl}
+                onChange={(e) => setIdpIssuerUrl(e.target.value)}
               />
             </div>
             <div>
@@ -590,8 +683,9 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="text"
-                placeholder="infron-web"
-                defaultValue={idpConfig?.clientId || ''}
+                placeholder="infron-client"
+                value={idpClientId}
+                onChange={(e) => setIdpClientId(e.target.value)}
               />
             </div>
             <div>
@@ -601,18 +695,32 @@ export default function SystemDashboardPage() {
               <Input
                 type="password"
                 placeholder="•••••••••••••"
-                defaultValue={idpConfig?.clientSecret || ''}
+                value={idpClientSecret}
+                onChange={(e) => setIdpClientSecret(e.target.value)}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Realm
+                Scopes
               </label>
               <Input
                 type="text"
-                placeholder="infron-dev"
-                defaultValue={idpConfig?.realm || ''}
+                placeholder="openid,profile,email"
+                value={idpScopes}
+                onChange={(e) => setIdpScopes(e.target.value)}
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autoProvisionUsers"
+                checked={idpAutoProvisionUsers}
+                onChange={(e) => setIdpAutoProvisionUsers(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="autoProvisionUsers" className="text-sm font-medium text-gray-700">
+                Auto-provision users
+              </label>
             </div>
           </div>
         );
@@ -718,14 +826,14 @@ export default function SystemDashboardPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Provider Type
               </label>
-              <select 
+              <select
                 className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 value={selectedProviderType}
                 onChange={(e) => setSelectedProviderType(e.target.value)}
               >
-                <option value="PROXMOX">Proxmox</option>
-                <option value="LIBVIRT">Libvirt</option>
-                <option value="KUBERNETES">Kubernetes</option>
+                <option value="proxmox">Proxmox</option>
+                <option value="libvirt">Libvirt</option>
+                <option value="kubernetes">Kubernetes</option>
               </select>
             </div>
             <div>
@@ -745,7 +853,13 @@ export default function SystemDashboardPage() {
               </label>
               <Input
                 type="text"
-                placeholder="ssh://user@host:port or https://proxmox.example.com:8006/api2/json"
+                placeholder={
+                  selectedProviderType === 'PROXMOX'
+                    ? 'https://proxmox.example.com:8006/api2/json'
+                    : selectedProviderType === 'KUBERNETES'
+                    ? 'https://kubernetes.example.com:6443'
+                    : 'ssh://user@host:port or libvirt://system'
+                }
                 value={providerEndpoint}
                 onChange={(e) => setProviderEndpoint(e.target.value)}
               />
@@ -809,9 +923,9 @@ export default function SystemDashboardPage() {
                 value={selectedProviderType}
                 onChange={(e) => setSelectedProviderType(e.target.value)}
               >
-                <option value="LIBVIRT">Libvirt</option>
-                <option value="PROXMOX">Proxmox</option>
-                <option value="KUBERNETES">Kubernetes</option>
+                <option value="libvirt">Libvirt</option>
+                <option value="proxmox">Proxmox</option>
+                <option value="kubernetes">Kubernetes</option>
               </select>
             </div>
             <div>
@@ -987,6 +1101,20 @@ export default function SystemDashboardPage() {
   };
   
   const completedCount = setupSteps.filter((s) => s.completed).length;
+  
+  // Don't render the page if bootstrap status is READY
+  if (isReady) {
+    return null;
+  }
+  
+  // Show loading state while checking bootstrap status
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-50">

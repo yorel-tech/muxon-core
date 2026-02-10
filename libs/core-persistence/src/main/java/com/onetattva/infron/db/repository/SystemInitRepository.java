@@ -33,8 +33,9 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, St
      * @return number of rows updated
      */
     @Modifying
-    @Query("UPDATE SystemInitEntity s SET s.value = :systemStatus, s.systemStatus = :systemStatus, s.updatedAt = :updatedAt WHERE s.primaryKey = :primaryKey")
+    @Query(value = "UPDATE system_init SET value = :systemStatusName, system_status = cast(:systemStatusName as bootstrap_status), updated_at = :updatedAt WHERE primary_key = :primaryKey", nativeQuery = true)
     int updateSystemStatus(@Param("primaryKey") String primaryKey, @Param("systemStatus") BootstrapStatus systemStatus,
+                           @Param("systemStatusName") String systemStatusName,
                            @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
     /**
@@ -59,7 +60,7 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, St
      * @return number of rows updated
      */
     default int markAsBootstrapped() {
-        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED, java.time.LocalDateTime.now());
+        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED, BootstrapStatus.BOOTSTRAPPED.name(), java.time.LocalDateTime.now());
     }
 
     /**
@@ -69,6 +70,6 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, St
      * @return number of rows updated
      */
     default int markAsReady() {
-        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.READY, java.time.LocalDateTime.now());
+        return updateSystemStatus(Constants.BOOTSTRAP_STATUS_KEY, BootstrapStatus.READY, BootstrapStatus.READY.name(), java.time.LocalDateTime.now());
     }
 }

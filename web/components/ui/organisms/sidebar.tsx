@@ -4,7 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { forwardRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSidebarCounts } from '@/lib/use-sidebar-counts';
+import { useAuth } from '@/lib/auth-context';
+import { getUserManager } from '@/lib/oidc';
 import {
   LayoutDashboard,
   Settings,
@@ -138,8 +141,21 @@ const enterpriseItems: SidebarItem[] = [
 export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
   ({ isOpen, onClose, userRole, isEnterprise = false, className = '' }: SidebarProps, ref) => {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user } = useAuth();
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const { counts } = useSidebarCounts(userRole, isOpen);
+
+    const handleSignOut = async () => {
+      try {
+        const manager = getUserManager();
+        if (manager) {
+          await manager.signoutRedirect();
+        }
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    };
 
     const toggleExpand = (id: string) => {
       setExpandedItems((prev) => {
@@ -279,17 +295,34 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
           {/* User Section */}
           <div className="border-t border-gray-200 p-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-8 bg-gray-200 rounded-full" />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-medium text-gray-600">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">John Doe</p>
-                <p className="text-xs text-gray-500">System Admin</p>
+                <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {userRole === 'system' ? 'System Admin' : 'Tenant User'}
+                </p>
               </div>
             </div>
             <button className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
               <Settings size={16} />
               <span>Settings</span>
             </button>
-            <button className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+            >
               <LogOut size={16} />
               <span>Sign Out</span>
             </button>

@@ -5,6 +5,8 @@ import { forwardRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebarCounts } from '@/lib/use-sidebar-counts';
+import { useAuth } from '@/lib/auth-context';
+import { getUserManager } from '@/lib/oidc';
 import {
   LayoutDashboard,
   Settings,
@@ -126,8 +128,20 @@ const baseTenantUserItems: Omit<SidebarItem, 'badge'>[] = [
 export const CollapsibleSidebar = forwardRef<HTMLDivElement, CollapsibleSidebarProps>(
   ({ isOpen, onToggle, userRole, isEnterprise = false, className = '' }: CollapsibleSidebarProps, ref) => {
     const pathname = usePathname();
+    const { user } = useAuth();
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const { counts } = useSidebarCounts(userRole, isOpen);
+
+    const handleSignOut = async () => {
+      try {
+        const manager = getUserManager();
+        if (manager) {
+          await manager.signoutRedirect();
+        }
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    };
 
     const toggleExpand = (id: string) => {
       setExpandedItems((prev) => {
@@ -271,7 +285,19 @@ export const CollapsibleSidebar = forwardRef<HTMLDivElement, CollapsibleSidebarP
               'flex items-center gap-3 mb-4',
               isOpen ? '' : 'justify-center'
             )}>
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-600" />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="flex-shrink-0 h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center">
+                  <span className="text-sm font-medium text-gray-300">
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              )}
               <AnimatePresence mode="wait">
                 {isOpen && (
                   <motion.div
@@ -281,8 +307,10 @@ export const CollapsibleSidebar = forwardRef<HTMLDivElement, CollapsibleSidebarP
                     transition={{ duration: 0.2 }}
                     className="flex-1 overflow-hidden"
                   >
-                    <p className="text-sm font-medium text-gray-300 whitespace-nowrap">John Doe</p>
-                    <p className="text-xs text-gray-500 whitespace-nowrap">System Admin</p>
+                    <p className="text-sm font-medium text-gray-300 whitespace-nowrap">{user?.name || 'User'}</p>
+                    <p className="text-xs text-gray-500 whitespace-nowrap capitalize">
+                      {userRole === 'system' ? 'System Admin' : 'Tenant User'}
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -306,10 +334,13 @@ export const CollapsibleSidebar = forwardRef<HTMLDivElement, CollapsibleSidebarP
                 )}
               </AnimatePresence>
             </button>
-            <button className={cn(
-              'flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors',
-              isOpen ? 'px-3' : 'justify-center px-0'
-            )}>
+            <button
+              onClick={handleSignOut}
+              className={cn(
+                'flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors',
+                isOpen ? 'px-3' : 'justify-center px-0'
+              )}
+            >
               <LogOut size={16} className="flex-shrink-0" />
               <AnimatePresence mode="wait">
                 {isOpen && (

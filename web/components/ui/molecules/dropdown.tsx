@@ -116,7 +116,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg py-1',
+                'absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg py-1',
                 {
                   'left-0': position === 'left',
                   'right-0': position === 'right',

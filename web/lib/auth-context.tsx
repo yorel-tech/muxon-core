@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Extract roles from OIDC token
         // Roles can be in different locations depending on IDP configuration
-        const roles = userData.profile.roles || userData.profile.realm_access?.roles || [];
+        const profile = userData.profile as any;
+        const roles = profile.roles || profile.realm_access?.roles || [];
         
         // Determine user role based on roles
         // 'system:admin' maps to 'system', other roles map to 'tenant'

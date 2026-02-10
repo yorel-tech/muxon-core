@@ -23,6 +23,7 @@ export interface TableProps {
   emptyMessage?: string;
   isLoading?: boolean;
   className?: string;
+  overflowVisibleColumnKeys?: string[];
 }
 
 // Helper function to safely get string representation of any value for filtering
@@ -46,6 +47,7 @@ function TableComponent({
   emptyMessage = 'No data available',
   isLoading = false,
   className = '',
+  overflowVisibleColumnKeys = [],
 }: TableProps,
   ref: React.Ref<HTMLTableElement>,
 ) {
@@ -170,7 +172,7 @@ function TableComponent({
                   className="group cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-3 whitespace-nowrap">
+                    <td key={column.key} className={`px-6 py-3 ${overflowVisibleColumnKeys.includes(column.key) ? 'overflow-visible' : 'whitespace-nowrap'}`}>
                       {column.cell(row)}
                     </td>
                   ))}

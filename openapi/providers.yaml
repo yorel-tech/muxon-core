@@ -25,7 +25,6 @@ components:
               $ref: '#/components/schemas/ProviderType'
             endpoint:
               type: string
-              format: uri
               example: "https://proxmox.example.com:8006/api2/json"
             status:
               $ref: '#/components/schemas/ProviderStatus'
@@ -43,11 +42,12 @@ components:
         name:
           type: string
           maxLength: 255
+        description:
+          type: string
         type:
           $ref: '#/components/schemas/ProviderType'
         endpoint:
           type: string
-          format: uri
           description: >
             Provider API endpoint URL. For Libvirt SSH providers, this should be
             SSH connection string (e.g., "ssh://user@host:port")
@@ -71,7 +71,6 @@ components:
           maxLength: 255
         endpoint:
           type: string
-          format: uri
         credentials:
           type: object
           additionalProperties:

@@ -266,7 +266,7 @@ public class SystemInitService {
      * @return number of rows updated
      */
     @Transactional
-    @PreAuthorize("hasAuthority('SYSTEM_SETTINGS')")
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
     public int markBootstrapAsReady() {
         return systemInitRepository.markAsReady();
     }

@@ -1,17 +1,22 @@
 package com.onetattva.infron.core.controllers;
 
 import com.onetattva.infron.api.dto.BootstrapStatusDto;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.SystemInitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Public controller for checking bootstrap status.
+ * Controller for bootstrap status operations.
  * Provides GET /status endpoint that returns only the bootstrap status enum.
- * No authentication required for this endpoint.
+ * The GET endpoint is publicly accessible without authentication.
+ * The PUT /status/ready endpoint requires SYSTEM_SETTINGS authority.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -32,6 +37,21 @@ public class BootstrapStatusController {
      */
     @GetMapping("/status")
     public ResponseEntity<BootstrapStatusDto> getBootstrapStatus() {
+        BootstrapStatusDto status = systemInitService.getBootstrapStatus();
+        return ResponseEntity.ok(status);
+    }
+
+    /**
+     * Mark bootstrap as READY.
+     * Updates the bootstrap status to READY, indicating all required setup steps have been completed.
+     * This endpoint requires SYSTEM_SETTINGS authority.
+     *
+     * @return ResponseEntity with BootstrapStatusDto containing the updated status
+     */
+    @PutMapping("/status/ready")
+    @RequiresPermission(Permission.SYSTEM_SETTINGS)
+    public ResponseEntity<BootstrapStatusDto> markBootstrapAsReady() {
+        systemInitService.markBootstrapAsReady();
         BootstrapStatusDto status = systemInitService.getBootstrapStatus();
         return ResponseEntity.ok(status);
     }

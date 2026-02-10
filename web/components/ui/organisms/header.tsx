@@ -21,7 +21,7 @@ export interface HeaderProps {
 }
 
 export const Header = forwardRef<HTMLDivElement, HeaderProps>(
-  ({ notifications = 0, onSearch, onMenuClick, onSettingsClick, className = '' }: HeaderProps, ref,
+  ({ notifications = 0, onSearch, onMenuClick, onSettingsClick, onLogout, className = '' }: HeaderProps, ref,
 ) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);

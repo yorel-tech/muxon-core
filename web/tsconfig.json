@@ -24,7 +24,8 @@
       "@app/*": ["app/*"],
       "@lib/*": ["lib/*"],
       "@components/*": ["components/*"],
-      "@styles/*": ["app/*"]
+      "@styles/*": ["app/*"],
+      "./node_modules/@types/react-dom": ["./node_modules/@types/react-dom"]
     },
     "plugins": [
       {

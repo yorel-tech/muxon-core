@@ -1,5 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export async function PUT(request: NextRequest) {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+  
+  // Get all cookies from request
+  const cookieHeader = request.headers.get('cookie');
+  const authHeader = request.headers.get('authorization');
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  }
+  if (cookieHeader) {
+    headers['Cookie'] = cookieHeader;
+  }
+  
+  try {
+    const body = await request.json();
+    const response = await fetch(`${apiBase}/api/v1/system-settings/idp`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      return NextResponse.json(
+        { error: errorText },
+        { status: response.status }
+      );
+    }
+    
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error proxying PUT to backend:', error);
+    return NextResponse.json(
+      { error: 'Failed to update IDP configuration' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request: NextRequest) {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
   

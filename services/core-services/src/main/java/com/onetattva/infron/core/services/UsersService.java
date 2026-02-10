@@ -1,13 +1,6 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.api.model.OidcUser;
-import com.onetattva.infron.api.model.OidcUserList;
-import com.onetattva.infron.api.model.RoleBinding;
-import com.onetattva.infron.api.model.RoleBindingBulkCreate;
-import com.onetattva.infron.api.model.RoleBindingList;
-import com.onetattva.infron.api.model.RoleUpdateRequest;
-import com.onetattva.infron.api.model.User;
-import com.onetattva.infron.api.model.UserList;
+import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EncryptionUtil;
 import com.onetattva.infron.core.services.model.OidcUserInfo;
@@ -183,7 +176,7 @@ public class UsersService {
     public RoleBindingList addSystemUsers(RoleBindingBulkCreate request) {
         // Ensure all bindings have SYSTEM scope
         for (var binding : request.getBindings()) {
-            if (!"SYSTEM".equals(binding.getScopeType())) {
+            if (!RoleBindingCreateItem.ScopeTypeEnum.SYSTEM.equals(binding.getScopeType())) {
                 throw new RuntimeException("System user addition requires SYSTEM scope type");
             }
             if (binding.getScopeId() != null) {
@@ -193,7 +186,7 @@ public class UsersService {
 
         // Create idp_user entries for users that don't exist
         for (var binding : request.getBindings()) {
-            if ("USER".equals(binding.getSubjectType())) {
+            if (RoleBindingCreateItem.SubjectTypeEnum.USER.equals(binding.getSubjectType())) {
                 createIdpUserIfNotExists(binding.getSubjectId(), binding.getRoleId());
             }
         }

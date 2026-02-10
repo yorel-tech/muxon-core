@@ -53,7 +53,7 @@ public class ProvidersService {
         }
 
         // Validate endpoint format based on provider type
-        validateEndpointFormat(request.getType(), request.getEndpoint().toString());
+        validateEndpointFormat(request.getType(), request.getEndpoint());
 
         // Validate credentials based on provider type
         validateCredentials(request.getType(), request.getCredentials());
@@ -63,7 +63,7 @@ public class ProvidersService {
         entity.setId(UUID.randomUUID());
         entity.setName(request.getName());
         entity.setType(request.getType());
-        entity.setEndpoint(request.getEndpoint().toString());
+        entity.setEndpoint(request.getEndpoint());
         entity.setCredentials(request.getCredentials());
         entity.setMetadata(request.getMetadata());
         entity.setStatus(ProviderStatus.CONNECTING.name());
@@ -185,7 +185,7 @@ public class ProvidersService {
 
         // Validate endpoint format if being changed
         if (request.getEndpoint() != null) {
-            validateEndpointFormat(entity.getType(), request.getEndpoint().toString());
+            validateEndpointFormat(entity.getType(), request.getEndpoint());
         }
 
         // Validate credentials if being changed
@@ -198,7 +198,7 @@ public class ProvidersService {
             entity.setName(request.getName());
         }
         if (request.getEndpoint() != null) {
-            entity.setEndpoint(request.getEndpoint().toString());
+            entity.setEndpoint(request.getEndpoint());
         }
         if (request.getCredentials() != null) {
             entity.setCredentials(request.getCredentials());
@@ -233,7 +233,7 @@ public class ProvidersService {
 
         // Validate endpoint format if being changed
         if (request.getEndpoint() != null) {
-            validateEndpointFormat(entity.getType(), request.getEndpoint().toString());
+            validateEndpointFormat(entity.getType(), request.getEndpoint());
         }
 
         // Validate credentials if being changed
@@ -246,7 +246,7 @@ public class ProvidersService {
             entity.setName(request.getName());
         }
         if (request.getEndpoint() != null) {
-            entity.setEndpoint(request.getEndpoint().toString());
+            entity.setEndpoint(request.getEndpoint());
         }
         if (request.getCredentials() != null) {
             entity.setCredentials(request.getCredentials());
@@ -453,7 +453,7 @@ public class ProvidersService {
         api.setId(entity.getId());
         api.setName(entity.getName());
         api.setType(entity.getType());
-        api.setEndpoint(entity.getEndpoint() != null ? java.net.URI.create(entity.getEndpoint()) : null);
+        api.setEndpoint(entity.getEndpoint());
         api.setStatus(ProviderStatus.valueOf(entity.getStatus()));
         api.setCapabilities(mapEntityCapabilitiesToApi(entity.getCapabilities()));
         api.setMetadata(entity.getMetadata());
@@ -481,7 +481,7 @@ public class ProvidersService {
                                 ? Integer.parseInt(entityCapabilities.get("maxMemoryGb")) : 409600)
                         .maxStorageGb(entityCapabilities != null && entityCapabilities.containsKey("maxStorageGb")
                                 ? Integer.parseInt(entityCapabilities.get("maxStorageGb")) : 20000)
-                        .maxVms(entityCapabilities != null && entityCapabilities.containsKey("maxVms"))
+                        .maxVms(entityCapabilities != null && entityCapabilities.containsKey("maxVms")
                                 ? Integer.parseInt(entityCapabilities.get("maxVms")) : 500)
                         .build())
                 .features(entityCapabilities != null ? new java.util.HashMap<>(entityCapabilities) : Map.of())
@@ -672,6 +672,7 @@ public class ProvidersService {
         private com.onetattva.infron.core.providers.ProviderCapabilities mapEntityCapabilitiesToSpi(Map<String, String> entityCapabilities) {
             if (entityCapabilities == null) {
                 return new com.onetattva.infron.core.providers.ProviderCapabilities(
+                    List.of(),
                     List.of(),
                     List.of(),
                     List.of(),

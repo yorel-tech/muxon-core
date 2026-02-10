@@ -88,7 +88,7 @@ public class VmProviderRegistry {
         }
 
         return switch (providerType) {
-            case KVM, VCENTER, K8S, MIXED -> "mock"; // Use mock as fallback for testing
+            case PROXMOX, LIBVIRT, KUBERNETES, MIXED -> "mock"; // Use mock as fallback for testing
             default -> "mock";
         };
     }
