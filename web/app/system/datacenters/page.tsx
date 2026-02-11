@@ -1,35 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Plus, 
-  Server, 
-  MapPin, 
-  MoreVertical, 
-  Edit, 
-  Trash2, 
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/atoms/card';
+import { Table, Column } from '@/components/ui/organisms/table';
+import { Badge } from '@/components/ui/atoms/badge';
+import { Dropdown, DropdownOption } from '@/components/ui/molecules/dropdown';
+import { Button } from '@/components/ui/atoms/button';
+import { Input } from '@/components/ui/atoms/input';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  MoreHorizontal,
+  Eye,
+  Pencil,
   RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  HardDrive,
+  Ban,
+  Trash2,
+  X,
+  Loader2,
+  CheckCircle2,
+  MapPin,
   Activity,
-  ArrowRight,
-  Search,
-  Filter,
-  ChevronDown,
-  Settings
 } from 'lucide-react';
-import { Button } from '@components/ui/atoms/button';
-import { Card, CardContent, CardHeader } from '@components/ui/atoms/card';
-import { Input } from '@components/ui/atoms/input';
-import { Badge } from '@components/ui/atoms/badge';
-import { Switch } from '@components/ui/atoms/switch';
-import { Dropdown } from '@components/ui/molecules/dropdown';
-import { Table } from '@components/ui/organisms/table';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
-interface Datacenter {
+export interface Datacenter extends Record<string, any> {
   id: string;
   name: string;
   type: 'libvirt' | 'proxmox' | 'kubernetes';
@@ -44,215 +39,270 @@ interface Datacenter {
   activeNodes: number;
   createdAt: string;
   lastSync: string;
+  [key: string]: any;
 }
-
-interface DatacenterStats {
-  total: number;
-  connected: number;
-  disconnected: number;
-  healthy: number;
-  degraded: number;
-  down: number;
-}
-
-const mockDatacenters: Datacenter[] = [
-  {
-    id: 'dc-1',
-    name: 'US-East-Primary',
-    type: 'proxmox',
-    status: 'connected',
-    health: 'healthy',
-    region: 'us-east-1',
-    location: 'Virginia, USA',
-    providerId: 'proxmox-1',
-    totalCapacity: 1000,
-    usedCapacity: 642,
-    totalNodes: 50,
-    activeNodes: 48,
-    createdAt: '2024-01-15T10:30:00Z',
-    lastSync: '2024-01-10T14:22:00Z',
-  },
-  {
-    id: 'dc-2',
-    name: 'US-West-Secondary',
-    type: 'proxmox',
-    status: 'connected',
-    health: 'healthy',
-    region: 'us-west-2',
-    location: 'Oregon, USA',
-    providerId: 'proxmox-1',
-    totalCapacity: 500,
-    usedCapacity: 234,
-    totalNodes: 25,
-    activeNodes: 23,
-    createdAt: '2024-01-20T09:15:00Z',
-    lastSync: '2024-01-10T14:25:00Z',
-  },
-  {
-    id: 'dc-3',
-    name: 'EU-Central',
-    type: 'proxmox',
-    status: 'connected',
-    health: 'degraded',
-    region: 'eu-central-1',
-    location: 'Frankfurt, Germany',
-    providerId: 'proxmox-1',
-    totalCapacity: 200,
-    usedCapacity: 156,
-    totalNodes: 10,
-    activeNodes: 8,
-    createdAt: '2024-01-18T11:45:00Z',
-    lastSync: '2024-01-10T14:30:00Z',
-  },
-  {
-    id: 'dc-4',
-    name: 'Asia-Pacific',
-    type: 'kubernetes',
-    status: 'disconnected',
-    health: 'down',
-    region: 'ap-southeast-1',
-    location: 'Singapore',
-    providerId: 'k8s-1',
-    totalCapacity: 300,
-    usedCapacity: 0,
-    totalNodes: 15,
-    activeNodes: 0,
-    createdAt: '2024-01-22T08:00:00Z',
-    lastSync: '2024-01-10T14:28:00Z',
-  },
-  {
-    id: 'dc-5',
-    name: 'Local Development',
-    type: 'libvirt',
-    status: 'connected',
-    health: 'healthy',
-    region: 'local',
-    location: 'On-Premise',
-    providerId: 'libvirt-1',
-    totalCapacity: 100,
-    usedCapacity: 45,
-    totalNodes: 5,
-    activeNodes: 5,
-    createdAt: '2024-01-25T16:20:00Z',
-    lastSync: '2024-01-10T14:32:00Z',
-  },
-];
 
 export default function DatacentersPage() {
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
-  const [filterQuery, setFilterQuery] = useState('');
-  const [selectedDatacenter, setSelectedDatacenter] = useState<Datacenter | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDatacenter, setEditingDatacenter] = useState<Datacenter | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  
-  const stats: DatacenterStats = {
-    total: mockDatacenters.length,
-    connected: mockDatacenters.filter(dc => dc.status === 'connected').length,
-    disconnected: mockDatacenters.filter(dc => dc.status === 'disconnected').length,
-    healthy: mockDatacenters.filter(dc => dc.health === 'healthy').length,
-    degraded: mockDatacenters.filter(dc => dc.health === 'degraded').length,
-    down: mockDatacenters.filter(dc => dc.health === 'down').length,
-  };
-  
-  const filteredDatacenters = filterQuery || filterStatus !== 'all'
-    ? mockDatacenters.filter(dc =>
-        (filterQuery ? dc.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
-        dc.region.toLowerCase().includes(filterQuery.toLowerCase()) ||
-        dc.location.toLowerCase().includes(filterQuery.toLowerCase()) : true) &&
-        (filterStatus === 'all' || dc.status === filterStatus)
-      )
-    : mockDatacenters;
-  
-  // Helper functions
-  const getStatusIcon = (status: string, health: string) => {
-    if (status === 'connected' && health === 'healthy') {
-      return <CheckCircle className="w-4 h-4 text-green-600" />;
+  const [datacenters, setDatacenters] = useState<Datacenter[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedDatacenter, setSelectedDatacenter] = useState<string | null>(null);
+
+  // Wizard state
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [datacenterName, setDatacenterName] = useState<string>('');
+  const [datacenterType, setDatacenterType] = useState<'proxmox' | 'libvirt' | 'kubernetes'>('libvirt');
+  const [datacenterLocation, setDatacenterLocation] = useState<string>('');
+  const [datacenterCapacity, setDatacenterCapacity] = useState<string>('');
+
+  // Fetch datacenters on mount
+  useEffect(() => {
+    fetchDatacenters();
+  }, []);
+
+  const fetchDatacenters = async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiGet('/api/v1/datacenters');
+      // API returns { total, page, perPage, items: [...] }
+      const datacentersList = Array.isArray(data) ? data : (data?.items || []);
+      
+      // Map backend data to frontend Datacenter interface
+      const mappedDatacenters = datacentersList.map((dc: any) => ({
+        id: dc.id,
+        name: dc.name,
+        type: dc.settings?.providerType || 'libvirt',
+        status: 'connected', // Backend doesn't provide this yet, default to connected
+        health: 'healthy', // Backend doesn't provide this yet, default to healthy
+        region: dc.metadata?.region || '',
+        location: dc.description || '',
+        providerId: dc.id, // Use id as providerId for now
+        totalCapacity: dc.capacity?.totalCpus || 0,
+        usedCapacity: 0, // Backend doesn't provide this yet
+        totalNodes: 0, // Backend doesn't provide this yet
+        activeNodes: 0, // Backend doesn't provide this yet
+        createdAt: dc.createdAt || '',
+        lastSync: dc.updatedAt || '',
+      }));
+      
+      setDatacenters(mappedDatacenters);
+    } catch (error) {
+      console.error('Error fetching datacenters:', error);
+      setDatacenters([]);
+    } finally {
+      setIsLoading(false);
     }
-    if (status === 'connected' && health === 'degraded') {
-      return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-    }
-    if (status === 'disconnected' || health === 'down') {
-      return <AlertCircle className="w-4 h-4 text-red-600" />;
-    }
-    if (status === 'syncing') {
-      return <RefreshCw className="w-4 h-4 text-blue-600 animate-spin" />;
-    }
-    return <Clock className="w-4 h-4 text-gray-400" />;
   };
-  
-  const getHealthBadge = (health: string) => {
-    const healthLabels: Record<string, string> = {
-      healthy: 'Healthy',
-      degraded: 'Degraded',
-      down: 'Down',
-    };
-    const healthVariants: Record<string, 'success' | 'warning' | 'error'> = {
-      healthy: 'success',
-      degraded: 'warning',
-      down: 'error',
-    };
-    return (
-      <Badge variant={healthVariants[health]}>
-        {healthLabels[health]}
-      </Badge>
-    );
+
+  const handleViewDetails = (datacenter: Datacenter) => {
+    console.log('View details for:', datacenter.id);
+    // Navigate to datacenter details page
   };
-  
-  const handleAddDatacenter = () => {
-    setIsModalOpen(true);
-    setEditingDatacenter(null);
-  };
-  
+
   const handleEdit = (datacenter: Datacenter) => {
-    setEditingDatacenter(datacenter);
-    setIsModalOpen(true);
+    console.log('Edit datacenter:', datacenter.id);
+    // Open edit modal
   };
-  
-  const handleSync = (datacenter: Datacenter) => {
-    setShowToast(true);
-    setToastMessage(`Syncing ${datacenter.name}...`);
-    setToastVariant('success');
-    setTimeout(() => setShowToast(false), 3000);
+
+  const handleSync = async (datacenter: Datacenter) => {
+    console.log('Sync datacenter:', datacenter.id);
+    try {
+      await apiPost(`/api/v1/datacenters/${datacenter.id}/sync`, {});
+      await fetchDatacenters();
+    } catch (error) {
+      console.error('Error syncing datacenter:', error);
+      alert('Failed to sync datacenter.');
+    }
   };
-  
-  const handleDelete = (datacenter: Datacenter) => {
-    setSelectedDatacenter(datacenter);
-    setIsDeleting(true);
+
+  const handleDisable = async (datacenter: Datacenter) => {
+    console.log('Disable datacenter:', datacenter.id);
+    // Note: Backend doesn't have a status field yet, this is a placeholder
+    alert('Disable functionality not yet implemented in the backend');
   };
-  
-  const confirmDelete = () => {
-    if (!selectedDatacenter) return;
-    
-    setShowToast(true);
-    setToastMessage(`Datacenter "${selectedDatacenter.name}" deleted successfully`);
-    setToastVariant('success');
-    setSelectedDatacenter(null);
-    setIsDeleting(false);
-    setIsModalOpen(false);
-    setTimeout(() => setShowToast(false), 3000);
+
+  const handleDelete = async (datacenter: Datacenter) => {
+    if (window.confirm(`Are you sure you want to delete datacenter "${datacenter.name}"?`)) {
+      try {
+        await apiDelete(`/api/v1/datacenters/${datacenter.id}`);
+        await fetchDatacenters();
+      } catch (error) {
+        console.error('Error deleting datacenter:', error);
+        alert('Failed to delete datacenter.');
+      }
+    }
   };
-  
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingDatacenter(null);
-    setSelectedDatacenter(null);
-    setIsDeleting(false);
+
+  const getContextMenuOptions = (datacenter: Datacenter): DropdownOption[] => [
+    {
+      label: 'View Details',
+      icon: <Eye size={14} />,
+      onClick: () => handleViewDetails(datacenter),
+    },
+    {
+      label: 'Edit',
+      icon: <Pencil size={14} />,
+      onClick: () => handleEdit(datacenter),
+    },
+    {
+      label: 'Sync',
+      icon: <RefreshCw size={14} />,
+      onClick: () => handleSync(datacenter),
+    },
+    {
+      label: 'Disable',
+      icon: <Ban size={14} />,
+      variant: 'warning',
+      onClick: () => handleDisable(datacenter),
+    },
+    {
+      label: 'Delete',
+      icon: <Trash2 size={14} />,
+      variant: 'danger',
+      onClick: () => handleDelete(datacenter),
+    },
+  ];
+
+  const getStatusBadgeVariant = (status: Datacenter['status']) => {
+    switch (status) {
+      case 'connected':
+        return 'success';
+      case 'disconnected':
+        return 'error';
+      case 'syncing':
+        return 'info';
+      case 'error':
+        return 'error';
+      default:
+        return 'default';
+    }
   };
-  
-  // Column definitions - defined after helper functions
-  const datacentersColumns = [
+
+  const getHealthBadgeVariant = (health: Datacenter['health']) => {
+    switch (health) {
+      case 'healthy':
+        return 'success';
+      case 'degraded':
+        return 'warning';
+      case 'down':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getTypeLabel = (type: Datacenter['type']) => {
+    switch (type) {
+      case 'proxmox':
+        return 'Proxmox';
+      case 'libvirt':
+        return 'Libvirt';
+      case 'kubernetes':
+        return 'Kubernetes';
+      default:
+        return type;
+    }
+  };
+
+  const handleOpenWizard = () => {
+    setIsWizardOpen(true);
+  };
+
+  const handleCloseWizard = () => {
+    setIsWizardOpen(false);
+    // Reset form
+    setDatacenterName('');
+    setDatacenterType('libvirt');
+    setDatacenterLocation('');
+    setDatacenterCapacity('');
+  };
+
+  const handleSaveDatacenter = async () => {
+    if (!datacenterName) {
+      alert('Datacenter name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const datacenterData = {
+        name: datacenterName,
+        providerType: datacenterType,
+        description: datacenterLocation || undefined,
+        settings: {
+          providerType: datacenterType,
+          defaultCpuOvercommitRatio: 4.0,
+          defaultMemoryOvercommitRatio: 1.5,
+          vmClasses: ['small', 'medium', 'large'],
+          storageClasses: ['gold', 'silver'],
+          networkDomains: ['private', 'public'],
+        },
+        capacity: datacenterCapacity ? {
+          totalCpus: parseInt(datacenterCapacity),
+          totalMemoryGb: 4096,
+          totalStorageGb: 20000,
+        } : undefined,
+      };
+
+      await apiPost('/api/v1/datacenters', datacenterData);
+      await fetchDatacenters();
+      handleCloseWizard();
+    } catch (error) {
+      console.error('Error creating datacenter:', error);
+      let errorMessage = 'Failed to create datacenter';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Try to extract the actual message from the error
+        if (errorMessage.includes('"message"')) {
+          try {
+            const match = errorMessage.match(/"message"\s*:\s*"([^"]+)"/);
+            if (match) {
+              errorMessage = match[1];
+            }
+          } catch (e) {
+            // If parsing fails, use the original message
+          }
+        }
+      }
+      alert(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const columns: Column<Datacenter>[] = [
+    {
+      key: 'actions',
+      header: '',
+      cell: (row: Datacenter) => (
+        <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            trigger={
+              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
+                <MoreHorizontal size={16} className="text-gray-600" />
+              </button>
+            }
+            options={getContextMenuOptions(row)}
+            position="right"
+            usePortal={true}
+          />
+        </div>
+      ),
+      sortable: false,
+    },
     {
       key: 'name',
       header: 'Name',
       cell: (row: Datacenter) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{row.name}</span>
-          <Badge variant="info">{row.type}</Badge>
-        </div>
+        <div className="font-medium text-gray-900">{row.name}</div>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      cell: (row: Datacenter) => (
+        <Badge variant="info">{getTypeLabel(row.type)}</Badge>
       ),
       sortable: true,
     },
@@ -260,12 +310,21 @@ export default function DatacentersPage() {
       key: 'status',
       header: 'Status',
       cell: (row: Datacenter) => (
-        <div className="flex items-center gap-2">
-          {getStatusIcon(row.status, row.health)}
-          <span className="font-medium">{row.status}</span>
-          {getHealthBadge(row.health)}
-        </div>
+        <Badge variant={getStatusBadgeVariant(row.status)}>
+          {row.status}
+        </Badge>
       ),
+      sortable: true,
+    },
+    {
+      key: 'health',
+      header: 'Health',
+      cell: (row: Datacenter) => (
+        <Badge variant={getHealthBadgeVariant(row.health)}>
+          {row.health}
+        </Badge>
+      ),
+      sortable: true,
     },
     {
       key: 'region',
@@ -273,9 +332,10 @@ export default function DatacentersPage() {
       cell: (row: Datacenter) => (
         <div className="flex items-center gap-1">
           <MapPin className="w-4 h-4 text-gray-500" />
-          <span>{row.region}</span>
+          <span className="text-gray-600">{row.region}</span>
         </div>
       ),
+      sortable: true,
     },
     {
       key: 'location',
@@ -286,402 +346,187 @@ export default function DatacentersPage() {
           <span className="text-gray-600">{row.location}</span>
         </div>
       ),
+      sortable: true,
     },
     {
       key: 'capacity',
       header: 'Capacity',
       cell: (row: Datacenter) => (
-        <div className="text-right">
-          <span className="font-medium">{row.usedCapacity} / {row.totalCapacity}</span>
-          <div className="text-sm text-gray-500">
-            {row.usedCapacity} cores
-          </div>
-        </div>
+        <span className="text-gray-600">{row.usedCapacity} / {row.totalCapacity}</span>
       ),
+      sortable: true,
     },
     {
       key: 'nodes',
       header: 'Nodes',
       cell: (row: Datacenter) => (
-        <div className="text-right">
-          <span className="font-medium">{row.activeNodes} / {row.totalNodes}</span>
-          <div className="text-sm text-gray-500">
-            {row.activeNodes} active
-          </div>
-        </div>
+        <span className="text-gray-600">{row.activeNodes} / {row.totalNodes}</span>
       ),
-    },
-    {
-      key: 'health',
-      header: 'Health',
-      cell: (row: Datacenter) => (
-        <div className="flex items-center justify-end gap-2">
-          {getStatusIcon(row.status, row.health)}
-          <span className="font-medium">{row.health}</span>
-          {getHealthBadge(row.health)}
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      cell: (row: Datacenter) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(row)}
-            leftIcon={<Edit className="w-4 h-4" />}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleSync(row)}
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-          >
-            Sync
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => handleDelete(row)}
-            leftIcon={<Trash2 className="w-4 h-4" />}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+      sortable: true,
     },
   ];
-  
+
   return (
-    <>
-      {/* Page Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Datacenters</h1>
-            <p className="text-gray-600 mt-1">Manage and monitor your cloud infrastructure datacenters</p>
-          </div>
-          <Button onClick={handleAddDatacenter} leftIcon={<Plus size={16} />}>
-            Add Datacenter
-          </Button>
-        </div>
-      </motion.div>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+          className="mb-8"
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Server className="w-8 h-8 text-blue-600" />
-            </div>
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              <p className="text-sm text-gray-600">Total Datacenters</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Datacenters
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage and monitor your cloud infrastructure datacenters
+              </p>
             </div>
+            <button
+              onClick={handleOpenWizard}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              <Plus size={18} />
+              <span>Add Datacenter</span>
+            </button>
           </div>
         </motion.div>
-        
+
+        {/* Datacenters Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+          transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.connected}</p>
-              <p className="text-sm text-gray-600">Connected</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-lg">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.disconnected}</p>
-              <p className="text-sm text-gray-600">Disconnected</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <AlertCircle className="w-8 h-8 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.degraded}</p>
-              <p className="text-sm text-gray-600">Degraded</p>
-            </div>
-          </div>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gray-100 rounded-lg">
-              <HardDrive className="w-8 h-8 text-gray-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.down}</p>
-              <p className="text-sm text-gray-600">Down</p>
-            </div>
-          </div>
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={datacenters}
+                  emptyMessage="No datacenters configured"
+                  onRowClick={(row) => handleViewDetails(row)}
+                  overflowVisibleColumnKeys={['actions']}
+                />
+              )}
+            </CardContent>
+          </Card>
         </motion.div>
       </div>
-      
-      {/* Filter Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-6"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 w-5 h-5 text-gray-400" />
-              <Input
-                variant="search"
-                placeholder="Search datacenters..."
-                value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Dropdown
-              options={[
-                { label: 'All Statuses', value: 'all' },
-                { label: 'Connected', value: 'connected' },
-                { label: 'Disconnected', value: 'disconnected' },
-                { label: 'Syncing', value: 'syncing' },
-                { label: 'Error', value: 'error' },
-              ]}
-              value={filterStatus}
-              onChange={setFilterStatus}
-              placeholder="All Statuses"
-            />
-            <Button variant="ghost" size="sm" leftIcon={<Filter className="w-4 h-4" />}>
-              Filter
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-      
-      {/* Datacenters Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Datacenters ({filteredDatacenters.length})</h2>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="w-4 h-4" />}>
-                Refresh
-              </Button>
-              <Button variant="ghost" size="sm" leftIcon={<Settings className="w-4 h-4" />}>
-                Settings
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table
-            columns={datacentersColumns}
-            data={filteredDatacenters}
-            onRowClick={(row) => setSelectedDatacenter(row)}
-            emptyMessage="No datacenters found matching your search criteria."
-            isLoading={false}
-          />
-        </CardContent>
-      </Card>
-    
-      {/* Add/Edit Datacenter Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+
+      {/* Add Datacenter Wizard Modal */}
+      <AnimatePresence mode="wait">
+        {isWizardOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-lg shadow-xl max-w-lg w-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                {editingDatacenter ? 'Edit Datacenter' : 'Add Datacenter'}
-              </h2>
-              
-              <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Add Datacenter
+                </h2>
+                <button
+                  onClick={handleCloseWizard}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Datacenter Type
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={datacenterType}
+                    onChange={(e) => setDatacenterType(e.target.value as any)}
+                  >
+                    <option value="proxmox">Proxmox</option>
+                    <option value="libvirt">Libvirt</option>
+                    <option value="kubernetes">Kubernetes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Datacenter Name *
+                  </label>
                   <Input
-                    id="name"
-                    placeholder="Enter datacenter name"
-                    defaultValue={editingDatacenter?.name || ''}
+                    type="text"
+                    placeholder="My Datacenter"
+                    value={datacenterName}
+                    onChange={(e) => setDatacenterName(e.target.value)}
                   />
                 </div>
-                
                 <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <Dropdown
-                    options={[
-                      { label: 'Libvirt', value: 'libvirt' },
-                      { label: 'Proxmox', value: 'proxmox' },
-                      { label: 'Kubernetes', value: 'kubernetes' },
-                    ]}
-                    value={editingDatacenter?.type || ''}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Virginia, USA"
+                    value={datacenterLocation}
+                    onChange={(e) => setDatacenterLocation(e.target.value)}
                   />
                 </div>
-                
                 <div>
-                  <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Capacity (cores)
+                  </label>
                   <Input
-                    id="region"
-                    placeholder="Enter region (e.g., us-east-1)"
-                    defaultValue={editingDatacenter?.region || ''}
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <Input
-                    id="location"
-                    placeholder="Enter location (e.g., Virginia, USA)"
-                    defaultValue={editingDatacenter?.location || ''}
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">Capacity (cores)</label>
-                  <Input
-                    id="capacity"
                     type="number"
-                    placeholder="Enter capacity"
-                    defaultValue={editingDatacenter?.totalCapacity || ''}
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-                  <Dropdown
-                    options={[
-                      { label: 'Libvirt', value: 'libvirt-1' },
-                      { label: 'Proxmox', value: 'proxmox-1' },
-                      { label: 'Kubernetes', value: 'kubernetes-1' },
-                    ]}
-                    value={editingDatacenter?.providerId || ''}
+                    placeholder="1000"
+                    value={datacenterCapacity}
+                    onChange={(e) => setDatacenterCapacity(e.target.value)}
                   />
                 </div>
               </div>
-              
-              <div className="flex justify-end gap-3 pt-6">
-                <Button variant="ghost" onClick={handleModalClose}>
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={handleCloseWizard}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleModalClose}>
-                  {editingDatacenter ? 'Save Changes' : 'Add Datacenter'}
+                <Button
+                  onClick={handleSaveDatacenter}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Save & Continue
+                      <CheckCircle2 className="h-4 w-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
-      
-      {/* Delete Confirmation Modal */}
-      {isDeleting && selectedDatacenter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-lg shadow-xl max-w-md w-full"
-          >
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-3 bg-red-50 rounded-full">
-                  <Trash2 className="w-8 h-8 text-red-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold">Delete Datacenter</h2>
-                  <p className="text-gray-600">
-                    Are you sure you want to delete <strong>{selectedDatacenter.name}</strong>?
-                  </p>
-                </div>
-              </div>
-              
-              <p className="text-gray-600 mb-6">
-                This action cannot be undone. All resources associated with this datacenter will be permanently removed.
-              </p>
-              
-              <div className="flex justify-end gap-3">
-                <Button variant="ghost" onClick={handleModalClose}>
-                  Cancel
-                </Button>
-                <Button variant="danger" onClick={confirmDelete}>
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3 }}
-            className={`px-6 py-3 rounded-lg shadow-lg ${
-              toastVariant === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {toastVariant === 'success' ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              )}
-              <p className="font-medium">{toastMessage}</p>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

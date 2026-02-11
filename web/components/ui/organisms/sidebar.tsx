@@ -64,12 +64,6 @@ const baseSystemUserItems: Omit<SidebarItem, 'badge'>[] = [
     href: '/datacenters',
   },
   {
-    id: 'idps',
-    label: 'Identity Providers',
-    icon: <Shield size={20} />,
-    href: '/idps',
-  },
-  {
     id: 'users',
     label: 'Users',
     icon: <Users size={20} />,

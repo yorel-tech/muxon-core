@@ -252,5 +252,5 @@ paths:
     $ref: './users.yaml#/paths/~1tenants~1{tenantId}~1users'
   /api/v1/tenants/{tenantId}/users/{userId}:
     $ref: './users.yaml#/paths/~1tenants~1{tenantId}~1users~1{userId}'
-  /api/v1/idp/{idpId}/users:
+  /api/v1/idps/{idpId}/users:
     $ref: './users.yaml#/paths/~1idp~1{idpId}~1users'

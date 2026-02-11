@@ -425,7 +425,7 @@ export default function SystemDashboardPage() {
     setIsLoadingUsers(true);
     try {
       // Use the selected IDP's ID to fetch users
-      const data = await apiGet(`/api/v1/idp/${selectedIdp}/users`);
+      const data = await apiGet(`/api/v1/idps/${selectedIdp}/users`);
       // Handle both array and wrapped response formats
       // API returns OidcUserList with 'items' property
       const users = Array.isArray(data) ? data : (data.items || []);

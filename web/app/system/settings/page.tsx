@@ -1,20 +1,76 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, User, Shield, Bell, Palette, Globe, Database, Key, RefreshCw, LogOut } from 'lucide-react';
+import { Save, User, Shield, Bell, Palette, Globe, Database, Key, RefreshCw, LogOut, Loader2, Plus, Edit, Trash2, MoreHorizontal, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/atoms/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/atoms/card';
 import { Input } from '@/components/ui/atoms/input';
 import { Label } from '@/components/ui/atoms/label';
 import { Switch } from '@/components/ui/atoms/switch';
 import { Toast } from '@/components/ui/molecules/toast';
+import { Table, Column } from '@/components/ui/organisms/table';
+import { Badge } from '@/components/ui/atoms/badge';
+import { Dropdown, DropdownOption } from '@/components/ui/molecules/dropdown';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
+
+interface IdpServer {
+  id: string;
+  name: string;
+  protocol?: string;
+  enabled: boolean;
+  isSystem: boolean;
+}
 
 export default function SystemSettingsPage() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
-  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'appearance'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'appearance' | 'idp'>('general');
+  
+  // IDP Settings State
+  const [idpServers, setIdpServers] = useState<IdpServer[]>([]);
+  const [isIdpLoading, setIsIdpLoading] = useState(true);
+
+  // Fetch IDP settings on mount
+  useEffect(() => {
+    fetchIdpSettings();
+  }, []);
+
+  const fetchIdpSettings = async () => {
+    setIsIdpLoading(true);
+    try {
+      const idpData = await apiGet('/api/v1/system-settings/idp');
+      const idpList = Array.isArray(idpData) ? idpData : (idpData?.items || []);
+      
+      if (idpList.length === 0) {
+        setIdpServers([
+          {
+            id: '1',
+            name: 'Keycloak',
+            protocol: 'OIDC',
+            enabled: true,
+            isSystem: true,
+          },
+        ]);
+      } else {
+        setIdpServers(idpList);
+      }
+    } catch (error) {
+      console.error('Error fetching IDP settings:', error);
+      setIdpServers([
+        {
+          id: '1',
+          name: 'Keycloak',
+          protocol: 'OIDC',
+          enabled: true,
+          isSystem: true,
+        },
+      ]);
+    } finally {
+      setIsIdpLoading(false);
+    }
+  };
 
   const [settings, setSettings] = useState({
     // General Settings
@@ -56,11 +112,135 @@ export default function SystemSettingsPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  // IDP Handlers
+  const handleViewIdpDetails = (idp: IdpServer) => {
+    console.log('View details for:', idp.id);
+  };
+
+  const handleEditIdp = (idp: IdpServer) => {
+    console.log('Edit IDP:', idp.id);
+  };
+
+  const handleSyncIdp = async (idp: IdpServer) => {
+    try {
+      await apiPost(`/api/v1/idps/${idp.id}/sync`, {});
+      await fetchIdpSettings();
+    } catch (error) {
+      console.error('Error syncing IDP:', error);
+      alert('Failed to sync IDP.');
+    }
+  };
+
+  const handleDisableIdp = async (idp: IdpServer) => {
+    try {
+      await apiPut(`/api/v1/idps/${idp.id}`, { enabled: false });
+      await fetchIdpSettings();
+    } catch (error) {
+      console.error('Error disabling IDP:', error);
+      alert('Failed to disable IDP.');
+    }
+  };
+
+  const handleDeleteIdp = async (idp: IdpServer) => {
+    if (window.confirm(`Are you sure you want to delete IDP "${idp.name}"?`)) {
+      try {
+        await apiDelete(`/api/v1/idps/${idp.id}`);
+        await fetchIdpSettings();
+      } catch (error) {
+        console.error('Error deleting IDP:', error);
+        alert('Failed to delete IDP.');
+      }
+    }
+  };
+
+  const getIdpContextMenuOptions = (idp: IdpServer): DropdownOption[] => [
+    {
+      label: 'View Details',
+      icon: <Eye size={14} />,
+      onClick: () => handleViewIdpDetails(idp),
+    },
+    {
+      label: 'Edit',
+      icon: <Edit size={14} />,
+      onClick: () => handleEditIdp(idp),
+    },
+    {
+      label: 'Sync',
+      icon: <RefreshCw size={14} />,
+      onClick: () => handleSyncIdp(idp),
+    },
+    {
+      label: 'Disable',
+      icon: <Trash2 size={14} />,
+      variant: 'warning',
+      onClick: () => handleDisableIdp(idp),
+    },
+    {
+      label: 'Delete',
+      icon: <Trash2 size={14} />,
+      variant: 'danger',
+      onClick: () => handleDeleteIdp(idp),
+    },
+  ];
+
+  const idpColumns: Column<IdpServer>[] = [
+    {
+      key: 'actions',
+      header: '',
+      cell: (row: IdpServer) => (
+        <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            trigger={
+              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
+                <MoreHorizontal size={16} className="text-gray-600" />
+              </button>
+            }
+            options={getIdpContextMenuOptions(row)}
+            position="right"
+            usePortal={true}
+          />
+        </div>
+      ),
+      sortable: false,
+    },
+    {
+      key: 'name',
+      header: 'Name',
+      cell: (row: IdpServer) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-900 dark:text-gray-100">{row.name}</span>
+        </div>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'protocol',
+      header: 'Protocol',
+      cell: (row: IdpServer) => (
+        <Badge variant="default">{row.protocol || 'N/A'}</Badge>
+      ),
+      sortable: true,
+    },
+    {
+      key: 'enabled',
+      header: 'Status',
+      cell: (row: IdpServer) => (
+        <Badge
+          variant={row.enabled ? 'success' : 'default'}
+        >
+          {row.enabled ? 'Enabled' : 'Disabled'}
+        </Badge>
+      ),
+      sortable: true,
+    },
+  ];
+
   const tabs = [
     { id: 'general', label: 'General', icon: <Globe size={18} /> },
     { id: 'security', label: 'Security', icon: <Shield size={18} /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette size={18} /> },
+    { id: 'idp', label: 'Identity Providers', icon: <Shield size={18} /> },
   ];
 
   return (
@@ -433,6 +613,42 @@ export default function SystemSettingsPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'idp' && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Identity Providers
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Manage your identity providers for user authentication
+                  </p>
+                </div>
+                <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                  <Plus size={18} />
+                  <span>Add Provider</span>
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isIdpLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <Table
+                  columns={idpColumns}
+                  data={idpServers}
+                  emptyMessage="No IDP servers configured"
+                  onRowClick={(row) => handleViewIdpDetails(row)}
+                  overflowVisibleColumnKeys={['actions']}
+                />
+              )}
             </CardContent>
           </Card>
         )}

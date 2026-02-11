@@ -67,12 +67,6 @@ const baseSystemUserItems: Omit<SidebarItem, 'badge'>[] = [
     href: '/system/datacenters',
   },
   {
-    id: 'idps',
-    label: 'Identity Providers',
-    icon: <Shield size={20} />,
-    href: '/system/idps',
-  },
-  {
     id: 'users',
     label: 'Users',
     icon: <Users size={20} />,
@@ -80,7 +74,7 @@ const baseSystemUserItems: Omit<SidebarItem, 'badge'>[] = [
   },
   {
     id: 'settings',
-    label: 'Settings',
+    label: 'System Settings',
     icon: <Settings size={20} />,
     href: '/system/settings',
   },
