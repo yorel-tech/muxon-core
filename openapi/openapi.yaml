@@ -122,10 +122,10 @@ paths:
     $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1effective'
 
   # Nodes
-  /api/v1/api/nodes:
-    $ref: './nodes.yaml#/paths/~1api~1nodes'
-  /api/v1/api/nodes/{nodeId}:
-    $ref: './nodes.yaml#/paths/~1api~1nodes~1{nodeId}'
+  /api/v1/providers/{providerId}/nodes:
+    $ref: './nodes.yaml#/paths/~1api~1providers~1{providerId}~1nodes'
+  /api/v1/providers/{providerId}/nodes/{nodeId}:
+    $ref: './nodes.yaml#/paths/~1api~1providers~1{providerId}~1nodes~1{nodeId}'
 
   # Node Clusters in Providers
   /api/v1/providers/{providerId}/node-clusters:
@@ -144,8 +144,8 @@ paths:
   # Metadata paths
   /api/v1/tenants/{tenantId}/metadata:
     $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}~1metadata'
-  /api/v1/nodes/{nodeId}/metadata:
-    $ref: './nodes.yaml#/paths/~1api~1nodes~1{nodeId}~1metadata'
+  /api/v1/providers/{providerId}/nodes/{nodeId}/metadata:
+    $ref: './nodes.yaml#/paths/~1api~1providers~1{providerId}~1nodes~1{nodeId}~1metadata'
   /api/v1/node-clusters/{clusterId}/metadata:
     $ref: './node_clusters.yaml#/paths/~1api~1node-clusters~1{clusterId}~1metadata'
   /api/v1/datacenters/{datacenterId}/metadata:

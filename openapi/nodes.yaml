@@ -41,6 +41,102 @@ components:
       enum: [ kvm, k8s ]
       example: kvm
 
+    NodeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "node-01"
+        clusterId:
+          type: string
+          format: uuid
+          description: UUID of the cluster this node belongs to
+          example: "12345678-1234-1234-1234-123456789abc"
+        externalId:
+          type: string
+          example: "host-12345"
+        role:
+          type: string
+          example: "control-plane"
+        cpuTotal:
+          type: integer
+          example: 8
+        memMb:
+          type: integer
+          example: 16384
+        status:
+          type: string
+          example: "ready"
+        credentials:
+          type: object
+          description: Authentication configuration (JSON)
+          additionalProperties:
+            type: string
+          example:
+            username: "admin"
+            password: "secret"
+        ipAddresses:
+          type: array
+          items:
+            type: string
+          example: ["192.168.1.100", "10.0.0.1"]
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            cpu_cores: "8"
+            memory_gb: "16"
+
+    NodeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "node-01-updated"
+        clusterId:
+          type: string
+          format: uuid
+          description: UUID of the cluster this node belongs to
+          example: "12345678-1234-1234-1234-123456789abc"
+        externalId:
+          type: string
+          example: "host-12345-updated"
+        role:
+          type: string
+          example: "worker"
+        cpuTotal:
+          type: integer
+          example: 16
+        memMb:
+          type: integer
+          example: 32768
+        status:
+          type: string
+          example: "ready"
+        credentials:
+          type: object
+          description: Authentication configuration (JSON)
+          additionalProperties:
+            type: string
+          example:
+            username: "admin"
+            password: "newsecret"
+        ipAddresses:
+          type: array
+          items:
+            type: string
+          example: ["192.168.1.100", "10.0.0.2"]
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            cpu_cores: "16"
+            memory_gb: "32"
+
     Node:
       allOf:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
@@ -101,7 +197,9 @@ components:
             $ref: '#/components/schemas/Node'
 
 paths:
-  /api/nodes:
+  /api/providers/{providerId}/nodes:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
     get:
       tags:
         - Nodes
@@ -182,8 +280,76 @@ paths:
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
 
-  /api/nodes/{nodeId}:
+    post:
+      tags:
+        - Nodes
+      summary: Create a node
+      description: Creates a new node. Only LIBVIRT providers support node creation.
+      operationId: createNode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeCreate'
+            example:
+              name: "node-01"
+              clusterId: "12345678-1234-1234-1234-123456789abc"
+              externalId: "host-12345"
+              role: "control-plane"
+              cpuTotal: 8
+              memMb: 16384
+              status: "ready"
+              credentials:
+                username: "admin"
+                password: "secret"
+              ipAddresses: ["192.168.1.100", "10.0.0.1"]
+              metadata:
+                cpu_cores: "8"
+                memory_gb: "16"
+      responses:
+        '201':
+          description: Node created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+              example:
+                id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                name: "node-01"
+                cluster:
+                  id: "12345678-1234-1234-1234-123456789abc"
+                  name: "web-cluster"
+                provider:
+                  id: "98765432-1234-1234-1234-fedcba987654"
+                  name: "libvirt-provider-1"
+                externalId: "host-12345"
+                role: "control-plane"
+                cpuTotal: 8
+                memMb: 16384
+                status: "ready"
+                ipAddresses: ["192.168.1.100", "10.0.0.1"]
+                createdAt: "2025-10-01T12:34:56Z"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Provider type does not support node creation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Node creation is only supported for LIBVIRT providers"
+
+  /api/providers/{providerId}/nodes/{nodeId}:
     parameters:
+      - $ref: '#/components/parameters/providerId'
       - $ref: '#/components/parameters/nodeId'
 
     get:
@@ -224,9 +390,101 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /api/nodes/{nodeId}/metadata:
+    put:
+      tags:
+        - Nodes
+      summary: Update a node
+      description: Updates an existing node. Only LIBVIRT providers support node updates.
+      operationId: updateNode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeUpdate'
+            example:
+              name: "node-01-updated"
+              role: "worker"
+              cpuTotal: 16
+              memMb: 32768
+              status: "ready"
+              ipAddresses: ["192.168.1.100", "10.0.0.2"]
+              metadata:
+                cpu_cores: "16"
+                memory_gb: "32"
+      responses:
+        '200':
+          description: Node updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+              example:
+                id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
+                name: "node-01-updated"
+                cluster:
+                  id: "12345678-1234-1234-1234-123456789abc"
+                  name: "web-cluster"
+                provider:
+                  id: "98765432-1234-1234-1234-fedcba987654"
+                  name: "libvirt-provider-1"
+                externalId: "host-12345"
+                role: "worker"
+                cpuTotal: 16
+                memMb: 32768
+                status: "ready"
+                ipAddresses: ["192.168.1.100", "10.0.0.2"]
+                updatedAt: "2025-10-02T14:30:00Z"
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Provider type does not support node updates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Node updates are only supported for LIBVIRT providers"
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Nodes
+      summary: Delete a node
+      description: Deletes a node. Only LIBVIRT providers support node deletion.
+      operationId: deleteNode
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Node deleted successfully
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Provider type does not support node deletion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Node deletion is only supported for LIBVIRT providers"
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/providers/{providerId}/nodes/{nodeId}/metadata:
     parameters:
+      - $ref: '#/components/parameters/providerId'
       - $ref: '#/components/parameters/nodeId'
+
     get:
       tags:
         - Metadata
