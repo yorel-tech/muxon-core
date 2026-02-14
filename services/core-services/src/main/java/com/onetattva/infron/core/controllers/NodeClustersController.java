@@ -17,8 +17,8 @@ public class NodeClustersController implements NodeClustersApi {
     private NodeClustersService nodeClustersService;
 
     @Override
-    public ResponseEntity<NodeCluster> createNodeCluster(NodeClusterCreate nodeClusterCreate) {
-        NodeCluster nodeCluster = nodeClustersService.createNodeCluster(nodeClusterCreate);
+    public ResponseEntity<NodeCluster> createProviderNodeCluster(UUID providerId, NodeClusterCreate nodeClusterCreate) {
+        NodeCluster nodeCluster = nodeClustersService.createProviderNodeCluster(providerId, nodeClusterCreate);
         return ResponseEntity.status(201).body(nodeCluster);
     }
 
@@ -35,9 +35,9 @@ public class NodeClustersController implements NodeClustersApi {
     }
 
     @Override
-    public ResponseEntity<NodeClusterList> listNodeClusters(Integer page, Integer perPage, String sort,
+    public ResponseEntity<NodeClusterList> listProviderNodeClusters(UUID providerId, Integer page, Integer perPage, String sort,
                                                             UUID datacenterId, String name) {
-        NodeClusterList clusterList = nodeClustersService.listNodeClusters(page, perPage, sort, datacenterId, name);
+        NodeClusterList clusterList = nodeClustersService.listProviderNodeClusters(providerId, page, perPage, sort, datacenterId, name);
         return ResponseEntity.ok(clusterList);
     }
 

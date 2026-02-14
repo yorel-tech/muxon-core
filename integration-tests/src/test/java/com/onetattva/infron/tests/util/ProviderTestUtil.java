@@ -36,11 +36,9 @@ public class ProviderTestUtil {
             DatacenterCreate datacenter = new DatacenterCreate();
             datacenter.setName(name);
             datacenter.setDescription(description);
-            datacenter.setProviderType(DatacenterType.KVM);
-            
             // Set provider type to KVM
             DatacenterSettings settings = new DatacenterSettings();
-            settings.setProviderType(DatacenterType.KVM);
+            settings.setProviderType(ProviderType.LIBVIRT);
             settings.setDefaultCpuOvercommitRatio(4.0F);
             settings.setDefaultMemoryOvercommitRatio(1.5F);
             datacenter.setSettings(settings);

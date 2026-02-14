@@ -20,6 +20,14 @@ components:
       schema:
         type: string
         format: uuid
+    providerId:
+      name: providerId
+      in: path
+      description: UUID of the provider
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     NodeCluster:
@@ -74,13 +82,15 @@ components:
             $ref: '#/components/schemas/NodeCluster'
 
 paths:
-  /api/node-clusters:
+  /api/providers/{providerId}/node-clusters:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
     get:
       tags:
         - NodeClusters
-      summary: List node clusters
-      description: Returns a paginated list of node clusters. Supports filtering by datacenter.
-      operationId: listNodeClusters
+      summary: List node clusters for a provider
+      description: Returns a paginated list of node clusters for the specified provider. Supports filtering by datacenter.
+      operationId: listProviderNodeClusters
       security:
         - BearerAuth: []
       parameters:
@@ -133,9 +143,9 @@ paths:
     post:
       tags:
         - NodeClusters
-      summary: Create a node cluster
-      description: Create a new node cluster in the specified datacenter. Returns the created cluster.
-      operationId: createNodeCluster
+      summary: Create a node cluster for a provider
+      description: Create a new node cluster for the specified provider. Returns the created cluster.
+      operationId: createProviderNodeCluster
       security:
         - BearerAuth: []
       requestBody:
