@@ -20,8 +20,8 @@ public class NodeClusterEntity {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "datacenter_id")
-    private DatacenterEntity datacenter;
+    @JoinColumn(name = "provider_id", nullable = false)
+    private ProviderEntity provider;
 
     @Column(nullable = false)
     private String name;
@@ -56,12 +56,12 @@ public class NodeClusterEntity {
         this.id = id;
     }
 
-    public DatacenterEntity getDatacenter() {
-        return datacenter;
+    public ProviderEntity getProvider() {
+        return provider;
     }
 
-    public void setDatacenter(DatacenterEntity datacenter) {
-        this.datacenter = datacenter;
+    public void setProvider(ProviderEntity provider) {
+        this.provider = provider;
     }
 
     public String getName() {

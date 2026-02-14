@@ -14,14 +14,6 @@ components:
       schema:
         type: string
         format: uuid
-    tenantId:
-      name: tenantId
-      in: path
-      required: true
-      description: Tenant UUID
-      schema:
-        type: string
-        format: uuid
 
   schemas:
     DatacenterCapacity:
@@ -29,58 +21,80 @@ components:
       properties:
         totalCpus:
           type: integer
-          minimum: 0
-          example: 1000
+          minimum: 1
+          description: Total number of CPUs available
         totalMemoryGb:
           type: integer
-          minimum: 0
-          example: 4096
+          minimum: 1
+          description: Total memory in GB
         totalStorageGb:
           type: integer
+          minimum: 1
+          description: Total storage in GB
+        availableCpus:
+          type: integer
           minimum: 0
-          example: 20000
+          description: Available CPUs (calculated)
+        availableMemoryGb:
+          type: integer
+          minimum: 0
+          description: Available memory in GB (calculated)
+        availableStorageGb:
+          type: integer
+          minimum: 0
+          description: Available storage in GB (calculated)
+        usedCpus:
+          type: integer
+          minimum: 0
+          description: Used CPUs (calculated)
+        usedMemoryGb:
+          type: integer
+          minimum: 0
+          description: Used memory in GB (calculated)
+        usedStorageGb:
+          type: integer
+          minimum: 0
+          description: Used storage in GB (calculated)
 
     DatacenterSettings:
       type: object
       description: Provider-side defaults & capability descriptors for a datacenter.
       properties:
+        providerType:
+          $ref: './providers.yaml#/components/schemas/ProviderType'
+          description: Provider type of the bacing cluster
+          readOnly: true
         defaultCpuOvercommitRatio:
           type: number
           format: float
-          minimum: 0
-          example: 4.0
+          minimum: 1.0
+          default: 4.0
+          description: Default CPU overcommit ratio
         defaultMemoryOvercommitRatio:
           type: number
           format: float
-          minimum: 0
-          example: 1.5
+          minimum: 1.0
+          default: 1.5
+          description: Default memory overcommit ratio
         vmClasses:
           type: array
           items:
             type: string
-          example: ["small","medium","large"]
+          description: Available VM classes
         storageClasses:
           type: array
           items:
             type: string
-          example: ["gold","silver"]
+          description: Available storage classes
         networkDomains:
           type: array
           items:
             type: string
-          example: ["private","public"]
-        providerType:
-          $ref: '#/components/schemas/DatacenterType'
-      additionalProperties: false
-
-    DatacenterType:
-      type: string
-      enum: [libvirt, proxmox, kubernetes, mixed]
-      example: libvirt
-
-    DatacenterFeature:
-      type: string
-      enum: [ k8s, loadBalancer, publicIp, snapshots ]
+          description: Available network domains
+        providerSpecificSettings:
+          type: object
+          additionalProperties: true
+          description: Provider-specific settings
 
     Datacenter:
       allOf:
@@ -91,19 +105,28 @@ components:
               $ref: '#/components/schemas/DatacenterCapacity'
             settings:
               $ref: '#/components/schemas/DatacenterSettings'
+            nodeCluster:
+              $ref: './commons.yaml#/components/schemas/EntityReference'
 
     DatacenterCreate:
       type: object
       required:
         - name
-        - providerType
+        - nodeClusterId
+        - capacity
       properties:
         name:
           type: string
+          maxLength: 255
         description:
           type: string
-        providerType:
-          $ref: '#/components/schemas/DatacenterType'
+          maxLength: 1000
+        nodeClusterId:
+          type: string
+          format: uuid
+          description: UUID of the node cluster that backs this datacenter
+        capacity:
+          $ref: '#/components/schemas/DatacenterCapacity'
         settings:
           $ref: '#/components/schemas/DatacenterSettings'
 
@@ -112,8 +135,12 @@ components:
       properties:
         name:
           type: string
+          maxLength: 255
         description:
           type: string
+          maxLength: 1000
+        capacity:
+          $ref: '#/components/schemas/DatacenterCapacity'
         settings:
           $ref: '#/components/schemas/DatacenterSettings'
 
@@ -131,7 +158,10 @@ components:
           items:
             $ref: '#/components/schemas/Datacenter'
 
-    # Tenant-level binding (grant)
+    DatacenterFeature:
+      type: string
+      enum: [ k8s, loadBalancer, publicIp, snapshots ]
+
     TenantDatacenterGrant:
       type: object
       required:
@@ -162,7 +192,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-      additionalProperties: false
 
     TenantDatacenterGrantCreate:
       type: object
@@ -204,7 +233,7 @@ components:
 
 paths:
 
-  # Provider datacenter management
+  # Datacenter management
   /datacenters:
     get:
       tags: [Datacenters]
@@ -218,7 +247,8 @@ paths:
         - name: providerType
           in: query
           schema:
-            $ref: '#/components/schemas/DatacenterType'
+            $ref: './providers.yaml#/components/schemas/ProviderType'
+          description: Filter datacenters by provider type (derived from node cluster's provider)
       responses:
         '200':
           description: Paginated datacenter list
@@ -248,11 +278,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Datacenter'
         '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: './commons.yaml#/components/schemas/Error'
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
 
   /datacenters/{datacenterId}:
     parameters:
@@ -272,6 +300,8 @@ paths:
                 $ref: '#/components/schemas/Datacenter'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     put:
       tags: [Datacenters]
       summary: Replace datacenter
@@ -291,8 +321,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Datacenter'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     patch:
       tags: [Datacenters]
       summary: Partially update datacenter
@@ -312,8 +346,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Datacenter'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     delete:
       tags: [Datacenters]
       summary: Delete datacenter
@@ -325,63 +363,10 @@ paths:
           description: Deleted
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
 
-  /datacenters/{datacenterId}/metadata:
-    parameters:
-      - $ref: '#/components/parameters/dcId'
-    get:
-      tags:
-        - Metadata
-      summary: Get datacenter metadata
-      operationId: getDatacenterMetadata
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Datacenter metadata
-          content:
-            application/json:
-              schema:
-                $ref: './commons.yaml#/components/schemas/Metadata'
-              example:
-                provider: "aws"
-                region: "us-east-1"
-        '401':
-          $ref: './commons.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: './commons.yaml#/components/responses/NotFound'
-    put:
-      tags:
-        - Metadata
-      summary: Update datacenter metadata
-      operationId: updateDatacenterMetadata
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: './commons.yaml#/components/schemas/Metadata'
-            example:
-              provider: "aws"
-              region: "us-east-1"
-      responses:
-        '200':
-          description: Updated datacenter metadata
-          content:
-            application/json:
-              schema:
-                $ref: './commons.yaml#/components/schemas/Metadata'
-              example:
-                provider: "aws"
-                region: "us-east-1"
-        '400':
-          $ref: './commons.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: './commons.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: './commons.yaml#/components/responses/NotFound'
+  # Datacenter settings
   /datacenters/{datacenterId}/settings:
     parameters:
       - $ref: '#/components/parameters/dcId'
@@ -400,6 +385,8 @@ paths:
                 $ref: '#/components/schemas/DatacenterSettings'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     put:
       tags: [Datacenters]
       summary: Replace datacenter settings
@@ -423,6 +410,8 @@ paths:
           $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     patch:
       tags: [Datacenters]
       summary: Partially update datacenter settings
@@ -446,11 +435,92 @@ paths:
           $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # Datacenter capacity
+  /datacenters/{datacenterId}/capacity:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    put:
+      tags: [Datacenters]
+      summary: Update datacenter capacity
+      operationId: updateDatacenterCapacity
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterCapacity'
+      responses:
+        '200':
+          description: Updated capacity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterCapacity'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # Datacenter metadata
+  /datacenters/{datacenterId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags:
+        - Metadata
+      summary: Get datacenter metadata
+      operationId: getDatacenterMetadata
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Datacenter metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags:
+        - Metadata
+      summary: Update datacenter metadata
+      operationId: updateDatacenterMetadata
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+      responses:
+        '200':
+          description: Updated metadata
+          content:
+            application/json:
+              schema:
+                $ref: './commons.yaml#/components/schemas/Metadata'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
 
   # Tenant <-> Datacenter bindings (grants)
   /tenants/{tenantId}/datacenters:
     parameters:
-      - $ref: '#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: './commons.yaml#/components/parameters/page'
       - $ref: './commons.yaml#/components/parameters/perPage'
     get:
@@ -489,10 +559,12 @@ paths:
                 $ref: '#/components/schemas/TenantDatacenterGrant'
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
 
   /tenants/{tenantId}/datacenters/{datacenterId}:
     parameters:
-      - $ref: '#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/dcId'
     get:
       tags: [TenantDatacenters]
@@ -509,6 +581,8 @@ paths:
                 $ref: '#/components/schemas/TenantDatacenterGrant'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
     put:
       tags: [TenantDatacenters]
       summary: Replace tenant datacenter grant
@@ -532,6 +606,8 @@ paths:
           $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     patch:
       tags: [TenantDatacenters]
       summary: Partially update tenant datacenter grant
@@ -555,6 +631,8 @@ paths:
           $ref: './commons.yaml#/components/responses/BadRequest'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
     delete:
       tags: [TenantDatacenters]
       summary: Revoke tenant access to datacenter
@@ -566,10 +644,12 @@ paths:
           description: Revoked
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
 
   /tenants/{tenantId}/datacenters/{datacenterId}/effective:
     parameters:
-      - $ref: '#/components/parameters/tenantId'
+      - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/dcId'
     get:
       tags: [TenantDatacenters]
@@ -593,3 +673,5 @@ paths:
                     $ref: '#/components/schemas/DatacenterSettings'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

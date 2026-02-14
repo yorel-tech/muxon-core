@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.api.model.DatacenterType;
+import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.repository.TenantDatacenterGrantRepository;
@@ -70,7 +70,7 @@ public class VmProviderRegistry {
             return Optional.empty();
         }
 
-        DatacenterType providerType = datacenter.getSettings().getProviderType();
+        ProviderType providerType = datacenter.getSettings().getProviderType();
 
         // Map provider type to provider ID
         // For now, use simple mapping: "mock" -> "mock", "kvm" -> "mock" (fallback)
@@ -82,13 +82,13 @@ public class VmProviderRegistry {
     /**
      * Map provider type from datacenter settings to provider ID
      */
-    private String mapProviderTypeToProviderId(DatacenterType providerType) {
+    private String mapProviderTypeToProviderId(ProviderType providerType) {
         if (providerType == null) {
             return "mock"; // Default to mock provider
         }
 
         return switch (providerType) {
-            case PROXMOX, LIBVIRT, KUBERNETES, MIXED -> "mock"; // Use mock as fallback for testing
+            case PROXMOX, LIBVIRT, KUBERNETES -> "mock"; // Use mock as fallback for testing
             default -> "mock";
         };
     }

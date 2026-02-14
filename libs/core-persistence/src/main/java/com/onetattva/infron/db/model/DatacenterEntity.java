@@ -11,6 +11,9 @@ import org.hibernate.annotations.Type;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Entity for datacenter table.
+ */
 @Entity
 @Table(name = "datacenter")
 public class DatacenterEntity {
@@ -24,6 +27,14 @@ public class DatacenterEntity {
     private String name;
 
     private String description;
+
+    /**
+     * Node cluster that provides resources to this datacenter.
+     * Once set, this reference cannot be changed.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "node_cluster_id", nullable = false)
+    private NodeClusterEntity nodeCluster;
 
     @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
@@ -71,6 +82,14 @@ public class DatacenterEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public NodeClusterEntity getNodeCluster() {
+        return nodeCluster;
+    }
+
+    public void setNodeCluster(NodeClusterEntity nodeCluster) {
+        this.nodeCluster = nodeCluster;
     }
 
     public DatacenterCapacity getCapacity() {

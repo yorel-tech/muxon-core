@@ -1,10 +1,12 @@
 package com.onetattva.infron.core.services;
 
-import com.onetattva.infron.api.*;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.db.model.DatacenterEntity;
-import java.util.Map;
+import com.onetattva.infron.db.model.NodeClusterEntity;
+import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.DatacenterRepository;
+import com.onetattva.infron.db.repository.NodeClusterRepository;
+import com.onetattva.infron.db.repository.ProviderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,15 +25,81 @@ public class DatacentersService {
     @Autowired
     private DatacenterRepository datacenterRepository;
 
+    @Autowired
+    private NodeClusterRepository nodeClusterRepository;
+
+    @Autowired
+    private ProviderRepository providerRepository;
+
+    /**
+     * Create a new datacenter.
+     * Provider type is derived from the node cluster's provider.
+     */
     public Datacenter createDatacenter(DatacenterCreate datacenterCreate) {
+        // Validate datacenter name is unique
+        if (datacenterRepository.existsByName(datacenterCreate.getName())) {
+            throw new RuntimeException("DATACENTER_ALREADY_EXISTS: Datacenter with name '" + datacenterCreate.getName() + "' already exists");
+        }
+
+        // Validate node cluster exists
+        NodeClusterEntity nodeCluster = nodeClusterRepository.findById(datacenterCreate.getNodeClusterId())
+                .orElseThrow(() -> new RuntimeException("NODE_CLUSTER_NOT_FOUND: Node cluster with ID " + datacenterCreate.getNodeClusterId() + " not found"));
+
+        // Check node cluster is not already linked to another datacenter
+        datacenterRepository.findByNodeClusterId(datacenterCreate.getNodeClusterId())
+                .ifPresent(dc -> {
+                    throw new RuntimeException("NODE_CLUSTER_ALREADY_LINKED: Node cluster is already linked to datacenter " + dc.getId());
+                });
+
+        // Get provider to derive provider type
+        ProviderEntity provider = providerRepository.findById(nodeCluster.getProvider().getId())
+                .orElseThrow(() -> new RuntimeException("PROVIDER_NOT_FOUND: Provider with ID " + nodeCluster.getProvider().getId() + " not found"));
+
+        // Create datacenter entity
         DatacenterEntity entity = new DatacenterEntity();
         entity.setId(UUID.randomUUID());
         entity.setName(datacenterCreate.getName());
         entity.setDescription(datacenterCreate.getDescription());
-        entity.setSettings(datacenterCreate.getSettings());
+        entity.setNodeCluster(nodeCluster);
+
+        // Set capacity
+        DatacenterCapacity capacity = datacenterCreate.getCapacity();
+        if (capacity != null) {
+            // Initialize calculated fields
+            if (capacity.getAvailableCpus() == null) {
+                capacity.setAvailableCpus(capacity.getTotalCpus());
+            }
+            if (capacity.getAvailableMemoryGb() == null) {
+                capacity.setAvailableMemoryGb(capacity.getTotalMemoryGb());
+            }
+            if (capacity.getAvailableStorageGb() == null) {
+                capacity.setAvailableStorageGb(capacity.getTotalStorageGb());
+            }
+            if (capacity.getUsedCpus() == null) {
+                capacity.setUsedCpus(0);
+            }
+            if (capacity.getUsedMemoryGb() == null) {
+                capacity.setUsedMemoryGb(0);
+            }
+            if (capacity.getUsedStorageGb() == null) {
+                capacity.setUsedStorageGb(0);
+            }
+        }
+        entity.setCapacity(capacity);
+
+        // Set settings with derived provider type
+        DatacenterSettings settings = datacenterCreate.getSettings();
+        if (settings == null) {
+            settings = new DatacenterSettings();
+        }
+        // Derive provider type from provider
+        settings.setProviderType(provider.getType());
+        entity.setSettings(settings);
+
         Instant now = Instant.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
+
         DatacenterEntity saved = datacenterRepository.save(entity);
         return mapEntityToApi(saved);
     }
@@ -41,20 +110,34 @@ public class DatacentersService {
 
     public Datacenter getDatacenter(UUID datacenterId) {
         DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
         return mapEntityToApi(entity);
     }
 
     public DatacenterSettings getDatacenterSettings(UUID datacenterId) {
         DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
-        // TODO: Parse settings JSON and return proper DatacenterSettings object
-        return new DatacenterSettings();
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+        return entity.getSettings();
     }
 
-    public DatacenterList listDatacenters(Integer page, Integer perPage, DatacenterType providerType) {
+    /**
+     * List datacenters with optional filtering by provider type.
+     */
+    public DatacenterList listDatacenters(Integer page, Integer perPage, ProviderType providerType) {
         Pageable pageable = PageRequest.of(page - 1, perPage);
-        Page<DatacenterEntity> entityPage = datacenterRepository.findAll(pageable);
+        Page<DatacenterEntity> entityPage;
+
+        if (providerType != null) {
+            // Filter by provider type
+            List<DatacenterEntity> filtered = datacenterRepository.findByProviderType(providerType);
+            // Apply pagination manually for filtered results
+            int start = (page - 1) * perPage;
+            int end = Math.min(start + perPage, filtered.size());
+            List<DatacenterEntity> pageContent = start < filtered.size() ? filtered.subList(start, end) : new ArrayList<>();
+            entityPage = new org.springframework.data.domain.PageImpl<>(pageContent, pageable, filtered.size());
+        } else {
+            entityPage = datacenterRepository.findAll(pageable);
+        }
 
         List<Datacenter> apiDatacenters = entityPage.getContent().stream()
                 .map(this::mapEntityToApi)
@@ -68,50 +151,140 @@ public class DatacentersService {
         return datacenterList;
     }
 
+    /**
+     * Replace datacenter (full update).
+     * Note: nodeClusterId cannot be modified after creation.
+     */
     public Datacenter replaceDatacenter(UUID datacenterId, DatacenterUpdate datacenterUpdate) {
         DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+
         entity.setName(datacenterUpdate.getName());
         entity.setDescription(datacenterUpdate.getDescription());
-        entity.setSettings(datacenterUpdate.getSettings());
-        // TODO: Handle capacity and settings updates
+
+        // Update capacity if provided
+        if (datacenterUpdate.getCapacity() != null) {
+            DatacenterCapacity capacity = datacenterUpdate.getCapacity();
+            entity.setCapacity(capacity);
+        }
+
+        // Update settings if provided (but provider type is read-only)
+        if (datacenterUpdate.getSettings() != null) {
+            DatacenterSettings currentSettings = entity.getSettings();
+            DatacenterSettings newSettings = datacenterUpdate.getSettings();
+            
+            // Preserve provider type (cannot be modified)
+            newSettings.setProviderType(currentSettings.getProviderType());
+            entity.setSettings(newSettings);
+        }
+
         entity.setUpdatedAt(Instant.now());
         DatacenterEntity saved = datacenterRepository.save(entity);
         return mapEntityToApi(saved);
     }
 
-    public DatacenterSettings replaceDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
-        DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
-        // TODO: Serialize settings to JSON and save
-        entity.setUpdatedAt(Instant.now());
-        datacenterRepository.save(entity);
-        return datacenterSettings;
-    }
-
+    /**
+     * Update datacenter (partial update).
+     */
     public Datacenter updateDatacenter(UUID datacenterId, DatacenterUpdate datacenterUpdate) {
         DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+
         if (datacenterUpdate.getName() != null) {
             entity.setName(datacenterUpdate.getName());
         }
         if (datacenterUpdate.getDescription() != null) {
             entity.setDescription(datacenterUpdate.getDescription());
         }
-        entity.setSettings(datacenterUpdate.getSettings());
-        // TODO: Handle partial capacity and settings updates
+
+        // Update capacity if provided
+        if (datacenterUpdate.getCapacity() != null) {
+            entity.setCapacity(datacenterUpdate.getCapacity());
+        }
+
+        // Update settings if provided (but provider type is read-only)
+        if (datacenterUpdate.getSettings() != null) {
+            DatacenterSettings currentSettings = entity.getSettings();
+            DatacenterSettings newSettings = datacenterUpdate.getSettings();
+            
+            // Preserve provider type (cannot be modified)
+            if (currentSettings != null) {
+                newSettings.setProviderType(currentSettings.getProviderType());
+            }
+            entity.setSettings(newSettings);
+        }
+
         entity.setUpdatedAt(Instant.now());
         DatacenterEntity saved = datacenterRepository.save(entity);
         return mapEntityToApi(saved);
     }
 
-    public DatacenterSettings updateDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
+    /**
+     * Replace datacenter settings.
+     * Note: providerType is read-only and cannot be modified.
+     */
+    public DatacenterSettings replaceDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
         DatacenterEntity entity = datacenterRepository.findById(datacenterId)
-                .orElseThrow(() -> new RuntimeException("Datacenter not found"));
-        // TODO: Merge settings JSON and save
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+
+        DatacenterSettings currentSettings = entity.getSettings();
+        // Preserve provider type (cannot be modified)
+        datacenterSettings.setProviderType(currentSettings != null ? currentSettings.getProviderType() : null);
+        
+        entity.setSettings(datacenterSettings);
         entity.setUpdatedAt(Instant.now());
         datacenterRepository.save(entity);
         return datacenterSettings;
+    }
+
+    /**
+     * Update datacenter settings (partial update).
+     * Note: providerType is read-only and cannot be modified.
+     */
+    public DatacenterSettings updateDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
+        DatacenterEntity entity = datacenterRepository.findById(datacenterId)
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+
+        DatacenterSettings currentSettings = entity.getSettings();
+        DatacenterSettings mergedSettings = currentSettings != null ? currentSettings : new DatacenterSettings();
+
+        // Merge settings (but preserve provider type)
+        if (datacenterSettings.getDefaultCpuOvercommitRatio() != null) {
+            mergedSettings.setDefaultCpuOvercommitRatio(datacenterSettings.getDefaultCpuOvercommitRatio());
+        }
+        if (datacenterSettings.getDefaultMemoryOvercommitRatio() != null) {
+            mergedSettings.setDefaultMemoryOvercommitRatio(datacenterSettings.getDefaultMemoryOvercommitRatio());
+        }
+        if (datacenterSettings.getVmClasses() != null) {
+            mergedSettings.setVmClasses(datacenterSettings.getVmClasses());
+        }
+        if (datacenterSettings.getStorageClasses() != null) {
+            mergedSettings.setStorageClasses(datacenterSettings.getStorageClasses());
+        }
+        if (datacenterSettings.getNetworkDomains() != null) {
+            mergedSettings.setNetworkDomains(datacenterSettings.getNetworkDomains());
+        }
+        if (datacenterSettings.getProviderSpecificSettings() != null) {
+            mergedSettings.setProviderSpecificSettings(datacenterSettings.getProviderSpecificSettings());
+        }
+
+        entity.setSettings(mergedSettings);
+        entity.setUpdatedAt(Instant.now());
+        datacenterRepository.save(entity);
+        return mergedSettings;
+    }
+
+    /**
+     * Update datacenter capacity.
+     */
+    public DatacenterCapacity updateDatacenterCapacity(UUID datacenterId, DatacenterCapacity capacity) {
+        DatacenterEntity entity = datacenterRepository.findById(datacenterId)
+                .orElseThrow(() -> new RuntimeException("DATACENTER_NOT_FOUND: Datacenter with ID " + datacenterId + " not found"));
+
+        entity.setCapacity(capacity);
+        entity.setUpdatedAt(Instant.now());
+        DatacenterEntity saved = datacenterRepository.save(entity);
+        return saved.getCapacity();
     }
 
     private Datacenter mapEntityToApi(DatacenterEntity entity) {
@@ -119,14 +292,21 @@ public class DatacentersService {
         api.setId(entity.getId());
         api.setName(entity.getName());
         api.setDescription(entity.getDescription());
-        // Convert DB DatacenterCapacity to API DatacenterCapacity
-        if (entity.getCapacity() != null) {
-            DatacenterCapacity apiCapacity = new DatacenterCapacity();
-            // Note: Would need proper mapping from DB capacity to API capacity
-            api.setCapacity(apiCapacity);
+
+        // Map node cluster
+        if (entity.getNodeCluster() != null) {
+            EntityReference apiNodeCluster = new EntityReference();
+            apiNodeCluster.setId(entity.getNodeCluster().getId());
+            apiNodeCluster.setName(entity.getNodeCluster().getName());
+            api.setNodeCluster(apiNodeCluster);
         }
-        // Convert DB DatacenterSettings to API DatacenterSettings
+
+        // Map capacity
+        api.setCapacity(entity.getCapacity());
+
+        // Map settings
         api.setSettings(entity.getSettings());
+
         if (entity.getCreatedAt() != null) {
             api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         }

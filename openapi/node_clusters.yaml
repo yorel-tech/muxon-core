@@ -27,21 +27,17 @@ components:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
         - type: object
           properties:
-            datacenter:
-              $ref: './commons.yaml#/components/schemas/EntityReference'
-            description:
+            providerId:
               type: string
-              example: "Production web server cluster"
+              format: uuid
+            externalId:
+              type: string
 
     NodeClusterCreate:
       type: object
       required:
         - name
-        - datacenterId
       properties:
-        datacenterId:
-          type: string
-          format: uuid
         name:
           type: string
           example: "web-cluster"
