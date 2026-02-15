@@ -67,10 +67,11 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
   useEffect(() => {
     if (isOpen && usePortal && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+      const menuWidth = 200; // Fixed width for context menu
       setMenuPosition({
         top: rect.bottom + window.scrollY,
-        left: position === 'right' ? rect.right + window.scrollX - 200 : rect.left + window.scrollX,
-        width: rect.width,
+        left: position === 'right' ? rect.right + window.scrollX - menuWidth : rect.left + window.scrollX,
+        width: menuWidth,
       });
     }
   }, [isOpen, position, usePortal]);
@@ -116,10 +117,11 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           transition={{ duration: 0.2 }}
           className={cn(
             'bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[9999]',
-            usePortal ? 'fixed' : 'absolute mt-1 w-full',
+            usePortal ? 'fixed' : 'absolute mt-1',
             {
               'left-0': !usePortal && position === 'left',
               'right-0': !usePortal && position === 'right',
+              'w-full': !usePortal,
             },
           )}
           style={usePortal ? {
@@ -137,7 +139,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
               }}
               disabled={option.disabled}
               className={cn(
-                'w-full px-3 py-2 text-left text-sm transition-colors flex items-start gap-3 whitespace-normal',
+                'w-full px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 whitespace-nowrap',
                 {
                   'hover:bg-gray-100': !option.disabled,
                   'cursor-pointer': !option.disabled,
@@ -146,19 +148,12 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                 },
               )}
             >
-              <div className="flex items-center gap-2">
-                {option.icon && (
-                  <span className="text-gray-400">{option.icon}</span>
-                )}
-                <span className="font-medium text-gray-900">{option.label}</span>
-              </div>
-              {option.description && (
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {option.description}
-                </p>
+              {option.icon && (
+                <span className="text-gray-400 flex-shrink-0">{option.icon}</span>
               )}
+              <span className="font-medium text-gray-900 truncate flex-1">{option.label}</span>
               {option.label === value && (
-                <Check size={16} className="text-primary-600" />
+                <Check size={16} className="text-primary-600 flex-shrink-0" />
               )}
             </button>
           ))}
