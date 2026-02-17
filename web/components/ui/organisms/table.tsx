@@ -119,7 +119,7 @@ function TableComponent({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   <button
                     onClick={() => handleSort(column.key)}
@@ -151,13 +151,13 @@ function TableComponent({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={columns.length} className="px-3 py-4 text-center text-sm text-gray-500">
                   Loading...
                 </td>
               </tr>
             ) : sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan={columns.length} className="px-3 py-8 text-center text-sm text-gray-500">
                   {emptyMessage}
                 </td>
               </tr>
@@ -172,7 +172,7 @@ function TableComponent({
                   className="group cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className={`px-6 py-3 ${overflowVisibleColumnKeys.includes(column.key) ? 'overflow-visible' : 'whitespace-nowrap'}`}>
+                    <td key={column.key} className={`px-3 py-3 ${overflowVisibleColumnKeys.includes(column.key) ? 'overflow-visible' : 'whitespace-nowrap'}`}>
                       {column.cell(row)}
                     </td>
                   ))}

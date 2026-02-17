@@ -104,12 +104,6 @@ export default function Home() {
                 >
                   System Dashboard
                 </a>
-                <a
-                  href="/tenant"
-                  className="px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold transition-all"
-                >
-                  Tenant Dashboard
-                </a>
               </div>
             ) : (
               <button
