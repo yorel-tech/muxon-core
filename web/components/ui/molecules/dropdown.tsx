@@ -70,7 +70,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       const menuWidth = 200; // Fixed width for context menu
       setMenuPosition({
         top: rect.bottom + window.scrollY,
-        left: position === 'right' ? rect.right + window.scrollX - menuWidth : rect.left + window.scrollX,
+        left: position === 'right' ? rect.right + window.scrollX : rect.left + window.scrollX,
         width: menuWidth,
       });
     }
