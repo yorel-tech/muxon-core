@@ -4,6 +4,8 @@
  */
 
 import { getUserManager, clearUserSession } from './oidc';
+import { Link } from '@/types/provider';
+import { getMockProvidersWithLinks } from './mockData';
 
 // Global auth state for components to check
 let authCheckPromise: Promise<void> | null = null;
@@ -216,3 +218,130 @@ export async function apiPatch<T = any>(
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+
+/**
+ * Enhanced API client with HATEOAS support
+ */
+export async function apiGetWithLinks<T extends { _links?: Link[] }>(
+  input: RequestInfo | URL,
+  options?: Omit<ApiRequestOptions, 'method'>
+): Promise<T> {
+  const response = await apiGet<T>(input, options);
+  
+  // Ensure _links array exists
+  if (response && !response._links) {
+    (response as any)._links = [];
+  }
+  
+  return response;
+}
+
+/**
+ * Execute an action using a HATEOAS link
+ */
+export async function executeLinkAction<T = any>(
+  link: Link,
+  payload?: any,
+  options?: Omit<ApiRequestOptions, 'method' | 'body' | 'url'>
+): Promise<T> {
+  return apiRequest<T>(link.href, {
+    ...options,
+    method: link.method,
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+}
+
+/**
+ * Enhanced fetch providers with HATEOAS support
+ */
+export async function fetchProvidersWithLinks(): Promise<any[]> {
+  try {
+    const data = await apiGetWithLinks('/v1/providers');
+    const providersList = Array.isArray(data) ? data : ((data as any)?.items || []);
+    
+    // Ensure all providers have _links array
+    return providersList.map((provider: any) => ({
+      ...provider,
+      _links: provider._links || generateDefaultLinks(provider)
+    }));
+  } catch (error) {
+    console.error('Error fetching providers:', error);
+    // Return mock data with HATEOAS links for testing
+    return getMockProvidersWithLinks();
+  }
+}
+
+/**
+ * Generate default HATEOAS links for a provider
+ */
+function generateDefaultLinks(provider: any): Link[] {
+  const baseLinks: Link[] = [
+    {
+      rel: 'self',
+      href: `/api/v1/providers/${provider.id}`,
+      method: 'GET',
+      title: 'View Details',
+      enabled: true
+    },
+    {
+      rel: 'edit',
+      href: `/api/v1/providers/${provider.id}`,
+      method: 'PUT',
+      title: 'Edit',
+      enabled: true,
+      reason: 'Requires provider:update permission'
+    },
+    {
+      rel: 'sync',
+      href: `/api/v1/providers/${provider.id}/sync`,
+      method: 'POST',
+      title: 'Sync',
+      enabled: provider.status !== 'offline',
+      reason: provider.status === 'offline' ? 'Provider is offline' : undefined
+    },
+    {
+      rel: 'testConnection',
+      href: `/api/v1/providers/${provider.id}/test-connection`,
+      method: 'POST',
+      title: 'Test Connection',
+      enabled: true
+    }
+  ];
+
+  // Add provider-specific actions
+  if (provider.type === 'libvirt') {
+    baseLinks.push(
+      {
+        rel: 'addCluster',
+        href: `/api/v1/providers/${provider.id}/node-clusters`,
+        method: 'POST',
+        title: 'Add Cluster',
+        enabled: true,
+        reason: 'Requires cluster:create permission'
+      },
+      {
+        rel: 'addNode',
+        href: `/api/v1/providers/${provider.id}/nodes`,
+        method: 'POST',
+        title: 'Add Node',
+        enabled: true,
+        reason: 'Requires node:create permission'
+      }
+    );
+  }
+
+  // Add delete action with conditions
+  baseLinks.push({
+    rel: 'delete',
+    href: `/api/v1/providers/${provider.id}`,
+    method: 'DELETE',
+    title: 'Delete',
+    enabled: (provider.nodes || 0) === 0 && (provider.vms || 0) === 0,
+    reason: ((provider.nodes || 0) > 0 || (provider.vms || 0) > 0)
+      ? 'Cannot delete provider with active resources'
+      : 'Requires provider:delete permission'
+  });
+
+  return baseLinks;
+}
+

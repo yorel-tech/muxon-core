@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/atoms/card';
 import { Table, Column } from '@/components/ui/organisms/table';
 import { Badge } from '@/components/ui/atoms/badge';
-import { Dropdown, DropdownOption } from '@/components/ui/molecules/dropdown';
 import { Button } from '@/components/ui/atoms/button';
 import { Input } from '@/components/ui/atoms/input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,31 +20,16 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react';
-import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
-
-export interface Provider extends Record<string, any> {
-  id: string;
-  name: string;
-  type: 'proxmox' | 'libvirt' | 'kubernetes';
-  status: 'online' | 'offline' | 'degraded';
-  nodes?: number;
-  vms?: number;
-  region?: string;
-  endpoint?: string;
-  lastSync?: string;
-  description?: string;
-  capabilities?: {
-    vmLifecycle: boolean;
-    snapshots: boolean;
-    backups: boolean;
-  };
-  [key: string]: any;
-}
+import { DynamicContextMenu } from '@/components/DynamicContextMenu';
+import { ActionButton } from '@/components/ActionButton';
+import { fetchProvidersWithLinks } from '@/lib/api';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Provider } from '@/types/provider';
 
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -65,179 +49,55 @@ export default function ProvidersPage() {
   const fetchProviders = async () => {
     setIsLoading(true);
     try {
-      const data = await apiGet('/api/v1/providers');
-      const providersList = Array.isArray(data) ? data : (data?.items || []);
-      
-      // If API fails or returns empty, use mock data for testing
-      if (providersList.length === 0) {
-        setProviders([
-          {
-            id: '1',
-            name: 'Production Proxmox',
-            type: 'proxmox',
-            status: 'online',
-            nodes: 3,
-            vms: 15,
-            region: 'us-east',
-            endpoint: 'https://proxmox.example.com:8006/api2/json',
-            lastSync: '2024-01-15T10:30:00Z',
-            description: 'Main production cluster',
-            capabilities: {
-              vmLifecycle: true,
-              snapshots: true,
-              backups: true,
-            },
-          },
-          {
-            id: '2',
-            name: 'Development Libvirt',
-            type: 'libvirt',
-            status: 'offline',
-            nodes: 1,
-            vms: 5,
-            region: 'us-west',
-            endpoint: 'libvirt://system',
-            lastSync: '2024-01-14T15:45:00Z',
-            description: 'Development environment',
-            capabilities: {
-              vmLifecycle: true,
-              snapshots: false,
-              backups: false,
-            },
-          },
-          {
-            id: '3',
-            name: 'Staging Kubernetes',
-            type: 'kubernetes',
-            status: 'degraded',
-            nodes: 2,
-            vms: 8,
-            region: 'eu-central',
-            endpoint: 'https://k8s-staging.example.com:6443',
-            lastSync: '2024-01-15T08:20:00Z',
-            description: 'Staging environment for testing',
-            capabilities: {
-              vmLifecycle: true,
-              snapshots: true,
-              backups: true,
-            },
-          },
-        ]);
-      } else {
-        setProviders(providersList);
-      }
+      const providersList = await fetchProvidersWithLinks();
+      setProviders(providersList);
     } catch (error) {
       console.error('Error fetching providers:', error);
-      // Use mock data even on error for testing
-      setProviders([
-        {
-          id: '1',
-          name: 'Production Proxmox',
-          type: 'proxmox',
-          status: 'online',
-          nodes: 3,
-          vms: 15,
-          region: 'us-east',
-          endpoint: 'https://proxmox.example.com:8006/api2/json',
-          lastSync: '2024-01-15T10:30:00Z',
-          description: 'Main production cluster',
-          capabilities: {
-            vmLifecycle: true,
-            snapshots: true,
-            backups: true,
-          },
-        },
-      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleViewDetails = (provider: Provider) => {
-    console.log('View details for:', provider.id);
-    // Navigate to provider details page
-  };
-
-  const handleEdit = (provider: Provider) => {
-    console.log('Edit provider:', provider.id);
-    // Open edit modal
-  };
-
-  const handleSync = async (provider: Provider) => {
-    console.log('Sync provider:', provider.id);
-    // Trigger sync - refresh the list
-    await fetchProviders();
-  };
-
-  const handleTestConnection = async (provider: Provider) => {
-    console.log('Test connection for:', provider.id);
+  const handleAction = async (action: string, provider: Provider) => {
+    setActionLoading(`${provider.id}-${action}`);
+    
     try {
-      await apiPost(`/api/v1/providers/${provider.id}/test-connection`, {});
-      alert('Connection test successful!');
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      alert('Connection test failed. Please check the endpoint and credentials.');
-    }
-  };
+      const link = provider._links.find(l => l.rel === action);
+      if (!link) return;
 
-  const handleDisable = async (provider: Provider) => {
-    console.log('Disable provider:', provider.id);
-    // Disable provider - update status
-    try {
-      await apiPut(`/api/v1/providers/${provider.id}`, { enabled: false });
-      await fetchProviders();
-    } catch (error) {
-      console.error('Error disabling provider:', error);
-      alert('Failed to disable provider.');
-    }
-  };
-
-  const handleDelete = async (provider: Provider) => {
-    if (window.confirm(`Are you sure you want to delete provider "${provider.name}"?`)) {
-      try {
-        await apiDelete(`/api/v1/providers/${provider.id}`);
-        await fetchProviders();
-      } catch (error) {
-        console.error('Error deleting provider:', error);
-        alert('Failed to delete provider.');
+      // Handle navigation actions
+      if (link.method === 'GET' && link.href.startsWith('/system/')) {
+        window.location.href = link.href;
+        return;
       }
+
+      // Handle API actions
+      const response = await fetch(link.href, {
+        method: link.method,
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: link.method !== 'GET' && link.method !== 'DELETE' ? JSON.stringify({}) : undefined
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Action failed: ${link.title}`);
+      }
+      
+      // Show success message (for now, using alert - will be replaced with toast)
+      alert(`${link.title} completed successfully`);
+      
+      // Refresh providers list for actions that modify state
+      if (['sync', 'delete', 'enable', 'disable'].includes(action)) {
+        await fetchProviders();
+      }
+    } catch (error) {
+      console.error(`Action ${action} failed:`, error);
+      alert(`Failed to ${action}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(null);
     }
   };
-
-  const getContextMenuOptions = (provider: Provider): DropdownOption[] => [
-    {
-      label: 'View Details',
-      icon: <Eye size={14} />,
-      onClick: () => handleViewDetails(provider),
-    },
-    {
-      label: 'Edit',
-      icon: <Pencil size={14} />,
-      onClick: () => handleEdit(provider),
-    },
-    {
-      label: 'Sync',
-      icon: <RefreshCw size={14} />,
-      onClick: () => handleSync(provider),
-    },
-    {
-      label: 'Test Connection',
-      icon: <Plug size={14} />,
-      onClick: () => handleTestConnection(provider),
-    },
-    {
-      label: 'Disable',
-      icon: <Ban size={14} />,
-      variant: 'warning',
-      onClick: () => handleDisable(provider),
-    },
-    {
-      label: 'Delete',
-      icon: <Trash2 size={14} />,
-      variant: 'danger',
-      onClick: () => handleDelete(provider),
-    },
-  ];
 
   const getStatusBadgeVariant = (status: Provider['status']) => {
     switch (status) {
@@ -299,7 +159,18 @@ export default function ProvidersPage() {
         description: providerDescription || undefined,
       };
 
-      await apiPost('/api/v1/providers', providerData);
+      const response = await fetch('/api/v1/providers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(providerData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create provider');
+      }
+
       await fetchProviders();
       handleCloseWizard();
     } catch (error) {
@@ -331,13 +202,9 @@ export default function ProvidersPage() {
       header: '',
       cell: (row: Provider) => (
         <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
-          <Dropdown
-            trigger={
-              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
-                <MoreHorizontal size={16} className="text-gray-600" />
-              </button>
-            }
-            options={getContextMenuOptions(row)}
+          <DynamicContextMenu 
+            entity={row} 
+            onAction={handleAction}
             position="right"
             usePortal={true}
           />
@@ -387,23 +254,51 @@ export default function ProvidersPage() {
       ),
       sortable: true,
     },
+    {
+      key: 'quickActions',
+      header: 'Quick Actions',
+      cell: (row: Provider) => {
+        const { canPerformAction } = usePermissions(row);
+        
+        return (
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            {canPerformAction('sync') && (
+              <ActionButton
+                entity={row}
+                action="sync"
+                size="sm"
+                variant="secondary"
+                loading={actionLoading === `${row.id}-sync`}
+              >
+                <RefreshCw size={14} />
+              </ActionButton>
+            )}
+            {canPerformAction('testConnection') && (
+              <ActionButton
+                entity={row}
+                action="testConnection"
+                size="sm"
+                variant="secondary"
+                loading={actionLoading === `${row.id}-testConnection`}
+              >
+                <Plug size={14} />
+              </ActionButton>
+            )}
+          </div>
+        );
+      },
+      sortable: false,
+    },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-full px-3 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
+        {/* Header with enhanced actions */}
+        <motion.div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Providers
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
               <p className="text-gray-600 mt-2">
                 Manage your cloud infrastructure providers
               </p>
@@ -418,12 +313,8 @@ export default function ProvidersPage() {
           </div>
         </motion.div>
 
-        {/* Providers Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        {/* Enhanced Table with HATEOAS support */}
+        <motion.div>
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
@@ -435,8 +326,8 @@ export default function ProvidersPage() {
                   columns={columns}
                   data={providers}
                   emptyMessage="No providers configured"
-                  onRowClick={(row) => handleViewDetails(row)}
-                  overflowVisibleColumnKeys={['actions']}
+                  onRowClick={(row) => handleAction('viewDetails', row)}
+                  overflowVisibleColumnKeys={['actions', 'quickActions']}
                 />
               )}
             </CardContent>
@@ -444,7 +335,7 @@ export default function ProvidersPage() {
         </motion.div>
       </div>
 
-      {/* Add Provider Wizard Modal */}
+      {/* Enhanced Wizard Modal */}
       <AnimatePresence mode="wait">
         {isWizardOpen && (
           <motion.div
@@ -533,7 +424,7 @@ export default function ProvidersPage() {
                   </label>
                   <Input
                     type="password"
-                    placeholder="•••••••••••"
+                    placeholder="••••••••••••"
                     value={providerPassword}
                     onChange={(e) => setProviderPassword(e.target.value)}
                   />
