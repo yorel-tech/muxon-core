@@ -8,16 +8,13 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Entity
 @Table(name = "node")
-public class NodeEntity {
-
-    @Id
-    @Column(name = "id")
-    private UUID id;
+public class NodeEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cluster_id", nullable = true)
@@ -29,9 +26,6 @@ public class NodeEntity {
 
     @Column(name = "external_id")
     private String externalId;
-
-    @Column(nullable = false)
-    private String name;
 
     @Column
     private String role;
@@ -54,36 +48,25 @@ public class NodeEntity {
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "ip_addresses", columnDefinition = "text[]")
-    private java.util.List<String> ipAddresses; // TEXT[] - but API uses List<String>
+    private List<String> ipAddresses; // TEXT[] - but API uses List<String>
 
-    @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "capabilities", columnDefinition = "text[]")
+    private List<String> capabilities;
+
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, String> metadata;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(columnDefinition = "jsonb")
+    private Resources resources;
 
     // Constructors
     public NodeEntity() {
     }
 
-    public NodeEntity(UUID id, String name) {
-        this.id = id;
-        this.name = name;
+    public NodeEntity(String name) {
+        setName(name);
     }
 
     // Getters and setters
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public NodeClusterEntity getCluster() {
         return cluster;
     }
@@ -106,14 +89,6 @@ public class NodeEntity {
 
     public void setExternalId(String externalId) {
         this.externalId = externalId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getRole() {
@@ -164,35 +139,32 @@ public class NodeEntity {
         this.credentials = credentials;
     }
 
-    public java.util.List<String> getIpAddresses() {
+    public List<String> getIpAddresses() {
         return ipAddresses;
     }
 
-    public void setIpAddresses(java.util.List<String> ipAddresses) {
+    public void setIpAddresses(List<String> ipAddresses) {
         this.ipAddresses = ipAddresses;
     }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
+    public List<String> getCapabilities() {
+        return capabilities;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+    public void setCapabilities(List<String> capabilities) {
+        this.capabilities = capabilities;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public Resources getResources() {
+        return resources;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
+    public void setResources(Resources resources) {
+        this.resources = resources;
     }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+    // Helper methods
+    public boolean isActive() {
+        return "READY".equals(status);
     }
 }

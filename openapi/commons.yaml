@@ -57,6 +57,8 @@ components:
           example: "entity-name"
         metadata:
           $ref: '#/components/schemas/Metadata'
+        _links:
+          $ref: '#/components/schemas/Links'
         createdAt:
           type: string
           format: date-time
@@ -65,6 +67,35 @@ components:
           type: string
           format: date-time
           example: "2025-10-20T09:10:11Z"
+
+    Links:
+      type: array
+      items:
+        $ref: '#/components/schemas/Link'
+      description: HATEOAS links for available actions
+
+    Link:
+      type: object
+      properties:
+        rel:
+          type: string
+          description: Relation type (e.g., "self", "edit", "delete")
+        href:
+          type: string
+          description: URL for the action
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+          description: HTTP method for the action
+        title:
+          type: string
+          description: Human-readable action name
+        enabled:
+          type: boolean
+          description: Whether the action is available to current user
+        reason:
+          type: string
+          description: Reason why action is disabled (if applicable)
 
     Metadata:
       type: object

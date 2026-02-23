@@ -1,6 +1,7 @@
 package com.onetattva.infron.core.auth;
 
 import com.onetattva.infron.core.common.UuidUtils;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -112,3 +113,4 @@ public enum Permission {
         TENANT_GLOBAL
     }
 }
+

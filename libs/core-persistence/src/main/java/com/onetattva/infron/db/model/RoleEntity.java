@@ -9,6 +9,8 @@ import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -34,6 +36,14 @@ public class RoleEntity {
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean immutable;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "role_permission",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<PermissionEntity> permissions = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -97,5 +107,13 @@ public class RoleEntity {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public Set<PermissionEntity> getPermissions() {
+        return permissions;
+    }
+    
+    public void setPermissions(Set<PermissionEntity> permissions) {
+        this.permissions = permissions;
     }
 }

@@ -36,6 +36,39 @@ components:
         format: uuid
 
   schemas:
+    Resources:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            total:
+              type: integer
+            available:
+              type: integer
+        memory:
+          type: object
+          properties:
+            totalMb:
+              type: integer
+            availableMb:
+              type: integer
+        storage:
+          type: object
+          properties:
+            totalGb:
+              type: integer
+            availableGb:
+              type: integer
+
+    NodeCapabilities:
+      type: object
+      properties:
+        supportedVmTypes:
+          type: array
+          items:
+            type: string
+
     NodeProviderType:
       type: string
       enum: [ kvm, k8s ]
@@ -152,19 +185,18 @@ components:
             role:
               type: string
               example: "control-plane"
-            cpuTotal:
-              type: integer
-              example: 8
-            memMb:
-              type: integer
-              example: 16384
+            resources:
+              $ref: '#/components/schemas/Resources'
             status:
               type: string
+              enum: [ACTIVE, INACTIVE, MAINTENANCE, ERROR]
               example: "ready"
             lastSeenAt:
               type: string
               format: date-time
               example: "2025-10-20T09:10:11Z"
+            capabilities:
+              $ref: '#/components/schemas/NodeCapabilities'
             credentials:
               type: object
               description: Authentication configuration (JSON)

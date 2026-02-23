@@ -10,20 +10,14 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
-import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Entity
 @Table(name = "provider")
-public class ProviderEntity {
-
-    @Id
-    @Column(name = "id")
-    private UUID id;
-
-    @Column(nullable = false)
-    private String name;
+public class ProviderEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
@@ -41,45 +35,24 @@ public class ProviderEntity {
     @Column(columnDefinition = "jsonb")
     private Map<String, String> capabilities; // JSONB
 
-    @Column(columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, String> metadata; // JSONB
-
     @Column(nullable = false)
     private String status;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NodeClusterEntity> clusters = new ArrayList<>();
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NodeEntity> nodes = new ArrayList<>();
 
     // Constructors
     public ProviderEntity() {
     }
 
     public ProviderEntity(UUID id, String name) {
-        this.id = id;
-        this.name = name;
+        super(id, name);
     }
 
     // Getters and setters
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public ProviderType getType() {
         return type;
     }
@@ -112,14 +85,6 @@ public class ProviderEntity {
         this.capabilities = capabilities;
     }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
-    }
-
     public String getStatus() {
         return status;
     }
@@ -128,19 +93,34 @@ public class ProviderEntity {
         this.status = status;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public List<NodeClusterEntity> getClusters() {
+        return clusters;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
+    public void setClusters(List<NodeClusterEntity> clusters) {
+        this.clusters = clusters;
     }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
+    public List<NodeEntity> getNodes() {
+        return nodes;
     }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setNodes(List<NodeEntity> nodes) {
+        this.nodes = nodes;
+    }
+
+    // Helper methods for HATEOAS link generation
+    public boolean hasActiveResources() {
+        return clusters.stream().anyMatch(c -> "ACTIVE".equals(c.getStatus())) ||
+               nodes.stream().anyMatch(n -> "ACTIVE".equals(n.getStatus()));
+    }
+
+    public long getNodeCount() {
+        return nodes.size();
+    }
+
+    public long getVmCount() {
+        // Implementation depends on VM entity relationship
+        return 0; // Placeholder
     }
 }

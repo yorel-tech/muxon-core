@@ -40,6 +40,15 @@ components:
               format: uuid
             externalId:
               type: string
+            resources:
+              $ref: './nodes.yaml#/components/schemas/Resources'
+            status:
+              type: string
+              enum: [ACTIVE, INACTIVE, MAINTENANCE]
+            nodeCount:
+              type: integer
+            vmCount:
+              type: integer
 
     NodeClusterCreate:
       type: object

@@ -3,59 +3,42 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.Resources;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "node_cluster")
-public class NodeClusterEntity {
-
-    @Id
-    @Column(name = "id")
-    private UUID id;
+public class NodeClusterEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "provider_id", nullable = false)
     private ProviderEntity provider;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String name;
+    private ClusterStatus status;
 
-    private String description;
+    @OneToMany(mappedBy = "cluster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NodeEntity> nodes = new ArrayList<>();
 
-    @Column(columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, String> metadata;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(columnDefinition = "jsonb")
+    private Resources resources;
 
     // Constructors
     public NodeClusterEntity() {
     }
 
-    public NodeClusterEntity(UUID id, String name) {
-        this.id = id;
-        this.name = name;
+    public NodeClusterEntity(String name) {
+        setName(name);
     }
 
     // Getters and setters
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public ProviderEntity getProvider() {
         return provider;
     }
@@ -64,43 +47,40 @@ public class NodeClusterEntity {
         this.provider = provider;
     }
 
-    public String getName() {
-        return name;
+    public ClusterStatus getStatus() {
+        return status;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setStatus(ClusterStatus status) {
+        this.status = status;
     }
 
-    public String getDescription() {
-        return description;
+    public List<NodeEntity> getNodes() {
+        return nodes;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setNodes(List<NodeEntity> nodes) {
+        this.nodes = nodes;
     }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
+    public Resources getResources() {
+        return resources;
     }
 
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
+    public void setResources(Resources resources) {
+        this.resources = resources;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    // Helper methods
+    public long getNodeCount() {
+        return nodes.size();
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
+    public boolean hasActiveNodes() {
+        return nodes.stream().anyMatch(n -> "READY".equals(n.getStatus()));
     }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+    public enum ClusterStatus {
+        ACTIVE, INACTIVE, MAINTENANCE
     }
 }
