@@ -27,6 +27,7 @@ import { DynamicContextMenu } from '@/components/DynamicContextMenu';
 import { ActionButton } from '@/components/ActionButton';
 import { Provider, NodeCluster, Node, BreadcrumbItem } from '@/types/provider';
 import { usePermissions } from '@/hooks/usePermissions';
+import { executeLinkAction } from '@/lib/api';
 import { getMockClustersWithLinks, getMockNodesWithLinks } from '@/lib/mockData';
 
 interface ProviderDetailsPageProps {
@@ -128,34 +129,17 @@ export default function ProviderDetailsPage({ params }: ProviderDetailsPageProps
 
   const handleAction = async (action: string, entity: Provider | NodeCluster | Node) => {
     setActionLoading(`${entity.id}-${action}`);
-    
     try {
-      const link = entity._links.find(l => l.rel === action);
+      const link = entity._links.find((l) => l.rel === action);
       if (!link) return;
 
-      // Handle navigation actions
       if (link.method === 'GET' && link.href.startsWith('/system/')) {
         router.push(link.href);
         return;
       }
 
-      // Handle API actions
-      const response = await fetch(link.href, {
-        method: link.method,
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: link.method !== 'GET' && link.method !== 'DELETE' ? JSON.stringify({}) : undefined
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Action failed: ${link.title}`);
-      }
-      
-      // Show success message (for now, using alert - will be replaced with toast)
+      await executeLinkAction(link, link.method !== 'GET' && link.method !== 'DELETE' ? {} : undefined);
       alert(`${link.title} completed successfully`);
-      
-      // Refresh data for actions that modify state
       if (['sync', 'delete', 'enable', 'disable'].includes(action)) {
         await fetchProviderDetails();
       }

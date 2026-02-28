@@ -1,6 +1,7 @@
 package com.onetattva.infron.core.hateoas;
 
 import com.onetattva.infron.core.auth.ResourceAction;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -22,7 +23,7 @@ public class ResourceActionRegistry {
 
     private final Map<Class<?>, List<ResourceActionDescriptor>> actionsByResourceType = new ConcurrentHashMap<>();
 
-    public ResourceActionRegistry(RequestMappingHandlerMapping handlerMapping) {
+    public ResourceActionRegistry(@Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
         initialize(handlerMapping);
     }
 
@@ -67,6 +68,18 @@ public class ResourceActionRegistry {
      */
     public List<ResourceActionDescriptor> getActionsFor(Class<?> resourceType) {
         return actionsByResourceType.getOrDefault(resourceType, Collections.emptyList());
+    }
+
+    /**
+     * Register action descriptors for a resource type programmatically.
+     * Use when annotations are on an interface (e.g. OpenAPI-generated API) and not visible on the handler method.
+     */
+    public void registerActions(Class<?> resourceType, List<ResourceActionDescriptor> descriptors) {
+        actionsByResourceType.merge(resourceType, new ArrayList<>(descriptors), (existing, added) -> {
+            List<ResourceActionDescriptor> merged = new ArrayList<>(existing);
+            merged.addAll(added);
+            return merged;
+        });
     }
 }
 

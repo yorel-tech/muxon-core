@@ -3,9 +3,13 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.Node;
+import com.onetattva.infron.api.model.NodeCluster;
 import com.onetattva.infron.api.model.Resources;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
 import java.util.ArrayList;
@@ -20,8 +24,9 @@ public class NodeClusterEntity extends BaseEntity {
     private ProviderEntity provider;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ClusterStatus status;
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "status", nullable = false)
+    private NodeCluster.StatusEnum status;
 
     @OneToMany(mappedBy = "cluster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<NodeEntity> nodes = new ArrayList<>();
@@ -47,11 +52,11 @@ public class NodeClusterEntity extends BaseEntity {
         this.provider = provider;
     }
 
-    public ClusterStatus getStatus() {
+    public NodeCluster.StatusEnum getStatus() {
         return status;
     }
 
-    public void setStatus(ClusterStatus status) {
+    public void setStatus(NodeCluster.StatusEnum status) {
         this.status = status;
     }
 
@@ -77,10 +82,6 @@ public class NodeClusterEntity extends BaseEntity {
     }
 
     public boolean hasActiveNodes() {
-        return nodes.stream().anyMatch(n -> "READY".equals(n.getStatus()));
-    }
-
-    public enum ClusterStatus {
-        ACTIVE, INACTIVE, MAINTENANCE
+        return nodes.stream().anyMatch(n -> n.getStatus() == Node.StatusEnum.READY);
     }
 }

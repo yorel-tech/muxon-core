@@ -36,7 +36,6 @@ public class NodeClustersService {
         }
 
         NodeClusterEntity entity = new NodeClusterEntity();
-        entity.setId(UUID.randomUUID());
 
         // Set provider
         entity.setProvider(provider);
@@ -47,11 +46,8 @@ public class NodeClustersService {
             entity.setDescription(nodeClusterCreate.getDescription());
         }
 
+        entity.setStatus(NodeCluster.StatusEnum.UNKNOWN);
         entity.setMetadata(nodeClusterCreate.getMetadata());
-
-        Instant now = Instant.now();
-        entity.setCreatedAt(now);
-        entity.setUpdatedAt(now);
 
         NodeClusterEntity saved = nodeClusterRepository.save(entity);
         return mapEntityToApi(saved);

@@ -42,14 +42,21 @@ components:
               type: string
             resources:
               $ref: './nodes.yaml#/components/schemas/Resources'
-            status:
-              type: string
-              enum: [ACTIVE, INACTIVE, MAINTENANCE]
             nodeCount:
               type: integer
             vmCount:
               type: integer
-
+            status:
+              type: string
+              title: Status
+              description: >
+                Cluster status. Must match database enum node_cluster_status:
+                - UNKNOWN: status cannot be determined
+                - READY: cluster is operational and accepting workloads
+                - DEGRADED: cluster is operational but with reduced capacity
+                - MAINTENANCE: cluster is under maintenance
+                - INACTIVE: cluster is not active
+              enum: [UNKNOWN, READY, DEGRADED, MAINTENANCE, INACTIVE]
     NodeClusterCreate:
       type: object
       required:

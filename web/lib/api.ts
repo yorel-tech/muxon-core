@@ -5,7 +5,6 @@
 
 import { getUserManager, clearUserSession } from './oidc';
 import { Link } from '@/types/provider';
-import { getMockProvidersWithLinks } from './mockData';
 
 // Global auth state for components to check
 let authCheckPromise: Promise<void> | null = null;
@@ -146,6 +145,10 @@ export async function apiRequest<T = any>(
     );
   }
 
+  // No content (e.g. 204)
+  if (response.status === 204) {
+    return undefined as T;
+  }
   // Parse response
   const contentType = response.headers.get('content-type');
   if (contentType?.includes('application/json')) {
@@ -237,14 +240,32 @@ export async function apiGetWithLinks<T extends { _links?: Link[] }>(
 }
 
 /**
- * Execute an action using a HATEOAS link
+ * Normalize link href so requests go through the app (same-origin) and get the auth token.
+ * If the backend returns an absolute URL (e.g. http://localhost:8080/api/v1/...), use the pathname
+ * so the request hits Next.js /api/v1 proxy and is authenticated.
+ */
+function normalizeLinkHref(href: string): string {
+  if (typeof href !== 'string' || !href.startsWith('http')) {
+    return href;
+  }
+  try {
+    const u = new URL(href);
+    return u.pathname + u.search;
+  } catch {
+    return href;
+  }
+}
+
+/**
+ * Execute an action using a HATEOAS link (authenticated, via same-origin proxy when possible).
  */
 export async function executeLinkAction<T = any>(
   link: Link,
   payload?: any,
   options?: Omit<ApiRequestOptions, 'method' | 'body' | 'url'>
 ): Promise<T> {
-  return apiRequest<T>(link.href, {
+  const url = normalizeLinkHref(link.href);
+  return apiRequest<T>(url, {
     ...options,
     method: link.method,
     body: payload ? JSON.stringify(payload) : undefined,
@@ -253,22 +274,16 @@ export async function executeLinkAction<T = any>(
 
 /**
  * Enhanced fetch providers with HATEOAS support
+ * Fetches from backend /api/v1/providers (proxied via Next.js rewrites)
  */
 export async function fetchProvidersWithLinks(): Promise<any[]> {
-  try {
-    const data = await apiGetWithLinks('/v1/providers');
-    const providersList = Array.isArray(data) ? data : ((data as any)?.items || []);
-    
-    // Ensure all providers have _links array
-    return providersList.map((provider: any) => ({
-      ...provider,
-      _links: provider._links || generateDefaultLinks(provider)
-    }));
-  } catch (error) {
-    console.error('Error fetching providers:', error);
-    // Return mock data with HATEOAS links for testing
-    return getMockProvidersWithLinks();
-  }
+  const data = await apiGetWithLinks('/api/v1/providers');
+  const providersList = Array.isArray(data) ? data : ((data as any)?.items || []);
+  // Ensure all providers have _links array
+  return providersList.map((provider: any) => ({
+    ...provider,
+    _links: provider._links || generateDefaultLinks(provider),
+  }));
 }
 
 /**

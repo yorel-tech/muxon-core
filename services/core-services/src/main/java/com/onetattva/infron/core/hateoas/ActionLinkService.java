@@ -1,4 +1,4 @@
-package com.onetattva.infron.core.services;
+package com.onetattva.infron.core.hateoas;
 
 import com.onetattva.infron.api.model.Link;
 import com.onetattva.infron.api.model.Node;
@@ -9,8 +9,9 @@ import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.Scope;
 import com.onetattva.infron.core.auth.UserPrincipal;
-import com.onetattva.infron.core.hateoas.ResourceActionDescriptor;
-import com.onetattva.infron.core.hateoas.ResourceActionRegistry;
+import com.onetattva.infron.core.services.NodeClustersService;
+import com.onetattva.infron.core.services.NodesService;
+import com.onetattva.infron.core.services.ProvidersService;
 import com.onetattva.infron.db.model.NodeClusterEntity;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -63,6 +65,14 @@ public class ActionLinkService {
     public List<Link> generateProviderLinks(ProviderEntity provider) {
         UserPrincipal user = getCurrentUser();
         return buildLinksForResource(Provider.class, provider.getId().toString(), provider, user);
+    }
+
+    /**
+     * Convenience overload to generate provider links from provider ID.
+     */
+    public List<Link> generateProviderLinksById(UUID providerId) {
+        ProviderEntity provider = providersService.getProviderEntity(providerId);
+        return generateProviderLinks(provider);
     }
     
     private boolean isAllowed(UserPrincipal user, String action) {

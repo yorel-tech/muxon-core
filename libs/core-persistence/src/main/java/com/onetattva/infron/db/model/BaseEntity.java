@@ -1,5 +1,6 @@
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.Link;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
@@ -33,7 +34,7 @@ public abstract class BaseEntity {
     
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Map<String, Object> metadata = new HashMap<>();
+    private Map<String, String> metadata = new HashMap<>();
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -80,11 +81,11 @@ public abstract class BaseEntity {
         this.description = description;
     }
     
-    public Map<String, Object> getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
     
-    public void setMetadata(Map<String, Object> metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
     

@@ -1,19 +1,21 @@
 import { Link } from '@/types/provider';
-import { 
-  Eye, 
-  Pencil, 
-  Trash2, 
-  RefreshCw, 
-  Plug, 
-  Ban, 
-  Server, 
-  Cpu, 
+import { executeLinkAction } from '@/lib/api';
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Plug,
+  Ban,
+  Server,
+  Cpu,
   MoreHorizontal,
   Plus,
   Settings,
   FileText,
   Database,
-  Activity
+  Activity,
+  Layers
 } from 'lucide-react';
 
 /**
@@ -24,22 +26,10 @@ export const findLink = (links: Link[], rel: string): Link | undefined => {
 };
 
 /**
- * Execute an action using a HATEOAS link
+ * Execute an action using a HATEOAS link (authenticated via api client).
  */
 export const executeAction = async (link: Link, payload?: any) => {
-  const response = await fetch(link.href, {
-    method: link.method,
-    headers: { 
-      'Content-Type': 'application/json',
-    },
-    body: payload ? JSON.stringify(payload) : undefined
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Action failed: ${link.title}`);
-  }
-  
-  return response.json();
+  return executeLinkAction(link, payload);
 };
 
 /**
@@ -61,16 +51,23 @@ export const getActionIcon = (rel: string) => {
     settings: Settings,
     logs: FileText,
     vms: Database,
-    overview: Activity
+    overview: Activity,
+    capabilities: Layers
   };
   return iconMap[rel] || MoreHorizontal;
 };
 
 /**
- * Get all enabled actions from links
+ * Get all enabled actions from links.
+ * When both edit (PUT) and update (PATCH) exist, only show edit.
  */
 export const getEnabledActions = (links: Link[]): Link[] => {
-  return links.filter(link => link.enabled && link.rel !== 'self');
+  const filtered = links.filter(link => link.enabled && link.rel !== 'self');
+  const hasEdit = filtered.some(link => link.rel === 'edit');
+  if (hasEdit) {
+    return filtered.filter(link => link.rel !== 'update');
+  }
+  return filtered;
 };
 
 /**
@@ -97,7 +94,7 @@ export const groupActionsByCategory = (links: Link[]): Record<string, Link[]> =>
   
   return {
     primary: actions.filter(link => ['self', 'viewDetails', 'edit'].includes(link.rel)),
-    management: actions.filter(link => ['sync', 'testConnection', 'enable', 'disable'].includes(link.rel)),
+    management: actions.filter(link => ['sync', 'testConnection', 'capabilities', 'enable', 'disable'].includes(link.rel)),
     creation: actions.filter(link => ['addCluster', 'addNode', 'create'].includes(link.rel)),
     destructive: actions.filter(link => ['delete'].includes(link.rel)),
     navigation: actions.filter(link => ['settings', 'logs', 'overview', 'vms'].includes(link.rel))
@@ -109,8 +106,8 @@ export const groupActionsByCategory = (links: Link[]): Record<string, Link[]> =>
  */
 export const sortActionsByPriority = (links: Link[]): Link[] => {
   const priorityOrder = [
-    'viewDetails', 'edit', 'sync', 'testConnection', 
-    'addCluster', 'addNode', 'enable', 'disable', 
+    'viewDetails', 'edit', 'sync', 'testConnection', 'capabilities',
+    'addCluster', 'addNode', 'enable', 'disable',
     'settings', 'logs', 'overview', 'vms', 'delete'
   ];
   

@@ -3,8 +3,12 @@
  */
 package com.onetattva.infron.db.model;
 
+import com.onetattva.infron.api.model.Node;
+import com.onetattva.infron.api.model.Resources;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -36,8 +40,10 @@ public class NodeEntity extends BaseEntity {
     @Column(name = "mem_mb")
     private Integer memMb;
 
-    @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "status", nullable = false)
+    private Node.StatusEnum status;
 
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
@@ -115,11 +121,11 @@ public class NodeEntity extends BaseEntity {
         this.memMb = memMb;
     }
 
-    public String getStatus() {
+    public Node.StatusEnum getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(Node.StatusEnum status) {
         this.status = status;
     }
 
@@ -165,6 +171,6 @@ public class NodeEntity extends BaseEntity {
 
     // Helper methods
     public boolean isActive() {
-        return "READY".equals(status);
+        return status == Node.StatusEnum.READY;
     }
 }

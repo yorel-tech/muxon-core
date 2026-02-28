@@ -7,7 +7,10 @@ import io.restassured.response.Response;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import io.restassured.specification.RequestSpecification;
 
 import static io.restassured.RestAssured.given;
 
@@ -155,4 +158,101 @@ public class ProviderTestUtil {
     public static String generateUniqueDatacenterName() {
         return "test-datacenter-" + UUID.randomUUID().toString().substring(0, 8);
     }
+
+    // --------------- Provider API (direct /providers endpoints) ---------------
+
+    /**
+     * Create a provider via POST /providers
+     */
+    public static Response createProvider(String name, ProviderType type, String endpoint, Map<String, String> credentials) {
+        try {
+            ProviderCreate create = new ProviderCreate();
+            create.setName(name);
+            create.setType(type);
+            create.setEndpoint(endpoint);
+            create.setCredentials(credentials);
+            return given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(create))
+                .when()
+                .post(baseUrl + "/providers");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize provider create", e);
+        }
+    }
+
+    /**
+     * List providers
+     */
+    public static Response listProviders(Integer page, Integer perPage, ProviderType type, ProviderStatus status) {
+        RequestSpecification request = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .queryParam("page", page != null ? page : 1)
+            .queryParam("perPage", perPage != null ? perPage : 20);
+        if (type != null) {
+            request = request.queryParam("type", type.name());
+        }
+        if (status != null) {
+            request = request.queryParam("status", status.name());
+        }
+        return request.when().get(baseUrl + "/providers");
+    }
+
+    /**
+     * Get provider by ID
+     */
+    public static Response getProvider(String providerId) {
+        return given()
+            .header("Authorization", "Bearer " + accessToken)
+            .when()
+            .get(baseUrl + "/providers/" + providerId);
+    }
+
+    /**
+     * Delete provider
+     */
+    public static Response deleteProvider(String providerId) {
+        return given()
+            .header("Authorization", "Bearer " + accessToken)
+            .when()
+            .delete(baseUrl + "/providers/" + providerId);
+    }
+
+    /**
+     * Test provider connection
+     */
+    public static Response testProviderConnection(String providerId) {
+        return given()
+            .header("Authorization", "Bearer " + accessToken)
+            .when()
+            .post(baseUrl + "/providers/" + providerId + "/test");
+    }
+
+    /**
+     * Get provider capabilities
+     */
+    public static Response getProviderCapabilities(String providerId, Boolean refresh) {
+        RequestSpecification request = given().header("Authorization", "Bearer " + accessToken);
+        if (refresh != null) {
+            request = request.queryParam("refresh", refresh);
+        }
+        return request.when().get(baseUrl + "/providers/" + providerId + "/capabilities");
+    }
+
+    /**
+     * Generate unique provider name for testing
+     */
+    public static String generateUniqueProviderName() {
+        return "test-provider-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    /**
+     * Minimal SSH private key (Ed25519) for Libvirt provider validation tests.
+     * Used when only presence of sshPrivateKey is validated; connection may still fail.
+     */
+    public static final String MINIMAL_SSH_PRIVATE_KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\n"
+        + "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n"
+        + "QyNTUxOQAAACBxY2F0cyBtaW5pbWFsIGtleSBmb3IgdGVzdHMgb25seQAAAECnp7Ro\n"
+        + "-----END OPENSSH PRIVATE KEY-----";
 }

@@ -121,7 +121,6 @@ public class NodesService {
         }
 
         NodeEntity entity = new NodeEntity();
-        entity.setId(UUID.randomUUID());
         entity.setName(nodeCreate.getName());
         entity.setProvider(provider);
         
@@ -135,12 +134,15 @@ public class NodesService {
         entity.setRole(nodeCreate.getRole());
         entity.setCpuTotal(nodeCreate.getCpuTotal());
         entity.setMemMb(nodeCreate.getMemMb());
-        entity.setStatus(nodeCreate.getStatus());
+        // Map status from request (string) to enum; default to UNKNOWN if null
+        if (nodeCreate.getStatus() != null) {
+            entity.setStatus(Node.StatusEnum.fromValue(nodeCreate.getStatus()));
+        } else {
+            entity.setStatus(Node.StatusEnum.UNKNOWN);
+        }
         entity.setCredentials(nodeCreate.getCredentials());
         entity.setIpAddresses(nodeCreate.getIpAddresses());
         entity.setMetadata(nodeCreate.getMetadata());
-        entity.setCreatedAt(Instant.now());
-        entity.setUpdatedAt(Instant.now());
         
         NodeEntity saved = nodeRepository.save(entity);
         return mapEntityToApi(saved);
@@ -176,7 +178,7 @@ public class NodesService {
             entity.setMemMb(nodeUpdate.getMemMb());
         }
         if (nodeUpdate.getStatus() != null) {
-            entity.setStatus(nodeUpdate.getStatus());
+            entity.setStatus(Node.StatusEnum.fromValue(nodeUpdate.getStatus()));
         }
         if (nodeUpdate.getCredentials() != null) {
             entity.setCredentials(nodeUpdate.getCredentials());
@@ -235,17 +237,14 @@ public class NodesService {
         }
 
         // Map provider reference
-        if (entity.getProvider() != null) {
-            api.setProvider(new EntityReference()
-                    .id(entity.getProvider().getId())
-                    .name(entity.getProvider().getName()));
-        }
+        if (entity.getProvider() != null) api.setProvider(new EntityReference()
+                .id(entity.getProvider().getId())
+                .name(entity.getProvider().getName()));
 
         api.setName(entity.getName());
         api.setExternalId(entity.getExternalId());
         api.setRole(entity.getRole());
-        api.setCpuTotal(entity.getCpuTotal());
-        api.setMemMb(entity.getMemMb());
+        api.setResources(entity.getResources());
         api.setStatus(entity.getStatus());
 
         if (entity.getLastSeenAt() != null) {

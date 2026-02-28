@@ -189,8 +189,15 @@ components:
               $ref: '#/components/schemas/Resources'
             status:
               type: string
-              enum: [ACTIVE, INACTIVE, MAINTENANCE, ERROR]
-              example: "ready"
+              title: Status
+              description: >
+                Node status. Must match database enum node_status:
+                - UNKNOWN: node state is not known
+                - READY: node is operational
+                - DOWN: node is unreachable or down
+                - MAINTENANCE: node is in maintenance mode
+              enum: [UNKNOWN, READY, DOWN, MAINTENANCE]
+              example: "READY"
             lastSeenAt:
               type: string
               format: date-time
@@ -361,7 +368,7 @@ paths:
                 role: "control-plane"
                 cpuTotal: 8
                 memMb: 16384
-                status: "ready"
+                status: "READY"
                 ipAddresses: ["192.168.1.100", "10.0.0.1"]
                 createdAt: "2025-10-01T12:34:56Z"
         '400':
@@ -466,7 +473,7 @@ paths:
                 role: "worker"
                 cpuTotal: 16
                 memMb: 32768
-                status: "ready"
+                status: "READY"
                 ipAddresses: ["192.168.1.100", "10.0.0.2"]
                 updatedAt: "2025-10-02T14:30:00Z"
         '400':

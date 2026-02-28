@@ -123,7 +123,7 @@ tasks.named<GenerateTask>("openApiGenerate") {
             "oas3" to "true",
             "openApiNullable" to "false",   // ← disables JsonNullable usage
             "openApiSpec" to "3.0.3",
-            "logToStdout" to "true"
+            "logToStdout" to "true",
         )
     )
 

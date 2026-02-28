@@ -1,4 +1,4 @@
--- V9__nodes_audit.sql
+-- V9__nodes_clusters.sql
 -- Merged migration: node clusters, nodes, and audit log with proper enum types
 
 -- ============================================================================
@@ -20,8 +20,12 @@ CREATE TYPE node_cluster_status AS ENUM ('UNKNOWN', 'READY', 'DEGRADED', 'MAINTE
 -- NODE CLUSTER ENHANCEMENTS
 -- ============================================================================
 
+-- Remove the old string default
 -- Update node_cluster status column to use enum type
 -- First update any existing VARCHAR values to valid enum values, then alter column type
+ALTER TABLE node_cluster
+ALTER COLUMN status DROP DEFAULT;
+
 ALTER TABLE node_cluster 
 ALTER COLUMN status TYPE node_cluster_status 
 USING CASE 
@@ -51,30 +55,6 @@ ALTER COLUMN status SET DEFAULT 'UNKNOWN'::node_status;
 -- Indexes for node (these should already exist from V1, but ensure they do)
 CREATE INDEX IF NOT EXISTS idx_nodes_provider ON node(provider_id);
 CREATE INDEX IF NOT EXISTS idx_nodes_cluster ON node(cluster_id);
-
--- ============================================================================
--- AUDIT LOG TABLE
--- ============================================================================
-
--- Audit log table for tracking all actions
-CREATE TABLE IF NOT EXISTS audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    action VARCHAR(100) NOT NULL,
-    resource_type VARCHAR(50) NOT NULL,
-    resource_id UUID,
-    request_data JSONB,
-    response_status INTEGER,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
--- Indexes for audit_log
-CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
-CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource_type, resource_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
 
 -- ============================================================================
 -- TRIGGERS

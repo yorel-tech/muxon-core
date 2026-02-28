@@ -59,16 +59,14 @@ public class ProvidersService {
         validateCredentials(request.getType(), request.getCredentials());
 
         // Create provider entity
+        // Let JPA/Hibernate generate the ID to avoid optimistic locking issues
         ProviderEntity entity = new ProviderEntity();
-        entity.setId(UUID.randomUUID());
         entity.setName(request.getName());
         entity.setType(request.getType());
         entity.setEndpoint(request.getEndpoint());
         entity.setCredentials(request.getCredentials());
         entity.setMetadata(request.getMetadata());
         entity.setStatus(ProviderStatus.CONNECTING.name());
-        entity.setCreatedAt(Instant.now());
-        entity.setUpdatedAt(Instant.now());
 
         // Save to database
         ProviderEntity savedEntity = providerRepository.save(entity);
@@ -103,6 +101,15 @@ public class ProvidersService {
         logger.debug("Getting provider: {}", providerId);
         return providerRepository.findById(providerId)
                 .map(this::mapEntityToApi)
+                .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
+    }
+
+    /**
+     * Get provider entity by ID.
+     */
+    @Transactional(readOnly = true)
+    public ProviderEntity getProviderEntity(UUID providerId) {
+        return providerRepository.findById(providerId)
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
     }
 
