@@ -248,13 +248,7 @@ public class DatacentersService {
         DatacenterSettings currentSettings = entity.getSettings();
         DatacenterSettings mergedSettings = currentSettings != null ? currentSettings : new DatacenterSettings();
 
-        // Merge settings (but preserve provider type)
-        if (datacenterSettings.getDefaultCpuOvercommitRatio() != null) {
-            mergedSettings.setDefaultCpuOvercommitRatio(datacenterSettings.getDefaultCpuOvercommitRatio());
-        }
-        if (datacenterSettings.getDefaultMemoryOvercommitRatio() != null) {
-            mergedSettings.setDefaultMemoryOvercommitRatio(datacenterSettings.getDefaultMemoryOvercommitRatio());
-        }
+        // Merge settings (but preserve provider type). Overcommit ratios are enterprise-only (nexus), not in core.
         if (datacenterSettings.getVmClasses() != null) {
             mergedSettings.setVmClasses(datacenterSettings.getVmClasses());
         }

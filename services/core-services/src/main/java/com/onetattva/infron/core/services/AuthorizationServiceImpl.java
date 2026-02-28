@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
-@Service
+@Service("authorizationService")
 public class AuthorizationServiceImpl implements AuthorizationService {
 
     private final PermissionRepository permissionRepository; // your existing repo/logic

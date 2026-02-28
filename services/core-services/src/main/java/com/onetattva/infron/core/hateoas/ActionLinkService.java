@@ -1,5 +1,6 @@
 package com.onetattva.infron.core.hateoas;
 
+import com.onetattva.infron.api.model.Datacenter;
 import com.onetattva.infron.api.model.Link;
 import com.onetattva.infron.api.model.Node;
 import com.onetattva.infron.api.model.NodeCluster;
@@ -12,9 +13,11 @@ import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.services.NodeClustersService;
 import com.onetattva.infron.core.services.NodesService;
 import com.onetattva.infron.core.services.ProvidersService;
+import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.NodeClusterEntity;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
+import com.onetattva.infron.db.repository.DatacenterRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.core.Authentication;
@@ -35,25 +38,29 @@ public class ActionLinkService {
     private final ProvidersService providersService;
     private final NodeClustersService nodeClustersService;
     private final NodesService nodesService;
+    private final DatacenterRepository datacenterRepository;
     private final ResourceActionRegistry resourceActionRegistry;
 
     public ActionLinkService(AuthorizationService authorizationService,
                              ProvidersService providersService,
                              NodeClustersService nodeClustersService,
                              NodesService nodesService,
+                             DatacenterRepository datacenterRepository,
                              ResourceActionRegistry resourceActionRegistry) {
         this.authorizationService = authorizationService;
         this.providersService = providersService;
         this.nodeClustersService = nodeClustersService;
         this.nodesService = nodesService;
+        this.datacenterRepository = datacenterRepository;
         this.resourceActionRegistry = resourceActionRegistry;
     }
     
     /**
      * Get the current authenticated user from SecurityContext.
+     * Public so SpEL in @Cacheable key expressions can call it on the proxy.
      * @return UserPrincipal or null if not authenticated
      */
-    private UserPrincipal getCurrentUser() {
+    public UserPrincipal getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal user) {
             return user;
@@ -92,6 +99,13 @@ public class ActionLinkService {
     public List<Link> generateNodeLinks(NodeEntity node) {
         UserPrincipal user = getCurrentUser();
         return buildLinksForResource(Node.class, node.getId().toString(), node, user);
+    }
+
+    @Cacheable(value = "actionLinks", key = "'datacenter-links-' + #datacenterId + '-' + @authorizationService.getCachedPermissions(@actionLinkService.getCurrentUser())")
+    public List<Link> generateDatacenterLinksById(UUID datacenterId) {
+        UserPrincipal user = getCurrentUser();
+        DatacenterEntity entity = datacenterRepository.findById(datacenterId).orElse(null);
+        return buildLinksForResource(Datacenter.class, datacenterId.toString(), entity, user);
     }
 
     private List<Link> buildLinksForResource(Class<?> resourceType,
@@ -138,6 +152,8 @@ public class ActionLinkService {
                     enabled = false;
                     reason = "Cluster has active nodes or missing permission";
                 }
+            } else if (resourceType.equals(Datacenter.class) && resource instanceof DatacenterEntity) {
+                // Datacenter delete: could disable when tenant grants exist; currently no check
             }
 
             String title = descriptor.title();

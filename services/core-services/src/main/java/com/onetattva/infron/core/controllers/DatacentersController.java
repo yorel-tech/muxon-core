@@ -13,6 +13,7 @@ import org.springframework.lang.Nullable;
 import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/v1")
 public class DatacentersController {
 
     @Autowired

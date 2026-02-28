@@ -32,20 +32,49 @@ public class ProviderTestUtil {
     }
 
     /**
-     * Create a datacenter with mock provider type
+     * Create a datacenter with mock provider type.
+     * Creates a provider and node cluster first, then a datacenter backed by that cluster.
      */
     public static Response createMockDatacenter(String name, String description) {
         try {
+            // Create provider and node cluster so we have a valid nodeClusterId
+            Response providerResponse = createProvider(
+                generateUniqueProviderName(),
+                ProviderType.LIBVIRT,
+                "qemu:///system",
+                Map.of()
+            );
+            if (providerResponse.getStatusCode() != 201) {
+                throw new RuntimeException("Failed to create provider: " + providerResponse.getBody().asString());
+            }
+            String providerId = providerResponse.jsonPath().getString("id");
+
+            NodeClusterCreate clusterCreate = new NodeClusterCreate();
+            clusterCreate.setName("test-cluster-" + UUID.randomUUID().toString().substring(0, 8));
+            Response clusterResponse = given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(clusterCreate))
+                .when()
+                .post(baseUrl + "/providers/" + providerId + "/node-clusters");
+            if (clusterResponse.getStatusCode() != 201) {
+                throw new RuntimeException("Failed to create node cluster: " + clusterResponse.getBody().asString());
+            }
+            String nodeClusterId = clusterResponse.jsonPath().getString("id");
+
             DatacenterCreate datacenter = new DatacenterCreate();
             datacenter.setName(name);
             datacenter.setDescription(description);
-            // Set provider type to KVM
+            datacenter.setNodeClusterId(UUID.fromString(nodeClusterId));
+            DatacenterCapacity capacity = new DatacenterCapacity();
+            capacity.setTotalCpus(1000);
+            capacity.setTotalMemoryGb(4096);
+            capacity.setTotalStorageGb(20000);
+            datacenter.setCapacity(capacity);
             DatacenterSettings settings = new DatacenterSettings();
             settings.setProviderType(ProviderType.LIBVIRT);
-            settings.setDefaultCpuOvercommitRatio(4.0F);
-            settings.setDefaultMemoryOvercommitRatio(1.5F);
             datacenter.setSettings(settings);
-            
+
             return given()
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType("application/json")
@@ -53,7 +82,7 @@ public class ProviderTestUtil {
                 .when()
                 .post(baseUrl + "/datacenters");
         } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize datacenter", e);
+            throw new RuntimeException("Failed to create datacenter", e);
         }
     }
 

@@ -58,8 +58,6 @@ public class DatacenterTests extends BaseIntegrationTest {
             .body("name", equalTo(datacenterName))
             .body("description", equalTo("Test datacenter with mock provider"))
             .body("settings.providerType", equalTo("kvm"))
-            .body("settings.defaultCpuOvercommitRatio", equalTo(4.0))
-            .body("settings.defaultMemoryOvercommitRatio", equalTo(1.5))
             .body("capacity.totalCpus", equalTo(1000))
             .body("capacity.totalMemoryGb", equalTo(4096))
             .body("capacity.totalStorageGb", equalTo(20000));
@@ -126,11 +124,9 @@ public class DatacenterTests extends BaseIntegrationTest {
         assertStatusCode(createResponse, 201);
         String datacenterId = createResponse.jsonPath().getString("id");
 
-        // Update the datacenter settings
+        // Update the datacenter settings (overcommit is enterprise-only, not in core)
         DatacenterSettings newSettings = new DatacenterSettings();
         newSettings.setProviderType(ProviderType.LIBVIRT);
-        newSettings.setDefaultCpuOvercommitRatio(8.0F);
-        newSettings.setDefaultMemoryOvercommitRatio(2.0F);
         newSettings.setVmClasses(Arrays.asList("small", "medium", "large"));
         newSettings.setStorageClasses(Arrays.asList("gold", "silver"));
         newSettings.setNetworkDomains(Arrays.asList("private", "public"));
@@ -138,8 +134,6 @@ public class DatacenterTests extends BaseIntegrationTest {
         Response updateResponse = ProviderTestUtil.updateDatacenterSettings(datacenterId, newSettings);
         assertStatusCode(updateResponse, 200);
         updateResponse.then()
-            .body("defaultCpuOvercommitRatio", equalTo(8.0))
-            .body("defaultMemoryOvercommitRatio", equalTo(2.0))
             .body("vmClasses", hasItems("small", "medium", "large"))
             .body("storageClasses", hasItems("gold", "silver"))
             .body("networkDomains", hasItems("private", "public"));
@@ -148,8 +142,8 @@ public class DatacenterTests extends BaseIntegrationTest {
         Response verifyResponse = ProviderTestUtil.getDatacenter(datacenterId);
         assertStatusCode(verifyResponse, 200);
         verifyResponse.then()
-            .body("settings.defaultCpuOvercommitRatio", equalTo(8.0))
-            .body("settings.defaultMemoryOvercommitRatio", equalTo(2.0));
+            .body("settings.vmClasses", hasItems("small", "medium", "large"))
+            .body("settings.storageClasses", hasItems("gold", "silver"));
 
         // Cleanup
         assertStatusCode(ProviderTestUtil.deleteDatacenter(datacenterId), 204);
@@ -347,11 +341,9 @@ public class DatacenterTests extends BaseIntegrationTest {
         assertStatusCode(createResponse, 201);
         String datacenterId = createResponse.jsonPath().getString("id");
 
-        // Update settings to enable libvirt-specific features
+        // Update settings to enable libvirt-specific features (overcommit is enterprise-only)
         DatacenterSettings settings = new DatacenterSettings();
         settings.setProviderType(ProviderType.LIBVIRT);
-        settings.setDefaultCpuOvercommitRatio(4.0F);
-        settings.setDefaultMemoryOvercommitRatio(1.5F);
         settings.setVmClasses(Arrays.asList("small", "medium", "large"));
         settings.setStorageClasses(Arrays.asList("ssd", "hdd"));
         settings.setNetworkDomains(Arrays.asList("default", "management"));

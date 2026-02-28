@@ -125,6 +125,26 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * Handle illegal argument / business validation exceptions.
+     * Returns HTTP 400 Bad Request.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, WebRequest request) {
+
+        logError("Bad request", ex, request);
+        auditService.logAction("validation:failed", null, Map.of("message", ex.getMessage() != null ? ex.getMessage() : ""));
+
+        ErrorResponse error = new ErrorResponse(
+            "BAD_REQUEST",
+            ex.getMessage(),
+            System.currentTimeMillis()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * Handle all other uncaught exceptions.
      * Returns HTTP 500 Internal Server Error.
      */

@@ -51,9 +51,17 @@ export default function DatacentersPage() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [datacenterName, setDatacenterName] = useState<string>('');
-  const [datacenterType, setDatacenterType] = useState<'proxmox' | 'libvirt' | 'kubernetes'>('libvirt');
-  const [datacenterLocation, setDatacenterLocation] = useState<string>('');
-  const [datacenterCapacity, setDatacenterCapacity] = useState<string>('');
+  const [datacenterDescription, setDatacenterDescription] = useState<string>('');
+  const [providerTypeFilter, setProviderTypeFilter] = useState<string>('');
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [selectedNodeClusterId, setSelectedNodeClusterId] = useState<string>('');
+  const [totalCpus, setTotalCpus] = useState<string>('1000');
+  const [totalMemoryGb, setTotalMemoryGb] = useState<string>('4096');
+  const [totalStorageGb, setTotalStorageGb] = useState<string>('20000');
+  const [providers, setProviders] = useState<{ id: string; name: string; type?: string }[]>([]);
+  const [clusters, setClusters] = useState<{ id: string; name: string }[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [loadingClusters, setLoadingClusters] = useState(false);
 
   // Fetch datacenters on mount
   useEffect(() => {
@@ -204,44 +212,98 @@ export default function DatacentersPage() {
     }
   };
 
-  const handleOpenWizard = () => {
+  const handleOpenWizard = async () => {
     setIsWizardOpen(true);
+    setProviders([]);
+    setClusters([]);
+    setSelectedProviderId('');
+    setSelectedNodeClusterId('');
+    await fetchProviders();
+  };
+
+  const fetchProviders = async () => {
+    setLoadingProviders(true);
+    try {
+      const data = await apiGet('/api/v1/providers?perPage=200');
+      const list = Array.isArray(data) ? data : data?.items ?? [];
+      setProviders(list.map((p: any) => ({ id: p.id, name: p.name, type: p.type })));
+    } catch (e) {
+      console.error('Failed to fetch providers', e);
+      setProviders([]);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  const fetchClustersForProvider = async (providerId: string) => {
+    if (!providerId) {
+      setClusters([]);
+      return;
+    }
+    setLoadingClusters(true);
+    try {
+      const data = await apiGet(`/api/v1/providers/${providerId}/node-clusters?perPage=200`);
+      const list = Array.isArray(data) ? data : data?.items ?? [];
+      setClusters(list.map((c: any) => ({ id: c.id, name: c.name })));
+    } catch (e) {
+      console.error('Failed to fetch node clusters', e);
+      setClusters([]);
+    } finally {
+      setLoadingClusters(false);
+    }
   };
 
   const handleCloseWizard = () => {
     setIsWizardOpen(false);
-    // Reset form
     setDatacenterName('');
-    setDatacenterType('libvirt');
-    setDatacenterLocation('');
-    setDatacenterCapacity('');
+    setDatacenterDescription('');
+    setProviderTypeFilter('');
+    setSelectedProviderId('');
+    setSelectedNodeClusterId('');
+    setTotalCpus('1000');
+    setTotalMemoryGb('4096');
+    setTotalStorageGb('20000');
+    setClusters([]);
   };
 
+  const filteredProviders =
+    providerTypeFilter === ''
+      ? providers
+      : providers.filter((p) => String(p.type).toLowerCase() === providerTypeFilter.toLowerCase());
+
   const handleSaveDatacenter = async () => {
-    if (!datacenterName) {
+    if (!datacenterName.trim()) {
       alert('Datacenter name is required');
+      return;
+    }
+    if (!selectedNodeClusterId) {
+      alert('Please select a node cluster');
+      return;
+    }
+    const cpus = parseInt(totalCpus, 10);
+    const mem = parseInt(totalMemoryGb, 10);
+    const storage = parseInt(totalStorageGb, 10);
+    if (isNaN(cpus) || cpus < 1 || isNaN(mem) || mem < 1 || isNaN(storage) || storage < 1) {
+      alert('Capacity must be positive numbers (CPUs, memory GB, storage GB)');
       return;
     }
 
     setIsSaving(true);
     try {
       const datacenterData = {
-        name: datacenterName,
-        providerType: datacenterType,
-        description: datacenterLocation || undefined,
+        name: datacenterName.trim(),
+        description: datacenterDescription.trim() || undefined,
+        nodeClusterId: selectedNodeClusterId,
+        capacity: {
+          totalCpus: cpus,
+          totalMemoryGb: mem,
+          totalStorageGb: storage,
+        },
         settings: {
-          providerType: datacenterType,
-          defaultCpuOvercommitRatio: 4.0,
-          defaultMemoryOvercommitRatio: 1.5,
           vmClasses: ['small', 'medium', 'large'],
           storageClasses: ['gold', 'silver'],
           networkDomains: ['private', 'public'],
         },
-        capacity: datacenterCapacity ? {
-          totalCpus: parseInt(datacenterCapacity),
-          totalMemoryGb: 4096,
-          totalStorageGb: 20000,
-        } : undefined,
       };
 
       await apiPost('/api/v1/datacenters', datacenterData);
@@ -252,17 +314,8 @@ export default function DatacentersPage() {
       let errorMessage = 'Failed to create datacenter';
       if (error instanceof Error) {
         errorMessage = error.message;
-        // Try to extract the actual message from the error
-        if (errorMessage.includes('"message"')) {
-          try {
-            const match = errorMessage.match(/"message"\s*:\s*"([^"]+)"/);
-            if (match) {
-              errorMessage = match[1];
-            }
-          } catch (e) {
-            // If parsing fails, use the original message
-          }
-        }
+        const match = errorMessage.match(/"message"\s*:\s*"([^"]+)"/);
+        if (match) errorMessage = match[1];
       }
       alert(errorMessage);
     } finally {
@@ -453,21 +506,63 @@ export default function DatacentersPage() {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Datacenter Type
+                    Provider type (filter)
                   </label>
                   <select
-                    className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    value={datacenterType}
-                    onChange={(e) => setDatacenterType(e.target.value as any)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={providerTypeFilter}
+                    onChange={(e) => setProviderTypeFilter(e.target.value)}
                   >
-                    <option value="proxmox">Proxmox</option>
+                    <option value="">All</option>
                     <option value="libvirt">Libvirt</option>
+                    <option value="proxmox">Proxmox</option>
                     <option value="kubernetes">Kubernetes</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Datacenter Name *
+                    Provider *
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={selectedProviderId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedProviderId(id);
+                      setSelectedNodeClusterId('');
+                      fetchClustersForProvider(id);
+                    }}
+                    disabled={loadingProviders}
+                  >
+                    <option value="">Select provider</option>
+                    {filteredProviders.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.type ? `(${p.type})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Node cluster *
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={selectedNodeClusterId}
+                    onChange={(e) => setSelectedNodeClusterId(e.target.value)}
+                    disabled={!selectedProviderId || loadingClusters}
+                  >
+                    <option value="">Select node cluster</option>
+                    {clusters.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Datacenter name *
                   </label>
                   <Input
                     type="text"
@@ -482,21 +577,48 @@ export default function DatacentersPage() {
                   </label>
                   <Input
                     type="text"
-                    placeholder="Virginia, USA"
-                    value={datacenterLocation}
-                    onChange={(e) => setDatacenterLocation(e.target.value)}
+                    placeholder="e.g. Virginia, USA"
+                    value={datacenterDescription}
+                    onChange={(e) => setDatacenterDescription(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Capacity (cores)
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="1000"
-                    value={datacenterCapacity}
-                    onChange={(e) => setDatacenterCapacity(e.target.value)}
-                  />
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Total CPUs *
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="1000"
+                      value={totalCpus}
+                      onChange={(e) => setTotalCpus(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Memory (GB) *
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="4096"
+                      value={totalMemoryGb}
+                      onChange={(e) => setTotalMemoryGb(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Storage (GB) *
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="20000"
+                      value={totalStorageGb}
+                      onChange={(e) => setTotalStorageGb(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">

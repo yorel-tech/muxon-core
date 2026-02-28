@@ -1,5 +1,7 @@
 package com.onetattva.infron.core.web;
 
+import com.onetattva.infron.api.model.Datacenter;
+import com.onetattva.infron.api.model.DatacenterList;
 import com.onetattva.infron.api.model.Provider;
 import com.onetattva.infron.api.model.ProviderList;
 import com.onetattva.infron.core.hateoas.ActionLinkService;
@@ -42,6 +44,11 @@ public class HateoasLinkEnrichmentAdvice implements ResponseBodyAdvice<Object> {
         } else if (body instanceof ProviderList providerList && providerList.getItems() != null) {
             providerList.getItems().forEach(provider ->
                     provider.setLinks(actionLinkService.generateProviderLinksById(provider.getId())));
+        } else if (body instanceof Datacenter datacenter && datacenter.getId() != null) {
+            datacenter.setLinks(actionLinkService.generateDatacenterLinksById(datacenter.getId()));
+        } else if (body instanceof DatacenterList datacenterList && datacenterList.getItems() != null) {
+            datacenterList.getItems().forEach(dc ->
+                    dc.setLinks(actionLinkService.generateDatacenterLinksById(dc.getId())));
         }
         return body;
     }

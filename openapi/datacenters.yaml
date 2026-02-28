@@ -58,24 +58,12 @@ components:
 
     DatacenterSettings:
       type: object
-      description: Provider-side defaults & capability descriptors for a datacenter.
+      description: Provider-side defaults & capability descriptors for a datacenter. Overcommit ratios are enterprise-only (infron-nexus).
       properties:
         providerType:
           $ref: './providers.yaml#/components/schemas/ProviderType'
-          description: Provider type of the bacing cluster
+          description: Provider type of the backing cluster
           readOnly: true
-        defaultCpuOvercommitRatio:
-          type: number
-          format: float
-          minimum: 1.0
-          default: 4.0
-          description: Default CPU overcommit ratio
-        defaultMemoryOvercommitRatio:
-          type: number
-          format: float
-          minimum: 1.0
-          default: 1.5
-          description: Default memory overcommit ratio
         vmClasses:
           type: array
           items:
