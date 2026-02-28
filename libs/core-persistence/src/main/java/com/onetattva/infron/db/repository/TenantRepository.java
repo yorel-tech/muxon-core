@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TenantRepository extends JpaRepository<TenantEntity, java.util.UUID> {
 
+    java.util.Optional<TenantEntity> findByNameIgnoreCase(String name);
 }

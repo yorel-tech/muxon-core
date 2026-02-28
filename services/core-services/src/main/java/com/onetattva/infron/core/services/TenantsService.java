@@ -1,6 +1,7 @@
 package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.api.enums.TenantStatus;
 import com.onetattva.infron.db.model.TenantEntity;
@@ -20,10 +21,24 @@ public class TenantsService {
     @Autowired
     private TenantRepository tenantRepository;
 
+    public static final String RESERVED_TENANT_NAME = "system";
+
     public Tenant createTenant(TenantCreate tenantCreate) {
+        String name = tenantCreate.getName();
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Tenant name is required");
+        }
+        String nameNormalized = name.trim().toLowerCase();
+        if (RESERVED_TENANT_NAME.equals(nameNormalized)) {
+            throw new IllegalArgumentException("Tenant name '" + name + "' is reserved for system use");
+        }
+        if (tenantRepository.findByNameIgnoreCase(name.trim()).isPresent()) {
+            throw new IllegalArgumentException("Tenant with name '" + name + "' already exists");
+        }
+
         TenantEntity entityTenant = new TenantEntity();
         entityTenant.setId(UUID.randomUUID());
-        entityTenant.setName(tenantCreate.getName());
+        entityTenant.setName(name.trim());
         entityTenant.setDisplayName(tenantCreate.getDisplayName());
         entityTenant.setStatus(TenantStatus.ACTIVE);
         try {
@@ -52,15 +67,21 @@ public class TenantsService {
     }
 
     public TenantList listTenants(Integer page, Integer perPage, String sort, String name, String status) {
-        // TODO: Implement listing with filters and pagination
-        List<TenantEntity> entities = tenantRepository.findAll().stream()
+        // TODO: Implement full filters (name, status) and sorting
+        List<TenantEntity> allNonSystem = tenantRepository.findAll().stream()
+                .filter(e -> !Constants.SYSTEM_ID.equals(e.getId().toString()))
+                .toList();
+        int total = allNonSystem.size();
+        int from = Math.max(0, (page - 1) * perPage);
+        List<TenantEntity> pageEntities = allNonSystem.stream()
+                .skip(from)
                 .limit(perPage)
                 .toList();
-        List<Tenant> apiTenants = entities.stream()
+        List<Tenant> apiTenants = pageEntities.stream()
                 .map(this::mapEntityToApi)
                 .toList();
         TenantList tenantList = new TenantList();
-        tenantList.setTotal(apiTenants.size());
+        tenantList.setTotal(total);
         tenantList.setPage(page);
         tenantList.setPerPage(perPage);
         tenantList.setItems(apiTenants);

@@ -5,7 +5,9 @@ import { Card, CardContent } from '@/components/ui/atoms/card';
 import { Table, Column } from '@/components/ui/organisms/table';
 import { Badge } from '@/components/ui/atoms/badge';
 import { Dropdown, DropdownOption } from '@/components/ui/molecules/dropdown';
-import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/atoms/button';
+import { Input } from '@/components/ui/atoms/input';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   MoreHorizontal,
@@ -15,14 +17,19 @@ import {
   Ban,
   Trash2,
   Loader2,
+  X,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
 export interface Tenant extends Record<string, any> {
   id: string;
   name: string;
-  slug: string;
-  status: 'active' | 'suspended' | 'pending';
+  displayName?: string;
+  slug?: string;
+  status: 'active' | 'inactive' | 'suspended' | 'pending';
   users: number;
   datacenters: number;
   vms: number;
@@ -40,9 +47,30 @@ export interface Tenant extends Record<string, any> {
 }
 
 
+/** TenantCreate model per OpenAPI: name (required), displayName (optional), metadata (optional) */
+export interface TenantCreateForm {
+  name: string;
+  displayName: string;
+  metadata: Record<string, string>;
+}
+
+const WIZARD_STEPS = ['Basic info', 'Metadata (optional)'] as const;
+
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add tenant wizard state
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [wizardError, setWizardError] = useState<string | null>(null);
+  const [createForm, setCreateForm] = useState<TenantCreateForm>({
+    name: '',
+    displayName: '',
+    metadata: {},
+  });
+  const [metadataEntries, setMetadataEntries] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
 
   // Fetch tenants on mount
   useEffect(() => {
@@ -167,6 +195,79 @@ export default function TenantsPage() {
     }
   };
 
+  const handleOpenWizard = () => {
+    setIsWizardOpen(true);
+    setWizardStep(0);
+    setWizardError(null);
+    setCreateForm({ name: '', displayName: '', metadata: {} });
+    setMetadataEntries([{ key: '', value: '' }]);
+  };
+
+  const handleCloseWizard = () => {
+    if (!isSaving) {
+      setIsWizardOpen(false);
+      setWizardStep(0);
+      setWizardError(null);
+    }
+  };
+
+  const handleSaveTenant = async () => {
+    const name = createForm.name.trim();
+    if (!name) {
+      setWizardError('Tenant name is required.');
+      return;
+    }
+    // Name should be slug-like (lowercase, alphanumeric, hyphens)
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name.toLowerCase())) {
+      setWizardError('Name must be a valid slug (e.g. acme-corp): lowercase letters, numbers, and hyphens only.');
+      return;
+    }
+
+    setWizardError(null);
+    setIsSaving(true);
+    try {
+      const metadata: Record<string, string> = {};
+      metadataEntries.forEach(({ key, value }) => {
+        const k = key.trim();
+        if (k) metadata[k] = value.trim();
+      });
+      const payload = {
+        name,
+        displayName: createForm.displayName.trim() || undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      };
+      await apiPost('/api/v1/tenants', payload);
+      await fetchTenants();
+      handleCloseWizard();
+    } catch (error) {
+      console.error('Error creating tenant:', error);
+      let message = 'Failed to create tenant.';
+      if (error instanceof Error && error.message) {
+        const m = error.message;
+        const jsonMatch = m.match(/\s-\s(\{.*\})$/);
+        if (jsonMatch) {
+          try {
+            const body = JSON.parse(jsonMatch[1]) as { message?: string };
+            if (body.message) message = body.message;
+          } catch {
+            message = m;
+          }
+        } else {
+          message = m;
+        }
+      }
+      setWizardError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addMetadataRow = () => setMetadataEntries((prev) => [...prev, { key: '', value: '' }]);
+  const removeMetadataRow = (index: number) =>
+    setMetadataEntries((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  const updateMetadataEntry = (index: number, field: 'key' | 'value', value: string) =>
+    setMetadataEntries((prev) => prev.map((e, i) => (i === index ? { ...e, [field]: value } : e)));
+
   const handleViewDetails = (tenant: Tenant) => {
     console.log('View details for:', tenant.id);
     // Navigate to tenant details page
@@ -228,6 +329,8 @@ export default function TenantsPage() {
         return 'success';
       case 'suspended':
         return 'warning';
+      case 'inactive':
+        return 'default';
       case 'pending':
         return 'info';
       default:
@@ -268,7 +371,7 @@ export default function TenantsPage() {
       key: 'name',
       header: 'Name',
       cell: (row: Tenant) => (
-        <div className="font-medium text-gray-900">{row.name}</div>
+        <div className="font-medium text-gray-900">{row.displayName ?? row.name}</div>
       ),
       sortable: true,
     },
@@ -327,7 +430,10 @@ export default function TenantsPage() {
                 Manage organizations and their resources
               </p>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
+            <button
+              onClick={handleOpenWizard}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
               <Plus size={18} />
               <span>Add Tenant</span>
             </button>
@@ -359,6 +465,175 @@ export default function TenantsPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Add Tenant Wizard Modal */}
+      <AnimatePresence mode="wait">
+        {isWizardOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Add Tenant</h2>
+                <button
+                  onClick={handleCloseWizard}
+                  disabled={isSaving}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-6 py-2 border-b border-gray-100 flex gap-2">
+                {WIZARD_STEPS.map((label, i) => (
+                  <span
+                    key={label}
+                    className={`text-sm ${i === wizardStep ? 'font-medium text-primary-600' : 'text-gray-500'}`}
+                  >
+                    {i + 1}. {label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+                {wizardError && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-800">
+                    {wizardError}
+                  </div>
+                )}
+
+                {wizardStep === 0 && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Name (slug) *
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="acme-corp"
+                        value={createForm.name}
+                        onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Unique identifier: lowercase letters, numbers, hyphens only (e.g. acme-corp).
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Display name
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="ACME Corporation"
+                        value={createForm.displayName}
+                        onChange={(e) => setCreateForm((f) => ({ ...f, displayName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {wizardStep === 1 && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Add optional key-value metadata for this tenant.
+                    </p>
+                    {metadataEntries.map((entry, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Input
+                          type="text"
+                          placeholder="Key"
+                          value={entry.key}
+                          onChange={(e) => updateMetadataEntry(index, 'key', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          type="text"
+                          placeholder="Value"
+                          value={entry.value}
+                          onChange={(e) => updateMetadataEntry(index, 'value', e.target.value)}
+                          className="flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeMetadataRow(index)}
+                          className="p-2 text-gray-500 hover:text-red-600 rounded"
+                          aria-label="Remove row"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                    <Button variant="secondary" onClick={addMetadataRow} type="button">
+                      Add metadata row
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-between">
+                <Button
+                  variant="secondary"
+                  onClick={() => (wizardStep > 0 ? setWizardStep((s) => s - 1) : handleCloseWizard())}
+                  disabled={isSaving}
+                >
+                  {wizardStep > 0 ? (
+                    <>
+                      <ChevronLeft size={18} className="mr-1" />
+                      Back
+                    </>
+                  ) : (
+                    'Cancel'
+                  )}
+                </Button>
+                {wizardStep < WIZARD_STEPS.length - 1 ? (
+                  <Button
+                    onClick={() => {
+                      const name = createForm.name.trim();
+                      if (!name) setWizardError('Tenant name is required.');
+                      else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name.toLowerCase())) {
+                        setWizardError('Name must be a valid slug (e.g. acme-corp).');
+                      } else {
+                        setWizardError(null);
+                        setWizardStep((s) => s + 1);
+                      }
+                    }}
+                    disabled={isSaving}
+                  >
+                    Next
+                    <ChevronRight size={18} className="ml-1" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleSaveTenant} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Create tenant
+                        <CheckCircle2 size={18} className="ml-1" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

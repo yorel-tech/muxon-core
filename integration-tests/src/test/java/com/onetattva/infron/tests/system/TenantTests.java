@@ -17,8 +17,12 @@ import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class TenantTests extends BaseIntegrationTest {
+
+    /** System tenant UUID from seed data (V1 migration). List endpoint must not return it. */
+    private static final String SYSTEM_TENANT_ID = "215012d9-8b1e-5dc5-b54f-89022875fe1e";
 
     private static String limitedAdminToken;
 
@@ -109,6 +113,84 @@ public class TenantTests extends BaseIntegrationTest {
         assertStatusCode(response, 200);
         response.then()
             .body("items", notNullValue());
+    }
+
+    @Test
+    public void testListTenantsExcludesSystemTenant() {
+        Response response = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .when()
+            .get("/tenants");
+
+        assertStatusCode(response, 200);
+        List<String> tenantIds = response.jsonPath().getList("items.id", String.class);
+        List<String> tenantNames = response.jsonPath().getList("items.name", String.class);
+        if (tenantIds != null) {
+            assertFalse(tenantIds.contains(SYSTEM_TENANT_ID),
+                "List must not include system tenant (id=" + SYSTEM_TENANT_ID + ")");
+        }
+        if (tenantNames != null) {
+            assertFalse(tenantNames.stream().anyMatch("system"::equalsIgnoreCase),
+                "List must not include tenant with name 'system'");
+        }
+    }
+
+    @Test
+    public void testCreateTenantReservedNameRejected() {
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName("system");
+        tenant.setDisplayName("System");
+
+        Response response = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType("application/json")
+            .body(tenant)
+            .when()
+            .post("/tenants");
+
+        assertStatusCode(response, 400);
+        response.then()
+            .body("code", equalTo("BAD_REQUEST"))
+            .body("message", containsString("reserved"));
+    }
+
+    @Test
+    public void testCreateTenantDuplicateNameRejected() {
+        String tenantName = "test-tenant-dup-" + UUID.randomUUID().toString().substring(0, 8);
+        TenantCreate tenant = new TenantCreate();
+        tenant.setName(tenantName);
+        tenant.setDisplayName("First");
+
+        Response createResponse = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType("application/json")
+            .body(tenant)
+            .when()
+            .post("/tenants");
+        assertStatusCode(createResponse, 201);
+
+        TenantCreate duplicate = new TenantCreate();
+        duplicate.setName(tenantName);
+        duplicate.setDisplayName("Duplicate");
+        Response duplicateResponse = given()
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType("application/json")
+            .body(duplicate)
+            .when()
+            .post("/tenants");
+        assertStatusCode(duplicateResponse, 400);
+        duplicateResponse.then()
+            .body("code", equalTo("BAD_REQUEST"))
+            .body("message", containsString("already exists"));
+
+        // Cleanup
+        String tenantId = createResponse.jsonPath().getString("id");
+        given()
+            .header("Authorization", "Bearer " + accessToken)
+            .when()
+            .delete("/tenants/" + tenantId)
+            .then()
+            .statusCode(204);
     }
 
     @Test
