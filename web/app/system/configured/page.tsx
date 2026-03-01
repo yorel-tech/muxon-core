@@ -14,12 +14,14 @@ import {
   TrendingDown,
   AlertTriangle,
   CheckCircle2,
-  MoreHorizontal,
   Search,
   Filter,
   RefreshCw,
-  KeyRound
+  KeyRound,
+  Eye,
 } from 'lucide-react';
+import { Dropdown, DropdownOption } from '@/components/ui/molecules/dropdown';
+import { RowActionsTrigger } from '@/components/DynamicContextMenu';
  
 interface Datacenter extends Record<string, any> {
   id: string;
@@ -136,7 +138,30 @@ const mockSystemHealth: SystemHealth[] = [
 ];
  
 export default function ConfiguredSystemDashboardPage() {
+  const getDatacenterContextMenuOptions = (row: Datacenter): DropdownOption[] => [
+    {
+      label: 'View details',
+      icon: <Eye size={14} />,
+      onClick: () => window.location.assign(`/system/datacenters`),
+    },
+  ];
+
   const datacenterColumns: Column<Datacenter>[] = [
+    {
+      key: 'actions',
+      header: '',
+      cell: (row: Datacenter) => (
+        <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            trigger={<RowActionsTrigger title="Actions" />}
+            options={getDatacenterContextMenuOptions(row)}
+            position="right"
+            usePortal={true}
+          />
+        </div>
+      ),
+      sortable: false,
+    },
     {
       key: 'name',
       header: 'Name',
@@ -376,6 +401,7 @@ export default function ConfiguredSystemDashboardPage() {
                   columns={datacenterColumns}
                   data={mockDatacenters}
                   emptyMessage="No datacenters configured"
+                  overflowVisibleColumnKeys={['actions']}
                   onRowClick={(row) => console.log('Clicked row:', row)}
                 />
               </CardContent>

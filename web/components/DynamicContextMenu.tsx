@@ -4,6 +4,32 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { getActionIcon, sortActionsByPriority } from '@/lib/hateoas';
 import { Link } from '@/types/provider';
 
+/** Shared three-dot row actions trigger used as first column on list pages (providers, tenants, datacenters, etc.) */
+export const RowActionsTrigger: React.FC<{ title?: string; className?: string }> = ({
+  title = 'Actions',
+  className = '',
+}) => (
+  <button
+    type="button"
+    className={`p-1.5 rounded hover:bg-gray-100 transition-colors ${className}`.trim()}
+    title={title}
+  >
+    <svg
+      className="w-4 h-4 text-gray-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+      />
+    </svg>
+  </button>
+);
+
 interface DynamicContextMenuProps {
   entity: { _links: Link[]; id: string; name: string };
   onAction: (action: string, entity: any) => void;
@@ -120,24 +146,9 @@ export const DynamicContextMenu: React.FC<DynamicContextMenuProps> = ({
   return (
     <Dropdown
       trigger={
-        <button 
-          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+        <RowActionsTrigger
           title={enabledActions.length > 0 ? `${enabledActions.length} actions available` : 'No actions available'}
-        >
-          <svg 
-            className="w-4 h-4 text-gray-600" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" 
-            />
-          </svg>
-        </button>
+        />
       }
       options={options}
       position={position}

@@ -10,19 +10,17 @@ import { Input } from '@/components/ui/atoms/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  RefreshCw,
-  Ban,
-  Trash2,
   Loader2,
   X,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
-import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
+import { RowActionsTrigger } from '@/components/DynamicContextMenu';
+import { apiGet, apiPost } from '@/lib/api';
+import { executeLinkAction } from '@/lib/api';
+import { buildRowActionOptions, normalizeEntityLinks, getNavigationPath } from '@/lib/hateoas';
+import type { Link } from '@/types/provider';
 
 export interface Tenant extends Record<string, any> {
   id: string;
@@ -34,6 +32,7 @@ export interface Tenant extends Record<string, any> {
   datacenters: number;
   vms: number;
   createdAt: string;
+  _links?: Link[];
   settings: {
     idpId?: string;
     quotas: {
@@ -164,7 +163,9 @@ export default function TenantsPage() {
           },
         ]);
       } else {
-        setTenants(tenantsList);
+        setTenants(
+          tenantsList.map((t: any) => ({ ...t, _links: normalizeEntityLinks(t) }))
+        );
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -268,60 +269,29 @@ export default function TenantsPage() {
   const updateMetadataEntry = (index: number, field: 'key' | 'value', value: string) =>
     setMetadataEntries((prev) => prev.map((e, i) => (i === index ? { ...e, [field]: value } : e)));
 
-  const handleViewDetails = (tenant: Tenant) => {
-    console.log('View details for:', tenant.id);
-    // Navigate to tenant details page
+  const handleRowAction = async (rel: string, tenant: Tenant, link?: Link) => {
+    if (!link) return;
+    if (rel === 'delete' && !window.confirm(`Are you sure you want to delete tenant "${tenant.displayName ?? tenant.name}"?`)) {
+      return;
+    }
+    try {
+      if (rel === 'self' && link.method === 'GET') {
+        const path = getNavigationPath(link);
+        window.location.href = path.startsWith('http') ? path : path;
+        return;
+      }
+      await executeLinkAction(link, link.method !== 'GET' && link.method !== 'DELETE' ? {} : undefined);
+      if (['delete', 'edit', 'update'].includes(rel)) {
+        await fetchTenants();
+      }
+    } catch (error) {
+      console.error(`Tenant action ${rel} failed:`, error);
+      alert(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
-  const handleEdit = (tenant: Tenant) => {
-    console.log('Edit tenant:', tenant.id);
-    // Open edit modal
-  };
-
-  const handleSync = (tenant: Tenant) => {
-    console.log('Sync tenant:', tenant.id);
-    // Trigger sync
-  };
-
-  const handleSuspend = (tenant: Tenant) => {
-    console.log('Suspend tenant:', tenant.id);
-    // Suspend tenant
-  };
-
-  const handleDelete = (tenant: Tenant) => {
-    console.log('Delete tenant:', tenant.id);
-    // Delete tenant with confirmation
-  };
-
-  const getContextMenuOptions = (tenant: Tenant): DropdownOption[] => [
-    {
-      label: 'View Details',
-      icon: <Eye size={14} />,
-      onClick: () => handleViewDetails(tenant),
-    },
-    {
-      label: 'Edit',
-      icon: <Pencil size={14} />,
-      onClick: () => handleEdit(tenant),
-    },
-    {
-      label: 'Sync',
-      icon: <RefreshCw size={14} />,
-      onClick: () => handleSync(tenant),
-    },
-    {
-      label: 'Suspend',
-      icon: <Ban size={14} />,
-      variant: 'warning',
-      onClick: () => handleSuspend(tenant),
-    },
-    {
-      label: 'Delete',
-      icon: <Trash2 size={14} />,
-      variant: 'danger',
-      onClick: () => handleDelete(tenant),
-    },
-  ];
+  const getContextMenuOptions = (tenant: Tenant): DropdownOption[] =>
+    buildRowActionOptions(tenant, 'tenant', normalizeEntityLinks(tenant), handleRowAction);
 
   const getStatusBadgeVariant = (status: Tenant['status']) => {
     switch (status) {
@@ -354,11 +324,7 @@ export default function TenantsPage() {
       cell: (row: Tenant) => (
         <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
           <Dropdown
-            trigger={
-              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
-                <MoreHorizontal size={16} className="text-gray-600" />
-              </button>
-            }
+            trigger={<RowActionsTrigger title="Actions" />}
             options={getContextMenuOptions(row)}
             position="right"
             usePortal={true}

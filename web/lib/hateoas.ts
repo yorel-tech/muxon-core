@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link } from '@/types/provider';
 import { executeLinkAction } from '@/lib/api';
 import {
@@ -17,6 +18,25 @@ import {
   Activity,
   Layers
 } from 'lucide-react';
+import type { DropdownOption } from '@/components/ui/molecules/dropdown';
+
+/** Action definitions per entity type, aligned with backend ResourceAction / link registration. */
+export const ENTITY_ACTION_SPECS: Record<string, { rel: string; defaultTitle: string; variant?: 'default' | 'danger' | 'warning' }[]> = {
+  tenant: [
+    { rel: 'self', defaultTitle: 'View details' },
+    { rel: 'edit', defaultTitle: 'Replace tenant' },
+    { rel: 'update', defaultTitle: 'Update tenant' },
+    { rel: 'delete', defaultTitle: 'Delete tenant', variant: 'danger' },
+  ],
+  datacenter: [
+    { rel: 'self', defaultTitle: 'View details' },
+    { rel: 'edit', defaultTitle: 'Replace datacenter' },
+    { rel: 'update', defaultTitle: 'Update datacenter' },
+    { rel: 'delete', defaultTitle: 'Delete datacenter', variant: 'danger' },
+    { rel: 'settings', defaultTitle: 'Get datacenter settings' },
+    { rel: 'metadata', defaultTitle: 'Get datacenter metadata' },
+  ],
+};
 
 /**
  * Find a specific link by its rel attribute
@@ -133,3 +153,43 @@ export const getNavigationPath = (link: Link): string => {
   }
   return link.href;
 };
+
+/**
+ * Normalize entity response to have _links array (backend may return "links" or "_links").
+ */
+export const normalizeEntityLinks = (entity: any): Link[] => {
+  const raw = entity?._links ?? entity?.links;
+  return Array.isArray(raw) ? raw : [];
+};
+
+/**
+ * Build dropdown options for a list row: show ALL actions for the entity type.
+ * Actions present in links use link title/enabled/reason; actions missing from links are shown disabled.
+ * Shared by tenants, datacenters, and other list pages.
+ */
+export function buildRowActionOptions<T>(
+  entity: T,
+  entityType: 'tenant' | 'datacenter',
+  links: Link[],
+  onAction: (rel: string, entity: T, link?: Link) => void
+): DropdownOption[] {
+  const specs = ENTITY_ACTION_SPECS[entityType];
+  if (!specs || specs.length === 0) return [];
+
+  return specs.map((spec) => {
+    const link = findLink(links, spec.rel);
+    const title = link?.title ?? spec.defaultTitle;
+    const enabled = link ? link.enabled : false;
+    const reason = link?.reason ?? (link ? undefined : 'Not available');
+    const Icon = getActionIcon(spec.rel);
+
+    return {
+      label: title,
+      icon: React.createElement(Icon, { size: 14 }),
+      variant: spec.variant ?? 'default',
+      disabled: !enabled,
+      description: reason,
+      onClick: () => onAction(spec.rel, entity, link),
+    };
+  });
+}

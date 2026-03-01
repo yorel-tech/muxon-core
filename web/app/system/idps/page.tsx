@@ -11,12 +11,12 @@ import {
   Plus,
   Edit,
   Trash2,
-  MoreHorizontal,
   Eye,
   RefreshCw,
   Ban,
   Loader2,
 } from 'lucide-react';
+import { RowActionsTrigger } from '@/components/DynamicContextMenu';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
 interface IdpServer {
@@ -182,11 +182,7 @@ export default function IdpsPage() {
       cell: (row: IdpServer) => (
         <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
           <Dropdown
-            trigger={
-              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
-                <MoreHorizontal size={16} className="text-gray-600" />
-              </button>
-            }
+            trigger={<RowActionsTrigger title="Actions" />}
             options={getContextMenuOptions(row)}
             position="right"
             usePortal={true}

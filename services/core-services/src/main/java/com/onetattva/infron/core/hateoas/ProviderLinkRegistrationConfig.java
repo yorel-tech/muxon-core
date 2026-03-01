@@ -2,6 +2,7 @@ package com.onetattva.infron.core.hateoas;
 
 import com.onetattva.infron.api.model.Provider;
 import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.ResourceAction;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RequestMethod;
 

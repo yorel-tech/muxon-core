@@ -10,19 +10,17 @@ import { Input } from '@/components/ui/atoms/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  RefreshCw,
-  Ban,
-  Trash2,
   X,
   Loader2,
   CheckCircle2,
   MapPin,
   Activity,
 } from 'lucide-react';
-import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
+import { RowActionsTrigger } from '@/components/DynamicContextMenu';
+import { apiGet, apiPost } from '@/lib/api';
+import { executeLinkAction } from '@/lib/api';
+import { buildRowActionOptions, normalizeEntityLinks, getNavigationPath } from '@/lib/hateoas';
+import type { Link } from '@/types/provider';
 
 export interface Datacenter extends Record<string, any> {
   id: string;
@@ -39,6 +37,7 @@ export interface Datacenter extends Record<string, any> {
   activeNodes: number;
   createdAt: string;
   lastSync: string;
+  _links?: Link[];
   [key: string]: any;
 }
 
@@ -75,7 +74,7 @@ export default function DatacentersPage() {
       // API returns { total, page, perPage, items: [...] }
       const datacentersList = Array.isArray(data) ? data : (data?.items || []);
       
-      // Map backend data to frontend Datacenter interface
+      // Map backend data to frontend Datacenter interface; preserve _links from backend (HateoasLinkEnrichmentAdvice)
       const mappedDatacenters = datacentersList.map((dc: any) => ({
         id: dc.id,
         name: dc.name,
@@ -91,6 +90,7 @@ export default function DatacentersPage() {
         activeNodes: 0, // Backend doesn't provide this yet
         createdAt: dc.createdAt || '',
         lastSync: dc.updatedAt || '',
+        _links: normalizeEntityLinks(dc),
       }));
       
       setDatacenters(mappedDatacenters);
@@ -102,74 +102,29 @@ export default function DatacentersPage() {
     }
   };
 
-  const handleViewDetails = (datacenter: Datacenter) => {
-    console.log('View details for:', datacenter.id);
-    // Navigate to datacenter details page
-  };
-
-  const handleEdit = (datacenter: Datacenter) => {
-    console.log('Edit datacenter:', datacenter.id);
-    // Open edit modal
-  };
-
-  const handleSync = async (datacenter: Datacenter) => {
-    console.log('Sync datacenter:', datacenter.id);
+  const handleRowAction = async (rel: string, datacenter: Datacenter, link?: Link) => {
+    if (!link) return;
+    if (rel === 'delete' && !window.confirm(`Are you sure you want to delete datacenter "${datacenter.name}"?`)) {
+      return;
+    }
     try {
-      await apiPost(`/api/v1/datacenters/${datacenter.id}/sync`, {});
-      await fetchDatacenters();
-    } catch (error) {
-      console.error('Error syncing datacenter:', error);
-      alert('Failed to sync datacenter.');
-    }
-  };
-
-  const handleDisable = async (datacenter: Datacenter) => {
-    console.log('Disable datacenter:', datacenter.id);
-    // Note: Backend doesn't have a status field yet, this is a placeholder
-    alert('Disable functionality not yet implemented in the backend');
-  };
-
-  const handleDelete = async (datacenter: Datacenter) => {
-    if (window.confirm(`Are you sure you want to delete datacenter "${datacenter.name}"?`)) {
-      try {
-        await apiDelete(`/api/v1/datacenters/${datacenter.id}`);
-        await fetchDatacenters();
-      } catch (error) {
-        console.error('Error deleting datacenter:', error);
-        alert('Failed to delete datacenter.');
+      if (rel === 'self' && link.method === 'GET') {
+        const path = getNavigationPath(link);
+        window.location.href = path.startsWith('http') ? path : path;
+        return;
       }
+      await executeLinkAction(link, link.method !== 'GET' && link.method !== 'DELETE' ? {} : undefined);
+      if (['delete', 'edit', 'update'].includes(rel)) {
+        await fetchDatacenters();
+      }
+    } catch (error) {
+      console.error(`Datacenter action ${rel} failed:`, error);
+      alert(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
-  const getContextMenuOptions = (datacenter: Datacenter): DropdownOption[] => [
-    {
-      label: 'View Details',
-      icon: <Eye size={14} />,
-      onClick: () => handleViewDetails(datacenter),
-    },
-    {
-      label: 'Edit',
-      icon: <Pencil size={14} />,
-      onClick: () => handleEdit(datacenter),
-    },
-    {
-      label: 'Sync',
-      icon: <RefreshCw size={14} />,
-      onClick: () => handleSync(datacenter),
-    },
-    {
-      label: 'Disable',
-      icon: <Ban size={14} />,
-      variant: 'warning',
-      onClick: () => handleDisable(datacenter),
-    },
-    {
-      label: 'Delete',
-      icon: <Trash2 size={14} />,
-      variant: 'danger',
-      onClick: () => handleDelete(datacenter),
-    },
-  ];
+  const getContextMenuOptions = (datacenter: Datacenter): DropdownOption[] =>
+    buildRowActionOptions(datacenter, 'datacenter', normalizeEntityLinks(datacenter), handleRowAction);
 
   const getStatusBadgeVariant = (status: Datacenter['status']) => {
     switch (status) {
@@ -330,11 +285,7 @@ export default function DatacentersPage() {
       cell: (row: Datacenter) => (
         <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
           <Dropdown
-            trigger={
-              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
-                <MoreHorizontal size={16} className="text-gray-600" />
-              </button>
-            }
+            trigger={<RowActionsTrigger title="Actions" />}
             options={getContextMenuOptions(row)}
             position="right"
             usePortal={true}

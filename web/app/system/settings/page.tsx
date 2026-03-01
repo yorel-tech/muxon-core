@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, User, Shield, Bell, Palette, Globe, Database, Key, RefreshCw, LogOut, Loader2, Plus, Edit, Trash2, MoreHorizontal, Eye } from 'lucide-react';
+import { Save, User, Shield, Bell, Palette, Globe, Database, Key, RefreshCw, LogOut, Loader2, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { RowActionsTrigger } from '@/components/DynamicContextMenu';
 import { Button } from '@/components/ui/atoms/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/atoms/card';
 import { Input } from '@/components/ui/atoms/input';
@@ -190,11 +191,7 @@ export default function SystemSettingsPage() {
       cell: (row: IdpServer) => (
         <div className="flex justify-start" onClick={(e) => e.stopPropagation()}>
           <Dropdown
-            trigger={
-              <button className="p-1.5 rounded hover:bg-gray-100 transition-colors">
-                <MoreHorizontal size={16} className="text-gray-600" />
-              </button>
-            }
+            trigger={<RowActionsTrigger title="Actions" />}
             options={getIdpContextMenuOptions(row)}
             position="right"
             usePortal={true}
