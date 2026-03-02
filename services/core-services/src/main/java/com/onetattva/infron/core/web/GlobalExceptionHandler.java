@@ -1,5 +1,6 @@
 package com.onetattva.infron.core.web;
 
+import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.core.services.AuditService;
 import com.onetattva.infron.core.web.dto.ErrorResponse;
 import com.onetattva.infron.core.web.exceptions.ActionNotAllowedException;
@@ -71,6 +72,26 @@ public class GlobalExceptionHandler {
             System.currentTimeMillis()
         );
         
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * Handle entity not found exceptions from services.
+     * Returns HTTP 404 Not Found.
+     */
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(
+            EntityNotFoundException ex, WebRequest request) {
+
+        logError("Entity not found", ex, request);
+        auditService.logAction("resource:not_found", null);
+
+        ErrorResponse error = new ErrorResponse(
+            "RESOURCE_NOT_FOUND",
+            ex.getMessage(),
+            System.currentTimeMillis()
+        );
+
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
     

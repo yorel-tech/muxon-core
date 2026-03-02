@@ -23,15 +23,13 @@ import type { DropdownOption } from '@/components/ui/molecules/dropdown';
 /** Action definitions per entity type, aligned with backend ResourceAction / link registration. */
 export const ENTITY_ACTION_SPECS: Record<string, { rel: string; defaultTitle: string; variant?: 'default' | 'danger' | 'warning' }[]> = {
   tenant: [
-    { rel: 'self', defaultTitle: 'View details' },
-    { rel: 'edit', defaultTitle: 'Replace tenant' },
-    { rel: 'update', defaultTitle: 'Update tenant' },
-    { rel: 'delete', defaultTitle: 'Delete tenant', variant: 'danger' },
+    { rel: 'self', defaultTitle: 'View Details' },
+    { rel: 'update', defaultTitle: 'Edit' },
+    { rel: 'delete', defaultTitle: 'Delete', variant: 'danger' },
   ],
   datacenter: [
     { rel: 'self', defaultTitle: 'View details' },
-    { rel: 'edit', defaultTitle: 'Replace datacenter' },
-    { rel: 'update', defaultTitle: 'Update datacenter' },
+    { rel: 'edit', defaultTitle: 'Edit' },
     { rel: 'delete', defaultTitle: 'Delete datacenter', variant: 'danger' },
     { rel: 'settings', defaultTitle: 'Get datacenter settings' },
     { rel: 'metadata', defaultTitle: 'Get datacenter metadata' },

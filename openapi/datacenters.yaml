@@ -162,6 +162,10 @@ components:
         datacenterId:
           type: string
           format: uuid
+        datacenter:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
+          readOnly: true
+          description: Datacenter reference (id, name, description). Name is always the datacenter name.
         access:
           type: boolean
           description: Whether tenant has access to the datacenter

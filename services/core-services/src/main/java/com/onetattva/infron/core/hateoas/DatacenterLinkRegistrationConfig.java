@@ -34,7 +34,9 @@ public class DatacenterLinkRegistrationConfig {
                 new ResourceActionDescriptor("update", "Update datacenter", RequestMethod.PATCH, Datacenter.class, Permission.DATACENTER_EDIT, "datacenterId", "", DATACENTER_ID_PATH),
                 new ResourceActionDescriptor("delete", "Delete datacenter", RequestMethod.DELETE, Datacenter.class, Permission.DATACENTER_MANAGE, "datacenterId", "", DATACENTER_ID_PATH),
                 new ResourceActionDescriptor("settings", "Get datacenter settings", RequestMethod.GET, Datacenter.class, Permission.DATACENTER_READ, "datacenterId", "", DATACENTER_ID_PATH + "/settings"),
-                new ResourceActionDescriptor("metadata", "Get datacenter metadata", RequestMethod.GET, Datacenter.class, Permission.DATACENTER_READ, "datacenterId", "", DATACENTER_ID_PATH + "/metadata")
+                new ResourceActionDescriptor("replaceSettings", "Update datacenter settings", RequestMethod.PUT, Datacenter.class, Permission.DATACENTER_EDIT, "datacenterId", "", DATACENTER_ID_PATH + "/settings"),
+                new ResourceActionDescriptor("metadata", "Get datacenter metadata", RequestMethod.GET, Datacenter.class, Permission.DATACENTER_READ, "datacenterId", "", DATACENTER_ID_PATH + "/metadata"),
+                new ResourceActionDescriptor("updateMetadata", "Update datacenter metadata", RequestMethod.PUT, Datacenter.class, Permission.DATACENTER_EDIT, "datacenterId", "", DATACENTER_ID_PATH + "/metadata")
         );
         resourceActionRegistry.registerActions(Datacenter.class, descriptors);
     }

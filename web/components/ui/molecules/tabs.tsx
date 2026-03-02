@@ -79,15 +79,14 @@ export const Tabs = forwardRef<HTMLDivElement, TabsProps>(
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content - use exclusive visibility so active tab is shown (hidden + block conflict in Tailwind can hide content) */}
       <div className="relative">
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={cn(
-              'hidden',
-              activeTab === tab.id && 'block',
-            )}
+            className={activeTab === tab.id ? 'block' : 'hidden'}
+            role="tabpanel"
+            aria-hidden={activeTab !== tab.id}
           >
             {tab.content}
           </div>

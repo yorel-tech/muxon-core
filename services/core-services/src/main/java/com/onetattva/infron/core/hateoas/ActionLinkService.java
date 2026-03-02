@@ -5,6 +5,7 @@ import com.onetattva.infron.api.model.Link;
 import com.onetattva.infron.api.model.Node;
 import com.onetattva.infron.api.model.NodeCluster;
 import com.onetattva.infron.api.model.Provider;
+import com.onetattva.infron.api.model.Tenant;
 import com.onetattva.infron.api.util.LinkUtil;
 import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.auth.Permission;
@@ -17,7 +18,9 @@ import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.NodeClusterEntity;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
+import com.onetattva.infron.db.model.TenantEntity;
 import com.onetattva.infron.db.repository.DatacenterRepository;
+import com.onetattva.infron.db.repository.TenantRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.core.Authentication;
@@ -39,6 +42,7 @@ public class ActionLinkService {
     private final NodeClustersService nodeClustersService;
     private final NodesService nodesService;
     private final DatacenterRepository datacenterRepository;
+    private final TenantRepository tenantRepository;
     private final ResourceActionRegistry resourceActionRegistry;
 
     public ActionLinkService(AuthorizationService authorizationService,
@@ -46,12 +50,14 @@ public class ActionLinkService {
                              NodeClustersService nodeClustersService,
                              NodesService nodesService,
                              DatacenterRepository datacenterRepository,
+                             TenantRepository tenantRepository,
                              ResourceActionRegistry resourceActionRegistry) {
         this.authorizationService = authorizationService;
         this.providersService = providersService;
         this.nodeClustersService = nodeClustersService;
         this.nodesService = nodesService;
         this.datacenterRepository = datacenterRepository;
+        this.tenantRepository = tenantRepository;
         this.resourceActionRegistry = resourceActionRegistry;
     }
     
@@ -108,6 +114,13 @@ public class ActionLinkService {
         return buildLinksForResource(Datacenter.class, datacenterId.toString(), entity, user);
     }
 
+    @Cacheable(value = "actionLinks", key = "'tenant-links-' + #tenantId + '-' + @authorizationService.getCachedPermissions(@actionLinkService.getCurrentUser())")
+    public List<Link> generateTenantLinksById(UUID tenantId) {
+        UserPrincipal user = getCurrentUser();
+        TenantEntity entity = tenantRepository.findById(tenantId).orElse(null);
+        return buildLinksForResource(Tenant.class, tenantId.toString(), entity, user);
+    }
+
     private List<Link> buildLinksForResource(Class<?> resourceType,
                                              String resourceId,
                                              Object resource,
@@ -154,6 +167,8 @@ public class ActionLinkService {
                 }
             } else if (resourceType.equals(Datacenter.class) && resource instanceof DatacenterEntity) {
                 // Datacenter delete: could disable when tenant grants exist; currently no check
+            } else if (resourceType.equals(Tenant.class) && resource instanceof TenantEntity) {
+                // Tenant: no entity-specific rules for now
             }
 
             String title = descriptor.title();

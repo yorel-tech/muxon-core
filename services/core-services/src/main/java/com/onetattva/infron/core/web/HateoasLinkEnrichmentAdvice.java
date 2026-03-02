@@ -4,6 +4,8 @@ import com.onetattva.infron.api.model.Datacenter;
 import com.onetattva.infron.api.model.DatacenterList;
 import com.onetattva.infron.api.model.Provider;
 import com.onetattva.infron.api.model.ProviderList;
+import com.onetattva.infron.api.model.Tenant;
+import com.onetattva.infron.api.model.TenantList;
 import com.onetattva.infron.core.hateoas.ActionLinkService;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
@@ -49,6 +51,11 @@ public class HateoasLinkEnrichmentAdvice implements ResponseBodyAdvice<Object> {
         } else if (body instanceof DatacenterList datacenterList && datacenterList.getItems() != null) {
             datacenterList.getItems().forEach(dc ->
                     dc.setLinks(actionLinkService.generateDatacenterLinksById(dc.getId())));
+        } else if (body instanceof Tenant tenant && tenant.getId() != null) {
+            tenant.setLinks(actionLinkService.generateTenantLinksById(tenant.getId()));
+        } else if (body instanceof TenantList tenantList && tenantList.getItems() != null) {
+            tenantList.getItems().forEach(t ->
+                    t.setLinks(actionLinkService.generateTenantLinksById(t.getId())));
         }
         return body;
     }

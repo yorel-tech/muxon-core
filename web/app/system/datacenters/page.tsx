@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/atoms/card';
 import { Table, Column } from '@/components/ui/organisms/table';
 import { Badge } from '@/components/ui/atoms/badge';
@@ -42,9 +43,14 @@ export interface Datacenter extends Record<string, any> {
 }
 
 export default function DatacentersPage() {
+  const router = useRouter();
   const [datacenters, setDatacenters] = useState<Datacenter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDatacenter, setSelectedDatacenter] = useState<string | null>(null);
+
+  const handleViewDetails = (row: Datacenter) => {
+    router.push(`/system/datacenters/${row.id}`);
+  };
 
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);

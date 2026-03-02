@@ -116,6 +116,9 @@ components:
           format: uuid
         name:
           type: string
+        description:
+          type: string
+          description: Optional description (e.g. datacenter description)
       example:
         id: "3d2a4598-f255-5137-f0ca-0c8abf159850"
         name: "acme"
