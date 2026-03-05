@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/atoms/card';
 import { Table, Column } from '@/components/ui/organisms/table';
 import { Badge } from '@/components/ui/atoms/badge';
@@ -15,6 +16,8 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { RowActionsTrigger } from '@/components/DynamicContextMenu';
 import { apiGet, apiPost } from '@/lib/api';
@@ -56,6 +59,7 @@ export interface TenantCreateForm {
 const WIZARD_STEPS = ['Basic info', 'Metadata (optional)'] as const;
 
 export default function TenantsPage() {
+  const router = useRouter();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -290,8 +294,25 @@ export default function TenantsPage() {
     }
   };
 
-  const getContextMenuOptions = (tenant: Tenant): DropdownOption[] =>
-    buildRowActionOptions(tenant, 'tenant', normalizeEntityLinks(tenant), handleRowAction);
+  const handleViewDetails = (tenant: Tenant) => {
+    router.push(`/system/tenants/${tenant.id}`);
+  };
+
+  const openTenantPortal = (tenant: Tenant) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('selectedTenantSlug', tenant.slug ?? tenant.name);
+      window.location.href = '/tenant/dashboard';
+    }
+  };
+
+  const getContextMenuOptions = (tenant: Tenant): DropdownOption[] => [
+    ...buildRowActionOptions(tenant, 'tenant', normalizeEntityLinks(tenant), handleRowAction),
+    {
+      label: 'Open Tenant Portal',
+      icon: <ExternalLink size={14} />,
+      onClick: () => openTenantPortal(tenant),
+    },
+  ];
 
   const getStatusBadgeVariant = (status: Tenant['status']) => {
     switch (status) {

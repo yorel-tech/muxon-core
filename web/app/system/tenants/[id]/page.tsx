@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/atoms/card';
 import { Button } from '@/components/ui/atoms/button';
 import { Input } from '@/components/ui/atoms/input';
@@ -134,6 +134,8 @@ export default function TenantDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') ?? 'overview';
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [grants, setGrants] = useState<TenantDatacenterGrantList | null>(null);
   const [settings, setSettings] = useState<TenantSettings | null>(null);
@@ -471,7 +473,7 @@ export default function TenantDetailPage({
   const getGrantContextMenuOptions = (g: TenantDatacenterGrant): DropdownOption[] => [
     { label: 'Edit limits', icon: <Sliders className="w-4 h-4" />, onClick: () => openEditGrantLimits(g) },
     { label: 'Edit settings', icon: <Settings className="w-4 h-4" />, onClick: () => openEditGrantSettings(g) },
-    { label: 'View datacenter', icon: <ExternalLink className="w-4 h-4" />, onClick: () => router.push(`/system/datacenters/${g.datacenterId}`) },
+    { label: 'View datacenter', icon: <ExternalLink className="w-4 h-4" />, onClick: () => router.push(`/system/datacenters/${g.datacenterId}?from=tenant&tenantId=${id}`) },
   ];
 
   const grantColumns: Column<TenantDatacenterGrant>[] = [
@@ -568,16 +570,31 @@ export default function TenantDetailPage({
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{tenant.displayName || tenant.name}</h1>
-            {tenant.status && <Badge variant={getStatusVariant(tenant.status)}>{tenant.status}</Badge>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">{tenant.displayName || tenant.name}</h1>
+              {tenant.status && <Badge variant={getStatusVariant(tenant.status)}>{tenant.status}</Badge>}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('selectedTenantSlug', tenant.name);
+                  window.location.href = '/tenant/dashboard';
+                }
+              }}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink size={18} />
+              Go to Tenant Portal
+            </Button>
           </div>
           {tenant.description && <p className="text-gray-600 mt-1">{tenant.description}</p>}
         </motion.div>
 
         <Tabs
           variant="underline"
-          defaultTab="overview"
+          defaultTab={tabFromUrl}
           tabs={[
             {
               id: 'overview',

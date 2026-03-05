@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getUserManager } from '@lib/oidc';
 
 type LoginType = 'tenant' | 'system';
 
 export default function Home() {
+  const router = useRouter();
   const [name, setName] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [loginType, setLoginType] = useState<LoginType>('tenant');
@@ -125,8 +127,8 @@ export default function Home() {
             <div className="space-y-4">
               <button
                 onClick={() => {
-                  onLogin('tenant');
                   setShowLoginModal(false);
+                  router.push('/tenant/login');
                 }}
                 className="w-full px-6 py-4 rounded-lg border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
               >

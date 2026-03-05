@@ -16,9 +16,11 @@ import {
   Building2,
   Shield,
   BookOpen,
+  BookMarked,
   ChevronLeft,
   ChevronRight,
   LogOut,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -101,21 +103,33 @@ const baseTenantUserItems: Omit<SidebarItem, 'badge'>[] = [
   },
   {
     id: 'vms',
-    label: 'Virtual Machines',
+    label: 'VMs',
     icon: <Cloud size={20} />,
     href: '/tenant/vms',
   },
   {
-    id: 'networks',
-    label: 'Networks',
-    icon: <Cloud size={20} />,
-    href: '/tenant/networks',
+    id: 'catalogs',
+    label: 'Catalogs',
+    icon: <BookMarked size={20} />,
+    href: '/tenant/catalogs',
   },
   {
-    id: 'settings',
-    label: 'Settings',
-    icon: <Settings size={20} />,
-    href: '/tenant/settings',
+    id: 'users',
+    label: 'Users',
+    icon: <Users size={20} />,
+    href: '/tenant/users',
+  },
+  {
+    id: 'roles',
+    label: 'Roles',
+    icon: <Shield size={20} />,
+    href: '/tenant/roles',
+  },
+  {
+    id: 'administration',
+    label: 'Administration',
+    icon: <SlidersHorizontal size={20} />,
+    href: '/tenant/administration',
   },
 ];
 

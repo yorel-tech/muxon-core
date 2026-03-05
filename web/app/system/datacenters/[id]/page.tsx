@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/atoms/card';
 import { Button } from '@/components/ui/atoms/button';
 import { Input } from '@/components/ui/atoms/input';
@@ -56,6 +57,10 @@ export default function DatacenterDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const fromTenant = searchParams.get('from') === 'tenant';
+  const tenantId = searchParams.get('tenantId');
+  const backToTenant = fromTenant && tenantId;
   const [datacenter, setDatacenter] = useState<DatacenterDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,11 +243,11 @@ export default function DatacenterDetailPage({
     return (
       <div className="min-h-screen bg-gray-50 px-3 py-8">
         <Link
-          href="/system/datacenters"
+          href={backToTenant ? `/system/tenants/${tenantId}?tab=datacenters` : '/system/datacenters'}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft size={20} />
-          Back to Datacenters
+          {backToTenant ? 'Back to Tenant' : 'Back to Datacenters'}
         </Link>
         <Card>
           <CardContent className="p-8 text-center">
@@ -267,11 +272,11 @@ export default function DatacenterDetailPage({
           className="mb-6"
         >
           <Link
-            href="/system/datacenters"
+            href={backToTenant ? `/system/tenants/${tenantId}?tab=datacenters` : '/system/datacenters'}
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft size={20} />
-            <span className="font-medium">Back to Datacenters</span>
+            <span className="font-medium">{backToTenant ? 'Back to Tenant' : 'Back to Datacenters'}</span>
           </Link>
         </motion.div>
 
