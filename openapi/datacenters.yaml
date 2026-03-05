@@ -153,9 +153,14 @@ components:
     TenantDatacenterGrant:
       type: object
       required:
+        - id
         - tenantId
         - datacenterId
       properties:
+        id:
+          type: string
+          format: uuid
+          description: Tenant datacenter grant unique identifier (use for VM create tenant_datacenter_grant_id)
         tenantId:
           type: string
           format: uuid

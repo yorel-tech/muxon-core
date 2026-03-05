@@ -64,31 +64,40 @@ public class VmProviderRegistry {
         TenantDatacenterGrantEntity grant = grantOpt.get();
         DatacenterEntity datacenter = grant.getDatacenter();
 
-        // Get provider type from datacenter settings
-        if (datacenter == null || datacenter.getSettings() == null) {
-            logger.warn("Datacenter or settings not found for grant ID: {}", tenantDatacenterGrantId);
+        if (datacenter == null) {
+            logger.warn("Datacenter not found for grant ID: {}", tenantDatacenterGrantId);
             return Optional.empty();
         }
 
-        ProviderType providerType = datacenter.getSettings().getProviderType();
+        // Resolve provider from datacenter's node cluster (so Libvirt/Mock/etc. is used correctly)
+        if (datacenter.getNodeCluster() != null && datacenter.getNodeCluster().getProvider() != null) {
+            String providerId = datacenter.getNodeCluster().getProvider().getId().toString();
+            Optional<VmProvider> byId = getProvider(providerId);
+            if (byId.isPresent()) {
+                return byId;
+            }
+        }
 
-        // Map provider type to provider ID
-        // For now, use simple mapping: "mock" -> "mock", "kvm" -> "mock" (fallback)
-        String providerId = mapProviderTypeToProviderId(providerType);
+        // Fallback: map by provider type from datacenter settings (e.g. when node cluster not linked)
+        if (datacenter.getSettings() != null) {
+            ProviderType providerType = datacenter.getSettings().getProviderType();
+            String providerId = mapProviderTypeToProviderId(providerType);
+            return getProvider(providerId);
+        }
 
-        return getProvider(providerId);
+        logger.warn("No provider linked to datacenter for grant ID: {}", tenantDatacenterGrantId);
+        return Optional.empty();
     }
 
     /**
-     * Map provider type from datacenter settings to provider ID
+     * Map provider type from datacenter settings to provider ID (fallback when datacenter has no node cluster)
      */
     private String mapProviderTypeToProviderId(ProviderType providerType) {
         if (providerType == null) {
-            return "mock"; // Default to mock provider
+            return "mock";
         }
-
         return switch (providerType) {
-            case PROXMOX, LIBVIRT, KUBERNETES -> "mock"; // Use mock as fallback for testing
+            case PROXMOX, LIBVIRT, KUBERNETES -> "mock";
             default -> "mock";
         };
     }

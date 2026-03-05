@@ -1,5 +1,7 @@
 package com.onetattva.infron.core.orch;
 
+import com.onetattva.infron.core.providers.VmCreationRequest;
+import com.onetattva.infron.core.providers.VmCreationResult;
 import com.onetattva.infron.core.providers.VmProvider;
 import com.onetattva.infron.core.providers.VmProviderRegistry;
 import com.onetattva.infron.api.enums.EntityType;
@@ -131,7 +133,7 @@ public class VmOrchestrator {
      */
     private void processVmCreateCommand(QueueEntry entry) {
         UUID vmId = entry.getEntityId();
-        
+
         // Get VM entity
         VmEntity vm = vmRepository.findById(vmId)
                 .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
@@ -152,29 +154,81 @@ public class VmOrchestrator {
         VmProvider provider = providerRegistry.getProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
                 .orElseThrow(() -> new RuntimeException("No provider available for datacenter"));
 
-        // Call provider to create VM
-        // This is simplified - in real implementation, we would call provider.createVm()
+        // Spec from VM entity (persisted by VmsService) or from queue payload
+        String specJson = vm.getSpec();
+        if (specJson == null || specJson.isEmpty()) {
+            Object specPayload = entry.getPayload() != null ? entry.getPayload().get("spec") : null;
+            specJson = specPayload instanceof String ? (String) specPayload : "{}";
+        }
+
+        String requestId = entry.getMetadata() != null && entry.getMetadata().get("requestId") != null
+                ? entry.getMetadata().get("requestId").toString()
+                : entry.getId().toString();
+
+        VmCreationRequest createRequest = VmCreationRequest.builder()
+                .vmId(vmId)
+                .spec(specJson)
+                .placement(null)
+                .metadata(null)
+                .correlationId(requestId)
+                .build();
+
         logger.info("Creating VM {} with provider {}", vmId, provider.id());
-        
-        // Simulate provider response for now
-        // In real implementation, provider.createVm() would be called here
-        
-        // Update status to PROVISIONING
+
+        // Update status to PROVISIONING before calling provider
         vm.setStatus(VmStatus.PROVISIONING);
-        vm.setProviderId(UUID.fromString(provider.id()));
+        if (provider.id() != null) {
+            try {
+                // Provider id may be UUID or "libvirt-<uuid>"
+                String id = provider.id();
+                vm.setProviderId(id.length() > 36 ? UUID.fromString(id.replaceFirst("^[a-z]+-", "")) : UUID.fromString(id));
+            } catch (IllegalArgumentException ignored) {
+                // leave providerId null if not parseable as UUID
+            }
+        }
         vm.setUpdatedAt(Instant.now());
         vmRepository.save(vm);
 
-        // Emit status event
         payload = Map.of(
                 "before_status", VmStatus.PLANNED.toString(),
                 "after_status", VmStatus.PROVISIONING.toString(),
-                "provider_id", provider.id()
+                "provider_id", provider.id() != null ? provider.id() : ""
         );
         queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
 
-        // Mark command as completed
-        queueEntryRepository.markCompleted(entry.getId(), Instant.now());
+        // Call provider to create VM
+        VmCreationResult result = provider.createVm(createRequest).join();
+
+        if (result.resultType() == VmCreationResult.ResultType.SUCCESS) {
+            vm.setStatus(VmStatus.ACTIVE);
+            vm.setPowerState(com.onetattva.infron.api.enums.VmPowerState.ON);
+            vm.setExternalId(result.externalVmId());
+            vm.setStartedAt(Instant.now());
+            if (result.vmInfo() != null && result.vmInfo().ipAddresses() != null && !result.vmInfo().ipAddresses().isEmpty()) {
+                vm.setIpAddresses(result.vmInfo().ipAddresses());
+            }
+            if (result.vmInfo() != null && result.vmInfo().hostname() != null) {
+                vm.setHostname(result.vmInfo().hostname());
+            }
+            vm.setUpdatedAt(Instant.now());
+            vmRepository.save(vm);
+
+            payload = Map.of(
+                    "before_status", VmStatus.PROVISIONING.toString(),
+                    "after_status", VmStatus.ACTIVE.toString(),
+                    "external_id", result.externalVmId() != null ? result.externalVmId() : ""
+            );
+            queueEntryRepository.save(buildStatusEvent(vmId, "VM_STATUS_CHANGED", payload));
+            queueEntryRepository.markCompleted(entry.getId(), Instant.now());
+        } else {
+            String errorMessage = result.message() != null ? result.message()
+                    : (result.error() != null ? result.error().message() : "VM creation failed");
+            vm.setStatus(VmStatus.ERROR);
+            vm.setUpdatedAt(Instant.now());
+            vmRepository.save(vm);
+            queueEntryRepository.markFailed(entry.getId(), errorMessage, Instant.now());
+            logger.error("VM creation failed for {}: {}", vmId, errorMessage);
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import com.onetattva.infron.db.model.QueueEntry;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +38,9 @@ public class VmsService {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     public VmCreateResponse createVm(VmCreateRequest request) {
         // Validate tenant datacenter grant
         TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository.findById(request.getTenantDatacenterGrantId())
@@ -46,9 +51,7 @@ public class VmsService {
         vm.setId(UUID.randomUUID());
         vm.setTenantDatacenterGrantId(grant.getId());
         vm.setName(request.getName());
-        // Note: VmCreateRequest doesn't have description field
-        // Note: spec conversion to JSON would need proper serialization
-        vm.setSpec("{}"); // Placeholder for VmSpec JSON string
+        vm.setSpec(vmSpecToJson(request.getSpec()));
         vm.setStatus(com.onetattva.infron.api.enums.VmStatus.PENDING);
         vm.setPowerState(com.onetattva.infron.api.enums.VmPowerState.UNKNOWN);
         vm.setCreatedAt(Instant.now());
@@ -264,6 +267,17 @@ public class VmsService {
         return vm;
     }
 
+    private String vmSpecToJson(VmSpec spec) {
+        if (spec == null) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(spec);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize VM spec to JSON", e);
+        }
+    }
+
     private VmOperationResponse buildOperationResponse(UUID vmId, String message) {
         VmOperationResponse response = new VmOperationResponse();
         response.setMessage(message);
@@ -279,13 +293,17 @@ public class VmsService {
         entry.setQueueCategory(QueueCategory.COMMAND);
         entry.setStatus(QueueStatus.PENDING);
         entry.setActorType("USER");
-        entry.setPayload(Map.of(
-            "spec", request.getSpec() != null ? request.getSpec().toString() : "{}",
-            "tenantDatacenterGrantId", request.getTenantDatacenterGrantId().toString(),
-            "name", request.getName(),
-            "metadata", request.getMetadata(),
-            "tags", request.getTags()
-        ));
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("spec", vm.getSpec() != null ? vm.getSpec() : "{}");
+        payload.put("tenantDatacenterGrantId", request.getTenantDatacenterGrantId().toString());
+        payload.put("name", request.getName());
+        if (request.getMetadata() != null) {
+            payload.put("metadata", request.getMetadata());
+        }
+        if (request.getTags() != null) {
+            payload.put("tags", request.getTags());
+        }
+        entry.setPayload(payload);
         entry.setMetadata(Map.of(
             "source", "api",
             "requestId", generateRequestId()
