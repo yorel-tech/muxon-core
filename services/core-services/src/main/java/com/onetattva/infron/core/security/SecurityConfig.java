@@ -46,7 +46,7 @@ public class SecurityConfig {
                 // 2. Set Stateless session (Required for Bearer tokens)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info", "/error", "/api/v1/status").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/error", "/api/v1/status", "/api/v1/info").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
                         .anyRequest().authenticated()
                 )

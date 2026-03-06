@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         "com.onetattva.infron.core.security",
         "com.onetattva.infron.core.controllers",
         "com.onetattva.infron.core.services",
+        "com.onetattva.infron.core.info",
         "com.onetattva.infron.core.hateoas",
         "com.onetattva.infron.core.auth",
         "com.onetattva.infron.core.web",

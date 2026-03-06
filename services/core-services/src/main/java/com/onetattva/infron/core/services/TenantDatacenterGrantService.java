@@ -171,9 +171,13 @@ public class TenantDatacenterGrantService {
     private TenantDatacenterGrant mapEntityToGrant(TenantDatacenterGrantEntity entity) {
         TenantDatacenterGrant grant = new TenantDatacenterGrant();
         grant.setId(entity.getId());
-        grant.setTenantId(entity.getTenant().getId());
+        TenantEntity tenant = entity.getTenant();
+        EntityReference tenantRef = new EntityReference();
+        tenantRef.setId(tenant.getId());
+        tenantRef.setName(tenant.getName());
+        tenantRef.setDescription(tenant.getDisplayName());
+        grant.setTenant(tenantRef);
         DatacenterEntity dc = entity.getDatacenter();
-        grant.setDatacenterId(dc.getId());
         EntityReference datacenterRef = new EntityReference();
         datacenterRef.setId(dc.getId());
         datacenterRef.setName(dc.getName());
