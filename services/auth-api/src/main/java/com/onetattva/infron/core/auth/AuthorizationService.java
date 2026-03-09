@@ -6,6 +6,12 @@ public interface AuthorizationService {
     boolean isAllowed(UserPrincipal user, String action, Scope resourceScope, Object resource);
 
     /**
+     * Check if the user has the given permission within the specified tenant (only role bindings
+     * scoped to that tenant are considered).
+     */
+    boolean isAllowedForTenant(UserPrincipal user, String action, String tenantId);
+
+    /**
      * Return list of tenantIds the externalId is a member of.
      */
     List<String> getTenantsForExternalId(String externalId);

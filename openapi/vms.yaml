@@ -34,109 +34,70 @@ components:
     VmSpec:
       type: object
       required:
-        - cpu
-        - memory
+        - compute
         - storage
       properties:
-        cpu:
-          $ref: '#/components/schemas/CpuSpec'
-        memory:
-          $ref: '#/components/schemas/MemorySpec'
-          # Note: description is often ignored when $ref is present
-          # unless using OpenAPI 3.1
+        compute:
+          $ref: '#/components/schemas/ComputeSpec'
         storage:
-          type: array
-          items:
-            $ref: '#/components/schemas/StorageSpec'
+          $ref: '#/components/schemas/StorageSpec'
         network:
-          type: array
-          items:
-            $ref: '#/components/schemas/NetworkSpec'
+          $ref: '#/components/schemas/NetworkSpec'
         os:
           $ref: '#/components/schemas/OsSpec'
-        provider_extensions:
-          $ref: './commons.yaml#/components/schemas/Metadata'
 
-    CpuSpec:
+    ComputeSpec:
       type: object
       required:
-        - cores
+        - cpus
+        - memorySizeMb
       properties:
-        cores:
+        cpus:
           type: integer
           minimum: 1
           maximum: 128
-          description: Number of CPU cores
-        sockets:
-          type: integer
-          minimum: 1
-          maximum: 8
-          description: Number of CPU sockets
-        threads:
-          type: integer
-          minimum: 1
-          maximum: 8
-          description: Number of threads per core
-        type:
-          type: string
-          enum: [ EMULATED, HOST_PASSTHROUGH ]
-          default: EMULATED
-          description: CPU virtualization type
-
-    MemorySpec:
-      type: object
-      required:
-        - size_mb
-      properties:
-        size_mb:
+          description: Number of CPUs for the VM
+        memorySizeMb:
           type: integer
           minimum: 512
           maximum: 1048576
           description: Memory size in MB
-        overcommit_ratio:
-          type: number
-          format: float
-          minimum: 1.0
-          maximum: 4.0
-          default: 1.0
-          description: Memory overcommit ratio
+
+    DiskSpec:
+      type: object
+      required:
+        - sizeMb
+      properties:
+        sizeMb:
+          type: integer
+          minimum: 1
+          description: Disk size in MB
+        storageClass:
+          type: string
+          description: Storage class for this disk (e.g. ssd, hdd, nvme)
 
     StorageSpec:
       type: object
       required:
-        - type
-        - size_gb
+        - disks
       properties:
-        type:
+        disks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiskSpec'
+          description: List of disks attached to the VM
+        vmStorageClass:
           type: string
-          enum: [ root, data, swap ]
-          description: Storage type
-        size_gb:
-          type: integer
-          minimum: 1
-          maximum: 10240
-          description: Storage size in GB
-        storage_class:
-          type: string
-          description: Storage class (ssd, hdd, nvme)
-        bootable:
-          type: boolean
-          default: false
-          description: Whether this is a bootable device
-        provider_extensions:
-          type: object
-          description: Provider-specific extensions
-          additionalProperties: true
+          description: Default VM storage class (applies when disk storageClass is not set)
 
-    NetworkSpec:
+    NicSpec:
       type: object
       required:
-        - type
+        - isPrimary
       properties:
-        type:
-          type: string
-          enum: [ primary, secondary ]
-          description: Network type
+        isPrimary:
+          type: boolean
+          description: Whether this is the primary network interface
         network:
           type: string
           description: Network name or ID
@@ -145,10 +106,19 @@ components:
           enum: [ dhcp, static, pool ]
           default: dhcp
           description: IP allocation method
-        provider_extensions:
-          type: object
-          description: Provider-specific extensions
-          additionalProperties: true
+        ip_address:
+          type: string
+          description: Static IP address (when ip_allocation is static)
+          nullable: true
+
+    NetworkSpec:
+      type: object
+      properties:
+        nics:
+          type: array
+          items:
+            $ref: '#/components/schemas/NicSpec'
+          description: List of network interfaces
 
     OsSpec:
       type: object
@@ -165,94 +135,66 @@ components:
         version:
           type: string
           description: OS version
-        provider_extensions:
-          type: object
-          description: Provider-specific extensions
-          additionalProperties: true
 
     Vm:
-      type: object
-      required:
-        - id
-        - name
-        - status
-        - tenant_datacenter_grant_id
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: VM unique identifier
-        name:
-          type: string
-          minLength: 1
-          maxLength: 63
-          pattern: '^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$'
-          description: VM name
-        description:
-          type: string
-          maxLength: 255
-          description: VM description
-        tenant_datacenter_grant_id:
-          type: string
-          format: uuid
-          description: Tenant datacenter grant ID
-        spec:
-          $ref: '#/components/schemas/VmSpec'
-        status:
-          $ref: '#/components/schemas/VmStatus'
-        power_state:
-          $ref: '#/components/schemas/VmPowerState'
-        provider_id:
-          type: string
-          format: uuid
-          nullable: true
-          description: Provider ID
-        node_id:
-          type: string
-          format: uuid
-          nullable: true
-          description: Node ID where VM is hosted
-        external_id:
-          type: string
-          nullable: true
-          description: Provider's VM ID
-        ip_addresses:
-          type: array
-          items:
-            type: string
-            format: ipv4
-          description: VM IP addresses
-        hostname:
-          type: string
-          nullable: true
-          description: VM hostname
-        resource_usage:
-          $ref: '#/components/schemas/VmResourceUsage'
-        metadata:
-          $ref: './commons.yaml#/components/schemas/Metadata'
-        tags:
-          type: array
-          items:
-            type: string
-          description: VM tags
-        created_at:
-          type: string
-          format: date-time
-          description: VM creation timestamp
-        updated_at:
-          type: string
-          format: date-time
-          description: VM last update timestamp
-        started_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When VM first became ACTIVE
-        stopped_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Last time VM was stopped
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required:
+            - status
+            - tenant_datacenter_grant_id
+          properties:
+            tenant_datacenter_grant_id:
+              type: string
+              format: uuid
+              description: Tenant datacenter grant ID
+            spec:
+              $ref: '#/components/schemas/VmSpec'
+            status:
+              $ref: '#/components/schemas/VmStatus'
+            power_state:
+              $ref: '#/components/schemas/VmPowerState'
+            provider_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Provider ID
+            node_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Node ID where VM is hosted
+            external_id:
+              type: string
+              nullable: true
+              description: Provider's VM ID
+            ip_addresses:
+              type: array
+              items:
+                type: string
+                format: ipv4
+              description: VM IP addresses
+            hostname:
+              type: string
+              nullable: true
+              description: VM hostname
+            resource_usage:
+              $ref: '#/components/schemas/VmResourceUsage'
+            tags:
+              type: array
+              items:
+                type: string
+              description: VM tags
+            started_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: When VM first became ACTIVE
+            stopped_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Last time VM was stopped
 
     VmCreateRequest:
       type: object

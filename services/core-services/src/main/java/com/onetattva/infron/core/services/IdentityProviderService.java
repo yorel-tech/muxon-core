@@ -17,11 +17,22 @@ public class IdentityProviderService {
     private IdentityProviderRepository idpRepository;
 
     /**
-     * Return provider metadata (issuer, jwksUri, protocol, id) for the given tenantId.
-     * If null, return Optional.empty() to use the default provider.
+     * Return the default identity provider (all tenants share unless overridden per tenant).
      */
     public Optional<IdentityProviderEntity> getDefaultProvider() {
         return idpRepository.findById(UUID.fromString(Constants.DEFAULT_IDP_ID));
+    }
+
+    /**
+     * Return provider for the given tenant. If tenant has no specific provider configured,
+     * falls back to default provider.
+     */
+    public Optional<IdentityProviderEntity> findByTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return getDefaultProvider();
+        }
+        // TODO: per-tenant IDP configuration when supported (e.g. tenant_id column on identity_provider)
+        return getDefaultProvider();
     }
 
     /**

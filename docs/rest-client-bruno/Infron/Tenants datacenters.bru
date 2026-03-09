@@ -1,0 +1,16 @@
+meta {
+  name: Tenants datacenters
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{url}}/tenants
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

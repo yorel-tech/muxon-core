@@ -4,9 +4,12 @@ import com.onetattva.infron.api.TenantsApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.RequiresPermission;
+import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.services.TenantsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +37,16 @@ public class TenantsController implements TenantsApi {
     public ResponseEntity<Void> deleteTenant(@NotNull @PathVariable("tenantId") UUID tenantId) {
         tenantsService.deleteTenant(tenantId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Tenant> getCurrentTenant(String slug) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal user)) {
+            return ResponseEntity.status(401).build();
+        }
+        Tenant tenant = tenantsService.getCurrentTenantForUser(user.id(), slug);
+        return ResponseEntity.ok(tenant);
     }
 
     @Override

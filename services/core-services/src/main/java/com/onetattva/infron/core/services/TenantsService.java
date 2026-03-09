@@ -1,6 +1,7 @@
 package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.api.enums.TenantStatus;
@@ -20,6 +21,9 @@ public class TenantsService {
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     public static final String RESERVED_TENANT_NAME = "system";
 
@@ -64,6 +68,35 @@ public class TenantsService {
         TenantEntity entity = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
         return mapEntityToApi(entity);
+    }
+
+    /**
+     * Resolves the current tenant for the authenticated user. Used by the tenant portal
+     * so the UI gets tenantId without calling the provider-scoped list tenants API.
+     *
+     * @param externalId JWT subject (user external id)
+     * @param slugOptional Tenant name/slug from login; when provided, returns that tenant if the user has access
+     * @return the tenant the user is acting in
+     * @throws EntityNotFoundException if no tenant can be resolved (e.g. user has no tenants, or slug not found / no access)
+     */
+    public Tenant getCurrentTenantForUser(String externalId, String slugOptional) {
+        List<String> allowedTenantIds = authorizationService.getTenantsForExternalId(externalId);
+        if (allowedTenantIds == null || allowedTenantIds.isEmpty()) {
+            throw new EntityNotFoundException("No tenant found for current user");
+        }
+        if (slugOptional != null && !slugOptional.isBlank()) {
+            String slug = slugOptional.trim().toLowerCase();
+            TenantEntity byName = tenantRepository.findByNameIgnoreCase(slug).orElse(null);
+            if (byName == null || !allowedTenantIds.contains(byName.getId().toString())) {
+                throw new EntityNotFoundException("Tenant not found or access denied");
+            }
+            return mapEntityToApi(byName);
+        }
+        if (allowedTenantIds.size() == 1) {
+            UUID tenantId = UUID.fromString(allowedTenantIds.get(0));
+            return getTenant(tenantId);
+        }
+        throw new EntityNotFoundException("Multiple tenants: provide slug query param");
     }
 
     public TenantList listTenants(Integer page, Integer perPage, String sort, String name, String status) {

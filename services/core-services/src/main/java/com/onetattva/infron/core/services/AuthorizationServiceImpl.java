@@ -132,6 +132,42 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         return perms.stream().anyMatch(p -> matchesPermissionPattern(p, action));
     }
 
+    @Override
+    public boolean isAllowedForTenant(UserPrincipal user, String action, String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return isAllowed(user, action, Scope.SYSTEM, null);
+        }
+        List<String> perms = getPermissionsForTenant(user, tenantId);
+        return perms.stream().anyMatch(p -> matchesPermissionPattern(p, action));
+    }
+
+    /**
+     * Returns permissions for the user limited to role bindings in the given tenant.
+     * Does not use global permission cache so that tenant scope is respected.
+     */
+    private List<String> getPermissionsForTenant(UserPrincipal user, String tenantId) {
+        UUID tenantUuid;
+        try {
+            tenantUuid = UUID.fromString(tenantId);
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+        List<UserRoleBindingViewEntity> bindings = userRoleRepo.findByExternalId(user.id());
+        List<UUID> roleIds = bindings.stream()
+                .filter(b -> "TENANT".equals(b.getScopeType()) && tenantUuid.equals(b.getScopeId()))
+                .map(UserRoleBindingViewEntity::getRoleId)
+                .distinct()
+                .collect(Collectors.toList());
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        return rolePermissionRepo.findByRoleIds(roleIds)
+                .stream()
+                .map(rp -> rp.getPermission().getAction())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
     private boolean matchesPermissionPattern(String pattern, String action) {
         // pattern may contain wildcard '*'
         // convert to regex: escape regex chars except *, replace * -> .*

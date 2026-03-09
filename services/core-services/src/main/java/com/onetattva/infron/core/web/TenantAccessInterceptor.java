@@ -2,6 +2,7 @@ package com.onetattva.infron.core.web;
 
 
 import com.onetattva.infron.core.auth.AuthorizationService;
+import com.onetattva.infron.core.auth.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -21,34 +22,55 @@ public class TenantAccessInterceptor implements HandlerInterceptor {
         this.authzService = authzService;
     }
 
+    private static final String PATTERN_V1 = "/api/v1/tenants/{tenantId}/**";
+    private static final String PATTERN_LEGACY = "/api/tenant/{tenantId}/**";
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
         String path = request.getRequestURI();
-        // Pattern: /api/tenant/{tenantId}/**
-        String pattern = "/api/tenant/{tenantId}/**";
-        if (!pathMatcher.match(pattern, path)) {
+        // Skip paths that do not contain a tenant id (list and current-tenant endpoint)
+        if (path.equals("/api/v1/tenants") || path.startsWith("/api/v1/tenants/current") || path.startsWith("/api/v1/tenants?")) {
+            return true;
+        }
+
+        boolean v1Match = pathMatcher.match(PATTERN_V1, path);
+        boolean legacyMatch = pathMatcher.match(PATTERN_LEGACY, path);
+        if (!v1Match && !legacyMatch) {
             return true; // not a tenant-scoped endpoint
         }
 
-        // extract tenantId
         String[] parts = path.split("/");
-        // expected: ["", "api","tenant","{tenantId}", ...]
-        if (parts.length < 4) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
-            return false;
+        String tenantId;
+        if (v1Match) {
+            // expected: ["", "api", "v1", "tenants", "{tenantId}", ...]
+            if (parts.length < 5) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
+                return false;
+            }
+            tenantId = parts[4];
+        } else {
+            // expected: ["", "api", "tenant", "{tenantId}", ...]
+            if (parts.length < 4) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
+                return false;
+            }
+            tenantId = parts[3];
         }
-        String tenantId = parts[3];
 
-        // extract jwt subject from security context
+        // Extract external user id from security context (UserPrincipal or Jwt)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof Jwt)) {
+        if (auth == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthenticated");
             return false;
         }
-        Jwt jwt = (Jwt) auth.getPrincipal();
-        String externalId = jwt.getSubject();
-        if (externalId == null) {
+        String externalId = null;
+        if (auth.getPrincipal() instanceof UserPrincipal user) {
+            externalId = user.id();
+        } else if (auth.getPrincipal() instanceof Jwt jwt) {
+            externalId = jwt.getSubject();
+        }
+        if (externalId == null || externalId.isBlank()) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing subject");
             return false;
         }

@@ -1,74 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/atoms/card';
 import { Table, Column } from '@/components/ui/organisms/table';
-import { Badge } from '@/components/ui/atoms/badge';
 import { motion } from 'framer-motion';
-import { Server, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { apiGet } from '@/lib/api';
+import { useTenantId } from '@/lib/use-tenant-id';
 
-interface DatacenterRow {
+/** ResourceLimits per OpenAPI commons */
+interface ResourceLimits {
+  maxCpus?: number;
+  maxMemoryGb?: number;
+  maxStorageGb?: number;
+  maxVms?: number;
+  maxVolumes?: number;
+  maxLoadBalancers?: number;
+}
+
+/** Tenant datacenter grant (from GET /api/v1/tenants/{tenantId}/datacenters) */
+interface TenantDatacenterGrant {
   id: string;
-  name: string;
-  description?: string;
-  region?: string;
-  status?: string;
+  tenantId?: string;
+  datacenterId: string;
+  datacenter?: { id: string; name?: string; description?: string };
+  access?: boolean;
+  limits?: ResourceLimits;
+}
+
+function formatLimits(l: ResourceLimits | undefined): string {
+  if (!l || (l.maxVms == null && l.maxCpus == null && l.maxMemoryGb == null && l.maxStorageGb == null)) return '—';
+  const parts = [
+    l.maxVms != null && `VMs: ${l.maxVms}`,
+    l.maxCpus != null && `vCPUs: ${l.maxCpus}`,
+    l.maxMemoryGb != null && `RAM: ${l.maxMemoryGb} GB`,
+    l.maxStorageGb != null && `Storage: ${l.maxStorageGb} GB`,
+  ].filter(Boolean);
+  return parts.join(', ');
 }
 
 export default function TenantDatacentersPage() {
-  const [datacenters, setDatacenters] = useState<DatacenterRow[]>([]);
+  const { tenantId, loading: tenantLoading, error: tenantError } = useTenantId();
+  const [grants, setGrants] = useState<TenantDatacenterGrant[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await apiGet<{ items?: DatacenterRow[] }>('/api/v1/datacenters');
-        const list = Array.isArray(data) ? data : data?.items ?? [];
-        setDatacenters(
-          list.map((dc: Record<string, unknown>) => ({
-            id: String(dc.id ?? ''),
-            name: String(dc.name ?? dc.id ?? ''),
-            description: dc.description as string | undefined,
-            region: (dc.metadata as Record<string, string>)?.region,
-            status: 'available',
-          }))
-        );
-      } catch {
-        setDatacenters([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const load = useCallback(async () => {
+    if (!tenantId) {
+      setGrants([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await apiGet<{ items?: TenantDatacenterGrant[] } | TenantDatacenterGrant[]>(
+        `/api/v1/tenants/${tenantId}/datacenters?perPage=100`
+      );
+      const list = Array.isArray(data) ? data : data?.items ?? [];
+      const withAccess = list.filter((g: TenantDatacenterGrant) => g.access !== false);
+      setGrants(withAccess);
+    } catch {
+      setGrants([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId]);
 
-  const columns: Column<DatacenterRow>[] = [
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const columns: Column<TenantDatacenterGrant>[] = [
     {
       key: 'name',
       header: 'Name',
-      cell: (row) => <div className="font-medium text-gray-900 dark:text-gray-100">{row.name}</div>,
+      cell: (row) => (
+        <div className="font-medium text-gray-900 dark:text-gray-100">
+          {row.datacenter?.name ?? row.datacenterId}
+        </div>
+      ),
       sortable: true,
     },
     {
       key: 'description',
       header: 'Description',
-      cell: (row) => <span className="text-gray-600 dark:text-gray-400 text-sm">{row.description ?? '—'}</span>,
-      sortable: true,
-    },
-    {
-      key: 'region',
-      header: 'Region',
-      cell: (row) => <span className="text-gray-600 dark:text-gray-400 text-sm">{row.region ?? '—'}</span>,
-      sortable: true,
-    },
-    {
-      key: 'status',
-      header: 'Status',
       cell: (row) => (
-        <Badge variant="success">{row.status ?? 'available'}</Badge>
+        <span className="text-gray-600 dark:text-gray-400 text-sm">
+          {row.datacenter?.description ?? '—'}
+        </span>
       ),
       sortable: true,
+    },
+    {
+      key: 'limits',
+      header: 'Limits',
+      cell: (row) => (
+        <span className="text-gray-600 dark:text-gray-400 text-sm">
+          {formatLimits(row.limits)}
+        </span>
+      ),
+      sortable: false,
     },
   ];
 
@@ -92,14 +122,23 @@ export default function TenantDatacentersPage() {
         >
           <Card className="dark:border-gray-700">
             <CardContent className="p-0">
-              {loading ? (
+              {tenantError && (
+                <div className="p-4 text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+                  {tenantError}. Select a tenant from the system tenant list to open the portal.
+                </div>
+              )}
+              {tenantLoading || loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : !tenantId ? (
+                <div className="py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  No tenant selected. Open the tenant portal from a tenant in the system area.
                 </div>
               ) : (
                 <Table
                   columns={columns}
-                  data={datacenters}
+                  data={grants}
                   emptyMessage="No datacenters available"
                   overflowVisibleColumnKeys={[]}
                 />

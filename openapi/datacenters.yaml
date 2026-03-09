@@ -160,17 +160,10 @@ components:
         id:
           type: string
           format: uuid
-          description: Tenant datacenter grant unique identifier (use for VM create tenant_datacenter_grant_id)
-        tenantId:
-          type: string
-          format: uuid
-        datacenterId:
-          type: string
-          format: uuid
+        tenant:
+          $ref: './commons.yaml#/components/schemas/EntityReference'
         datacenter:
           $ref: './commons.yaml#/components/schemas/EntityReference'
-          readOnly: true
-          description: Datacenter reference (id, name, description). Name is always the datacenter name.
         access:
           type: boolean
           description: Whether tenant has access to the datacenter

@@ -48,23 +48,24 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
         {isOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
               <motion.div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 onClick={closeOnOverlayClick ? onClose : undefined}
+                aria-hidden
               />
               <motion.div
                 ref={ref}
-                className={`bg-white rounded-lg shadow-xl ${sizeStyles[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
+                className={`relative z-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl ${sizeStyles[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}

@@ -190,6 +190,37 @@ paths:
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
 
+  /tenants/current:
+    get:
+      tags:
+        - Tenants
+      summary: Get current tenant
+      description: |
+        Returns the tenant context for the authenticated user. Used by the tenant portal
+        so the UI can resolve tenantId without calling the provider-scoped list tenants API.
+        Pass the tenant slug (chosen at login) as query param when the user has multiple tenants.
+      operationId: getCurrentTenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tenant name/slug (from login). When provided, returns that tenant if the user has access.
+      responses:
+        '200':
+          description: Current tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
   /tenants/{tenantId}:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
