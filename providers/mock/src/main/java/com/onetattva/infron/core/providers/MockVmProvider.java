@@ -2,9 +2,9 @@ package com.onetattva.infron.core.providers;
 
 import com.onetattva.infron.api.enums.VmPowerState;
 import com.onetattva.infron.api.enums.VmStatus;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
  * Mock VM provider for testing and development.
  * Simulates VM operations without actual infrastructure.
  */
-@Component
+@ApplicationScoped
 public class MockVmProvider implements VmProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(MockVmProvider.class);

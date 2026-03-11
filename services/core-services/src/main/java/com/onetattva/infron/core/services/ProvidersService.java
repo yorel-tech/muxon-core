@@ -1,7 +1,6 @@
 package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
-import com.onetattva.infron.core.providers.VmProviderRegistry;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.VmRepository;
@@ -33,9 +32,6 @@ public class ProvidersService {
 
     @Autowired
     private ProviderRepository providerRepository;
-
-    @Autowired
-    private VmProviderRegistry vmProviderRegistry;
 
     @Autowired
     private VmRepository vmRepository;
@@ -82,10 +78,7 @@ public class ProvidersService {
             // Continue with provider creation even if capability discovery fails
         }
 
-        // Register with VmProviderRegistry
-        vmProviderRegistry.registerProvider(new VmProviderAdapter(savedEntity));
-
-        // Update status to ACTIVE after successful registration
+        // Update status to ACTIVE
         savedEntity.setStatus(ProviderStatus.ACTIVE.name());
         providerRepository.save(savedEntity);
 
@@ -289,9 +282,6 @@ public class ProvidersService {
         // Note: This would require a DatacenterRepository check
         // For now, we'll skip this check as it requires additional dependencies
 
-        // Unregister from VmProviderRegistry
-        vmProviderRegistry.unregisterProvider(entity.getId().toString());
-
         // Delete from database
         providerRepository.delete(entity);
 
@@ -360,14 +350,7 @@ public class ProvidersService {
         ProviderEntity entity = providerRepository.findById(providerId)
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
 
-        // Return cached capabilities unless refresh is requested
-        if (refresh != null && !refresh) {
-            return mapEntityCapabilitiesToApi(entity.getCapabilities());
-        }
-
-        // Fetch live capabilities from provider
-        // Note: This would use VmProviderRegistry to get live capabilities
-        // For now, return cached capabilities
+        // Return cached capabilities (live discovery is done by orchestrator)
         return mapEntityCapabilitiesToApi(entity.getCapabilities());
     }
 
@@ -496,71 +479,13 @@ public class ProvidersService {
     }
 
     /**
-     * Discover capabilities from the actual provider implementation
+     * Discover capabilities for the provider.
+     * Uses default capabilities; live discovery from hypervisors is done by the orchestrator,
+     * which has the real VmProvider implementations (Libvirt, Proxmox, etc.) and registry.
      */
     private Map<String, String> discoverCapabilities(ProviderEntity entity) {
         logger.debug("Discovering capabilities for provider: {}", entity.getId());
-
-        try {
-            // Try to get provider from registry
-            String providerId = entity.getId().toString();
-            java.util.Optional<com.onetattva.infron.core.providers.VmProvider> providerOpt = vmProviderRegistry.getProvider(providerId);
-
-            if (providerOpt.isEmpty()) {
-                logger.warn("Provider not found in registry: {}", providerId);
-                return getDefaultCapabilities();
-            }
-
-            // Get capabilities from provider
-            com.onetattva.infron.core.providers.ProviderCapabilities caps =
-                providerOpt.get().getCapabilities().join();
-
-            // Convert to Map<String, String> for storage
-            Map<String, String> capabilitiesMap = new java.util.HashMap<>();
-
-            // Store CPU types as comma-separated string
-            if (caps.supportedCpuTypes() != null && !caps.supportedCpuTypes().isEmpty()) {
-                capabilitiesMap.put("supportedCpuTypes", String.join(",", caps.supportedCpuTypes()));
-            }
-
-            // Store storage classes as comma-separated string
-            if (caps.supportedStorageClasses() != null && !caps.supportedStorageClasses().isEmpty()) {
-                capabilitiesMap.put("supportedStorageClasses", String.join(",", caps.supportedStorageClasses()));
-            }
-
-            // Store network types as comma-separated string
-            if (caps.supportedNetworkTypes() != null && !caps.supportedNetworkTypes().isEmpty()) {
-                capabilitiesMap.put("supportedNetworkTypes", String.join(",", caps.supportedNetworkTypes()));
-            }
-
-            // Store OS types as comma-separated string
-            if (caps.supportedOsTypes() != null && !caps.supportedOsTypes().isEmpty()) {
-                capabilitiesMap.put("supportedOsTypes", String.join(",", caps.supportedOsTypes()));
-            }
-
-            // Store resource limits
-            if (caps.resourceLimits() != null) {
-                com.onetattva.infron.core.providers.ResourceLimits limits = caps.resourceLimits();
-                capabilitiesMap.put("maxCpus", String.valueOf(limits.maxCpuCores()));
-                capabilitiesMap.put("maxMemoryMb", String.valueOf(limits.maxMemoryMb()));
-                capabilitiesMap.put("maxStorageGb", String.valueOf(limits.maxStorageGb()));
-                capabilitiesMap.put("maxVms", String.valueOf(limits.maxVms()));
-            }
-
-            // Store features
-            if (caps.features() != null && !caps.features().isEmpty()) {
-                caps.features().forEach((key, value) -> {
-                    capabilitiesMap.put("feature_" + key, String.valueOf(value));
-                });
-            }
-
-            logger.debug("Discovered capabilities for provider {}: {}", entity.getId(), capabilitiesMap);
-            return capabilitiesMap;
-
-        } catch (Exception e) {
-            logger.error("Failed to discover capabilities for provider {}: {}", entity.getId(), e.getMessage(), e);
-            return getDefaultCapabilities();
-        }
+        return getDefaultCapabilities();
     }
 
     /**
@@ -577,135 +502,5 @@ public class ProvidersService {
         defaults.put("maxStorageGb", "20000");
         defaults.put("maxVms", "500");
         return defaults;
-    }
-
-    /**
-     * Adapter class to integrate ProviderEntity with VmProvider SPI
-     */
-    private static class VmProviderAdapter implements com.onetattva.infron.core.providers.VmProvider {
-        private final ProviderEntity entity;
-
-        VmProviderAdapter(ProviderEntity entity) {
-            this.entity = entity;
-        }
-
-        @Override
-        public String id() {
-            return entity.getId().toString();
-        }
-
-        @Override
-        public String description() {
-            return entity.getName() + " (" + entity.getType() + ")";
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.ProviderCapabilities> getCapabilities() {
-            // Return capabilities from entity
-            return java.util.concurrent.CompletableFuture.completedFuture(
-                mapEntityCapabilitiesToSpi(entity.getCapabilities())
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmCreationResult> createVm(com.onetattva.infron.core.providers.VmCreationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM creation not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmDeletionResult> deleteVm(com.onetattva.infron.core.providers.VmDeletionRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM deletion not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmOperationResult> startVm(com.onetattva.infron.core.providers.VmOperationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM start not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmOperationResult> stopVm(com.onetattva.infron.core.providers.VmOperationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM stop not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmOperationResult> restartVm(com.onetattva.infron.core.providers.VmOperationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM restart not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmOperationResult> suspendVm(com.onetattva.infron.core.providers.VmOperationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM suspend not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.VmOperationResult> resumeVm(com.onetattva.infron.core.providers.VmOperationRequest request) {
-            return java.util.concurrent.CompletableFuture.failedFuture(
-                new UnsupportedOperationException("VM resume not implemented for provider adapter")
-            );
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<java.util.Optional<com.onetattva.infron.core.providers.VmInfo>> getVmInfo(String externalVmId) {
-            return java.util.concurrent.CompletableFuture.completedFuture(java.util.Optional.empty());
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<java.util.List<com.onetattva.infron.core.providers.VmInfo>> listVms(com.onetattva.infron.core.providers.VmListRequest request) {
-            return java.util.concurrent.CompletableFuture.completedFuture(java.util.List.of());
-        }
-
-        @Override
-        public java.util.concurrent.CompletableFuture<com.onetattva.infron.core.providers.ValidationResult> validateVmSpec(String spec) {
-            return java.util.concurrent.CompletableFuture.completedFuture(
-                new com.onetattva.infron.core.providers.ValidationResult(true, java.util.List.of("Validation not implemented for provider adapter"))
-            );
-        }
-
-        /**
-         * Map entity capabilities to SPI capabilities
-         */
-        private com.onetattva.infron.core.providers.ProviderCapabilities mapEntityCapabilitiesToSpi(Map<String, String> entityCapabilities) {
-            if (entityCapabilities == null) {
-                return new com.onetattva.infron.core.providers.ProviderCapabilities(
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    List.of(),
-                    new com.onetattva.infron.core.providers.ResourceLimits(0, 0, 0, 0),
-                    Map.of()
-                );
-            }
-
-            // Parse resource limits from JSONB
-            int maxCpuCores = entityCapabilities.containsKey("maxCpuCores")
-                ? Integer.parseInt(entityCapabilities.get("maxCpuCores")) : 0;
-            int maxMemoryMb = entityCapabilities.containsKey("maxMemoryMb")
-                ? Integer.parseInt(entityCapabilities.get("maxMemoryMb")) : 0;
-            int maxStorageGb = entityCapabilities.containsKey("maxStorageGb")
-                ? Integer.parseInt(entityCapabilities.get("maxStorageGb")) : 0;
-            int maxVms = entityCapabilities.containsKey("maxVms")
-                ? Integer.parseInt(entityCapabilities.get("maxVms")) : 0;
-
-            return new com.onetattva.infron.core.providers.ProviderCapabilities(
-                    List.of("kvm64", "host"),
-                    List.of("local", "nfs"),
-                    List.of("bridge", "ovs"),
-                    List.of("linux", "windows"),
-                    new com.onetattva.infron.core.providers.ResourceLimits(maxCpuCores, maxMemoryMb, maxStorageGb, maxVms),
-                    new java.util.HashMap<>(entityCapabilities)
-            );
-        }
     }
 }
