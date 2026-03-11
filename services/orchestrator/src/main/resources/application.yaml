@@ -1,0 +1,34 @@
+---
+quarkus:
+  http:
+    port: 8081
+
+spring:
+  application:
+    name: "orchestrator"
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/infron"
+    username: "infron"
+    password: "Oln5QcC7iHiLOtVIrfXzbQ=="
+    driver-class-name: "org.postgresql.Driver"
+  jpa:
+    hibernate:
+      ddl-auto: "none"
+
+logging:
+  level:
+    root: "INFO"
+    org.springframework: "INFO"
+    com.onetattva.infron: "DEBUG"
+  file:
+    name: "logs/infron-orchestrator.log"
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+infron:
+  instanceName: "local"
+  instanceId: 19
+  system: null
+  tenants: null
+  queue:
+    backend: "db"
