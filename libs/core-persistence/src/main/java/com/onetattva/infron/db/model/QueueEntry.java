@@ -27,18 +27,21 @@ public class QueueEntry {
     private String queueType;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "queue_category", nullable = false)
     private QueueCategory queueCategory;
 
-    @Column(name = "entity_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "entity_type", nullable = false)
     private EntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
-    @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false)
     private QueueStatus status;
 
     // Queue content

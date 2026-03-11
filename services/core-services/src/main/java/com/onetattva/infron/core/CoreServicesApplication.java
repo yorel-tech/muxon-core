@@ -1,12 +1,15 @@
 package com.onetattva.infron.core;
 
+import com.onetattva.infron.db.queue.QueueDbConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
+@Import(QueueDbConfiguration.class)
 @ComponentScan(basePackages = {"com.onetattva.infron.core.config",
         "com.onetattva.infron.core.security",
         "com.onetattva.infron.core.controllers",

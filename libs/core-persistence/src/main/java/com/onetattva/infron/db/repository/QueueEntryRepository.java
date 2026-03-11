@@ -1,10 +1,13 @@
 package com.onetattva.infron.db.repository;
 
 import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.QueueEntry;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -74,12 +77,30 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntry, UUID> {
     );
 
     /**
-     * Get stalled entries older than threshold minutes
+     * Find pending entries by entity type and lock for update (claim). Caller must set status to PROCESSING and save.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM QueueEntry q WHERE q.entityType = :entityType AND q.status = :status ORDER BY q.createdAt ASC")
+    List<QueueEntry> findPendingByEntityTypeForUpdate(
+        @Param("entityType") EntityType entityType,
+        @Param("status") QueueStatus status,
+        Pageable pageable
+    );
+
+    /**
+     * Get stalled entries (old PENDING never claimed) older than threshold
      */
     @Query("SELECT q FROM QueueEntry q WHERE q.status = 'PENDING' AND q.createdAt < :cutoff ORDER BY q.createdAt ASC")
     List<QueueEntry> getStalledEntries(
         @Param("cutoff") Instant cutoff
     );
+
+    /**
+     * Find entries stuck in PROCESSING (claimed but not completed) older than cutoff.
+     * Used for stall reset so they can be retried.
+     */
+    @Query("SELECT q FROM QueueEntry q WHERE q.status = 'PROCESSING' AND q.processedAt < :cutoff ORDER BY q.processedAt ASC")
+    List<QueueEntry> findStaleProcessingEntries(@Param("cutoff") Instant cutoff);
 
     /**
      * Mark an entry as failed with error message

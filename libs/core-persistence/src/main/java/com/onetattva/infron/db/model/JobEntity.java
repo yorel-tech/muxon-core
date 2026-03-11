@@ -4,6 +4,8 @@ import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.JobStatus;
 import com.onetattva.infron.api.enums.JobType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -23,6 +25,7 @@ public class JobEntity {
      * Job type (VM_CREATE, VM_DELETE, etc.)
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "job_type", nullable = false)
     private JobType jobType;
 
@@ -30,6 +33,7 @@ public class JobEntity {
      * Job status (PENDING, RUNNING, COMPLETED, FAILED, CANCELLED)
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     private JobStatus status = JobStatus.PENDING;
 
@@ -37,6 +41,7 @@ public class JobEntity {
      * Target entity type (VM, NODE, DATACENTER, etc.)
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "target_entity_type", nullable = false)
     private EntityType targetEntityType;
 

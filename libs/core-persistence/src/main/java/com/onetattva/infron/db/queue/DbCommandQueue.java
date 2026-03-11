@@ -1,0 +1,91 @@
+package com.onetattva.infron.db.queue;
+
+import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueStatus;
+import com.onetattva.infron.core.spi.queue.CommandMessage;
+import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.repository.QueueEntryRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Database-backed implementation of CommandQueue.
+ * Uses the queue_entry table and centralizes PENDING → PROCESSING → COMPLETED/FAILED transitions.
+ */
+public class DbCommandQueue implements CommandQueue {
+
+    private final QueueEntryRepository repository;
+
+    public DbCommandQueue(QueueEntryRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    @Transactional
+    public UUID sendCommand(CommandMessage command) {
+        QueueEntry entry = QueueEntryMapper.toQueueEntry(command);
+        QueueEntry saved = repository.save(entry);
+        return saved.getId();
+    }
+
+    @Override
+    @Transactional
+    public List<CommandMessage> pollCommands(EntityType entityType, int limit) {
+        List<QueueEntry> entries = repository.findPendingByEntityTypeForUpdate(
+            entityType,
+            QueueStatus.PENDING,
+            PageRequest.of(0, limit)
+        );
+        Instant now = Instant.now();
+        for (QueueEntry entry : entries) {
+            entry.setStatus(QueueStatus.PROCESSING);
+            entry.setProcessedAt(now);
+        }
+        if (!entries.isEmpty()) {
+            repository.saveAll(entries);
+        }
+        return entries.stream()
+            .map(QueueEntryMapper::toCommandMessage)
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public void markCompleted(UUID commandId) {
+        repository.markCompleted(commandId, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public void markFailed(UUID commandId, String errorMessage) {
+        repository.markFailed(commandId, errorMessage, Instant.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getStalledCount(int staleThresholdMinutes) {
+        Instant cutoff = Instant.now().minusSeconds(staleThresholdMinutes * 60L);
+        return repository.findStaleProcessingEntries(cutoff).size();
+    }
+
+    @Override
+    @Transactional
+    public int resetStalledEntries(int staleThresholdMinutes) {
+        Instant cutoff = Instant.now().minusSeconds(staleThresholdMinutes * 60L);
+        List<QueueEntry> stalled = repository.findStaleProcessingEntries(cutoff);
+        for (QueueEntry entry : stalled) {
+            entry.setStatus(QueueStatus.PENDING);
+            entry.setProcessedAt(null);
+            entry.setErrorMessage(null);
+        }
+        if (!stalled.isEmpty()) {
+            repository.saveAll(stalled);
+        }
+        return stalled.size();
+    }
+}

@@ -2,9 +2,18 @@ package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.enums.VmPowerState;
 import com.onetattva.infron.api.enums.VmStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -39,11 +48,11 @@ public class VmEntity {
     private String spec;
 
     // Runtime state (mutable)
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     private VmStatus status;
 
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "power_state", nullable = false)
     private VmPowerState powerState;
 
@@ -66,11 +75,13 @@ public class VmEntity {
 
     // Resource tracking
     @Column(name = "resource_usage", nullable = true, columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String resourceUsage;
 
     // Metadata and tracking
     @Column(name = "metadata", nullable = true, columnDefinition = "JSONB")
-    private String metadata;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, String> metadata;
 
     @Column(name = "tags", nullable = true, columnDefinition = "TEXT[]")
     private List<String> tags;
@@ -106,7 +117,7 @@ public class VmEntity {
     public VmEntity(UUID id, UUID tenantDatacenterGrantId, String name, String description, String spec,
                     VmStatus status, VmPowerState powerState, UUID providerId, UUID nodeId,
                     String externalId, List<String> ipAddresses, String hostname,
-                    String resourceUsage, String metadata, List<String> tags) {
+                    String resourceUsage, Map<String, String> metadata, List<String> tags) {
         this.id = id;
         this.tenantDatacenterGrantId = tenantDatacenterGrantId;
         this.name = name;
@@ -232,11 +243,11 @@ public class VmEntity {
         this.resourceUsage = resourceUsage;
     }
 
-    public String getMetadata() {
+    public Map<String, String> getMetadata() {
         return metadata;
     }
 
-    public void setMetadata(String metadata) {
+    public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
     }
 

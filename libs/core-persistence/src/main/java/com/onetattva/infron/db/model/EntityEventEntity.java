@@ -3,6 +3,8 @@ package com.onetattva.infron.db.model;
 import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.EventType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ public class EntityEventEntity {
      * Entity type (VM, NODE, DATACENTER, TENANT, PROVIDER, USER)
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "entity_type", nullable = false)
     private EntityType entityType;
 

@@ -3,17 +3,19 @@ package com.onetattva.infron.core.services;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.api.enums.EntityType;
-import com.onetattva.infron.api.enums.QueueCategory;
-import com.onetattva.infron.api.enums.QueueStatus;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onetattva.infron.core.auth.UserPrincipal;
+import com.onetattva.infron.core.spi.queue.CommandMessage;
+import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.repository.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -34,7 +36,7 @@ public class VmsService {
     @Autowired
     private TenantDatacenterGrantRepository tenantDatacenterGrantRepository;
     @Autowired
-    private QueueEntryRepository queueEntryRepository;
+    private CommandQueue commandQueue;
     @Autowired
     private JobRepository jobRepository;
 
@@ -48,7 +50,6 @@ public class VmsService {
 
         // Create VM entity
         VmEntity vm = new VmEntity();
-        vm.setId(UUID.randomUUID());
         vm.setTenantDatacenterGrantId(grant.getId());
         vm.setName(request.getName());
         vm.setSpec(vmSpecToJson(request.getSpec()));
@@ -56,15 +57,15 @@ public class VmsService {
         vm.setPowerState(com.onetattva.infron.api.enums.VmPowerState.UNKNOWN);
         vm.setCreatedAt(Instant.now());
         vm.setUpdatedAt(Instant.now());
-        vm.setMetadata(request.getMetadata() != null ? request.getMetadata().toString() : null);
+        vm.setMetadata(request.getMetadata());
         vm.setTags(request.getTags());
 
         // Save VM
         VmEntity saved = vmRepository.save(vm);
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildCreateCommand(saved, request);
-        queueEntryRepository.save(commandEntry);
+        // Enqueue command via transport-agnostic port
+        CommandMessage command = buildCreateCommand(saved, request);
+        commandQueue.sendCommand(command);
 
         VmCreateResponse response = new VmCreateResponse();
         response.setId(saved.getId());
@@ -118,7 +119,7 @@ public class VmsService {
             vm.setDescription(request.getDescription());
         }
         if (request.getMetadata() != null) {
-            vm.setMetadata(request.getMetadata().toString());
+            vm.setMetadata(request.getMetadata());
         }
         if (request.getTags() != null) {
             vm.setTags(request.getTags());
@@ -139,9 +140,7 @@ public class VmsService {
             throw new IllegalStateException("VM must be stopped to start");
         }
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildStartCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildStartCommand(vm));
 
         return buildOperationResponse(vmId, "VM start initiated");
     }
@@ -155,9 +154,7 @@ public class VmsService {
             throw new IllegalStateException("VM must be running to stop");
         }
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildStopCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildStopCommand(vm));
 
         return buildOperationResponse(vmId, "VM stop initiated");
     }
@@ -166,9 +163,7 @@ public class VmsService {
         VmEntity vm = vmRepository.findById(vmId)
                 .orElseThrow(() -> new RuntimeException("VM not found"));
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildRestartCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildRestartCommand(vm));
 
         return buildOperationResponse(vmId, "VM restart initiated");
     }
@@ -182,9 +177,7 @@ public class VmsService {
             throw new IllegalStateException("VM must be running or suspended to suspend");
         }
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildSuspendCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildSuspendCommand(vm));
 
         return buildOperationResponse(vmId, "VM suspend initiated");
     }
@@ -198,9 +191,7 @@ public class VmsService {
             throw new IllegalStateException("VM must be suspended to resume");
         }
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildResumeCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildResumeCommand(vm));
 
         return buildOperationResponse(vmId, "VM resume initiated");
     }
@@ -214,9 +205,7 @@ public class VmsService {
         vm.setUpdatedAt(Instant.now());
         vmRepository.save(vm);
 
-        // Insert command into database queue
-        QueueEntry commandEntry = buildDeleteCommand(vm);
-        queueEntryRepository.save(commandEntry);
+        commandQueue.sendCommand(buildDeleteCommand(vm));
 
         return buildOperationResponse(vmId, "VM deletion initiated");
     }
@@ -256,8 +245,7 @@ public class VmsService {
         vm.setHostname(entity.getHostname());
         // Note: resourceUsage is stored as JSON string in entity, would need proper deserialization
         vm.setResourceUsage(null);
-        // Note: metadata is stored as JSON string in entity, would need proper deserialization
-        vm.setMetadata(null);
+        vm.setMetadata(entity.getMetadata());
         vm.setTags(entity.getTags());
         vm.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         vm.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
@@ -285,14 +273,7 @@ public class VmsService {
         return response;
     }
 
-    private QueueEntry buildCreateCommand(VmEntity vm, VmCreateRequest request) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_CREATE_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
+    private CommandMessage buildCreateCommand(VmEntity vm, VmCreateRequest request) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("spec", vm.getSpec() != null ? vm.getSpec() : "{}");
         payload.put("tenantDatacenterGrantId", request.getTenantDatacenterGrantId().toString());
@@ -303,122 +284,120 @@ public class VmsService {
         if (request.getTags() != null) {
             payload.put("tags", request.getTags());
         }
-        entry.setPayload(payload);
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+        return CommandMessage.builder()
+            .queueType("VM_CREATE_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(payload)
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildStartCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_START_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildStartCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_START_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildStopCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_STOP_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildStopCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_STOP_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildRestartCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_RESTART_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildRestartCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_RESTART_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildSuspendCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_SUSPEND_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildSuspendCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_SUSPEND_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildResumeCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_RESUME_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildResumeCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_RESUME_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
     }
 
-    private QueueEntry buildDeleteCommand(VmEntity vm) {
-        QueueEntry entry = new QueueEntry();
-        entry.setQueueType("VM_DELETE_COMMAND");
-        entry.setEntityType(EntityType.VM);
-        entry.setEntityId(vm.getId());
-        entry.setQueueCategory(QueueCategory.COMMAND);
-        entry.setStatus(QueueStatus.PENDING);
-        entry.setActorType("USER");
-        entry.setPayload(Map.of("vmId", vm.getId().toString()));
-        entry.setMetadata(Map.of(
-            "source", "api",
-            "requestId", generateRequestId()
-        ));
-        entry.setSource("core-services");
-        entry.setCreatedAt(Instant.now());
-        return entry;
+    private CommandMessage buildDeleteCommand(VmEntity vm) {
+        return CommandMessage.builder()
+            .queueType("VM_DELETE_COMMAND")
+            .entityType(EntityType.VM)
+            .entityId(vm.getId())
+            .payload(Map.of("vmId", vm.getId().toString()))
+            .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+            .source("core-services")
+            .actorType("USER")
+            .actorUserId(getCurrentUserId())
+            .actorService("api")
+            .createdAt(Instant.now())
+            .build();
+    }
+
+    private UUID getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal user) {
+            try {
+                return UUID.fromString(user.id());
+            } catch (IllegalArgumentException ignored) {
+                // If the user ID is not a valid UUID, leave actorUserId as null
+            }
+        }
+        return null;
     }
 
     private String generateRequestId() {

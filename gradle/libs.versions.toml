@@ -59,10 +59,10 @@ flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.
 
 # Quarkus
 quarkus-bom = { module = "io.quarkus:quarkus-bom", version.ref = "quarkus" }
-quarkus-kafka-client = { module = "io.quarkus:quarkus-kafka-client" }
 quarkus-grpc = { module = "io.quarkus:quarkus-grpc" }
 quarkus-opentelemetry = { module = "io.quarkus:quarkus-opentelemetry" }
 quarkus-arc = { module = "io.quarkus:quarkus-arc" }
+quarkus-spring-di = { module = "io.quarkus:quarkus-spring-di" }
 quarkus-scheduler = { module = "io.quarkus:quarkus-scheduler" }
 quarkus-redis-client = { module = "io.quarkus:quarkus-redis-client" }
 

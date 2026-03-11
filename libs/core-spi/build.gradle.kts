@@ -1,2 +1,4 @@
 plugins { `java-library` }
-dependencies { }
+dependencies {
+    api(project(":libs:core-api"))
+}
