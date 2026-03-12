@@ -137,11 +137,11 @@ public class ProviderTestUtil {
      */
     public static Response createTenantDatacenterGrant(String tenantId, String datacenterId) {
         try {
-            TenantDatacenterGrant grant = new TenantDatacenterGrant();
+            TenantDatacenterGrantCreate grant = new TenantDatacenterGrantCreate();
             grant.setTenantId(UUID.fromString(tenantId));
             grant.setDatacenterId(UUID.fromString(datacenterId));
             grant.setAccess(true);
-            
+
             // Set resource limits
             ResourceLimits limits = new ResourceLimits();
             limits.setMaxCpus(100);
@@ -149,7 +149,7 @@ public class ProviderTestUtil {
             limits.setMaxStorageGb(1000);
             limits.setMaxVms(50);
             grant.setLimits(limits);
-            
+
             return given()
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType("application/json")

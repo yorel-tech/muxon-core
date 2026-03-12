@@ -206,155 +206,147 @@ public class VmTestUtil {
 
     /**
      * Create a basic VM spec with default configuration
+     * aligned with the current VmSpec schema (compute/storage/network/os).
      */
     public static VmSpec createBasicVmSpec() {
         VmSpec spec = new VmSpec();
-        
-        // CPU configuration
-        CpuSpec cpu = new CpuSpec();
-        cpu.setCores(2);
-        cpu.setSockets(1);
-        cpu.setThreads(1);
-        cpu.setType(CpuSpec.TypeEnum.EMULATED);
-        spec.setCpu(cpu);
-        
-        // Memory configuration
-        MemorySpec memory = new MemorySpec();
-        memory.setSizeMb(2048);
-        memory.setOvercommitRatio(1.0F);
-        spec.setMemory(memory);
-        
+
+        // Compute configuration
+        ComputeSpec compute = new ComputeSpec();
+        compute.setCpus(2);
+        compute.setMemorySizeMb(2048);
+        spec.setCompute(compute);
+
         // Storage configuration
-        List<StorageSpec> storage = new ArrayList<>();
-        StorageSpec rootStorage = new StorageSpec();
-        rootStorage.setType(StorageSpec.TypeEnum.ROOT);
-        rootStorage.setSizeGb(20);
-        rootStorage.setStorageClass("ssd");
-        rootStorage.setBootable(true);
-        storage.add(rootStorage);
+        DiskSpec rootDisk = new DiskSpec();
+        rootDisk.setSizeMb(20 * 1024); // 20 GB
+        rootDisk.setStorageClass("ssd");
+
+        StorageSpec storage = new StorageSpec();
+        List<DiskSpec> disks = new ArrayList<>();
+        disks.add(rootDisk);
+        storage.setDisks(disks);
+        storage.setVmStorageClass("ssd");
         spec.setStorage(storage);
-        
+
         // Network configuration
-        List<NetworkSpec> network = new ArrayList<>();
-        NetworkSpec primaryNetwork = new NetworkSpec();
-        primaryNetwork.setType(NetworkSpec.TypeEnum.PRIMARY);
-        primaryNetwork.setNetwork("default");
-        primaryNetwork.setIpAllocation(NetworkSpec.IpAllocationEnum.DHCP);
-        network.add(primaryNetwork);
+        NicSpec primaryNic = new NicSpec();
+        primaryNic.setIsPrimary(true);
+        primaryNic.setNetwork("default");
+        primaryNic.setIpAllocation(NicSpec.IpAllocationEnum.DHCP);
+
+        NetworkSpec network = new NetworkSpec();
+        List<NicSpec> nics = new ArrayList<>();
+        nics.add(primaryNic);
+        network.setNics(nics);
         spec.setNetwork(network);
-        
+
         // OS configuration
         OsSpec os = new OsSpec();
         os.setType(OsSpec.TypeEnum.LINUX);
         os.setDistribution("ubuntu");
         os.setVersion("22.04");
         spec.setOs(os);
-        
+
         return spec;
     }
 
     /**
      * Create a VM spec with high-performance configuration
+     * aligned with the current VmSpec schema.
      */
     public static VmSpec createHighPerformanceVmSpec() {
         VmSpec spec = new VmSpec();
-        
-        // CPU configuration
-        CpuSpec cpu = new CpuSpec();
-        cpu.setCores(8);
-        cpu.setSockets(2);
-        cpu.setThreads(2);
-        cpu.setType(CpuSpec.TypeEnum.HOST_PASSTHROUGH);
-        spec.setCpu(cpu);
-        
-        // Memory configuration
-        MemorySpec memory = new MemorySpec();
-        memory.setSizeMb(16384);
-        memory.setOvercommitRatio(1.0F);
-        spec.setMemory(memory);
-        
+
+        // Compute configuration
+        ComputeSpec compute = new ComputeSpec();
+        compute.setCpus(8);
+        compute.setMemorySizeMb(16384);
+        spec.setCompute(compute);
+
         // Storage configuration
-        List<StorageSpec> storage = new ArrayList<>();
-        StorageSpec rootStorage = new StorageSpec();
-        rootStorage.setType(StorageSpec.TypeEnum.ROOT);
-        rootStorage.setSizeGb(100);
-        rootStorage.setStorageClass("nvme");
-        rootStorage.setBootable(true);
-        storage.add(rootStorage);
-        
-        StorageSpec dataStorage = new StorageSpec();
-        dataStorage.setType(StorageSpec.TypeEnum.DATA);
-        dataStorage.setSizeGb(500);
-        dataStorage.setStorageClass("nvme");
-        dataStorage.setBootable(false);
-        storage.add(dataStorage);
+        DiskSpec rootDisk = new DiskSpec();
+        rootDisk.setSizeMb(100 * 1024); // 100 GB
+        rootDisk.setStorageClass("nvme");
+
+        DiskSpec dataDisk = new DiskSpec();
+        dataDisk.setSizeMb(500 * 1024); // 500 GB
+        dataDisk.setStorageClass("nvme");
+
+        StorageSpec storage = new StorageSpec();
+        List<DiskSpec> disks = new ArrayList<>();
+        disks.add(rootDisk);
+        disks.add(dataDisk);
+        storage.setDisks(disks);
+        storage.setVmStorageClass("nvme");
         spec.setStorage(storage);
-        
+
         // Network configuration
-        List<NetworkSpec> network = new ArrayList<>();
-        NetworkSpec primaryNetwork = new NetworkSpec();
-        primaryNetwork.setType(NetworkSpec.TypeEnum.PRIMARY);
-        primaryNetwork.setNetwork("high-performance");
-        primaryNetwork.setIpAllocation(NetworkSpec.IpAllocationEnum.STATIC);
-        network.add(primaryNetwork);
+        NicSpec primaryNic = new NicSpec();
+        primaryNic.setIsPrimary(true);
+        primaryNic.setNetwork("high-performance");
+        primaryNic.setIpAllocation(NicSpec.IpAllocationEnum.STATIC);
+
+        NetworkSpec network = new NetworkSpec();
+        List<NicSpec> nics = new ArrayList<>();
+        nics.add(primaryNic);
+        network.setNics(nics);
         spec.setNetwork(network);
-        
+
         // OS configuration
         OsSpec os = new OsSpec();
         os.setType(OsSpec.TypeEnum.LINUX);
         os.setDistribution("ubuntu");
         os.setVersion("22.04");
         spec.setOs(os);
-        
+
         return spec;
     }
 
     /**
      * Create a VM spec with Windows configuration
+     * aligned with the current VmSpec schema.
      */
     public static VmSpec createWindowsVmSpec() {
         VmSpec spec = new VmSpec();
-        
-        // CPU configuration
-        CpuSpec cpu = new CpuSpec();
-        cpu.setCores(4);
-        cpu.setSockets(1);
-        cpu.setThreads(2);
-        cpu.setType(CpuSpec.TypeEnum.EMULATED);
-        spec.setCpu(cpu);
-        
-        // Memory configuration
-        MemorySpec memory = new MemorySpec();
-        memory.setSizeMb(8192);
-        memory.setOvercommitRatio(1.0F);
-        spec.setMemory(memory);
-        
+
+        // Compute configuration
+        ComputeSpec compute = new ComputeSpec();
+        compute.setCpus(4);
+        compute.setMemorySizeMb(8192);
+        spec.setCompute(compute);
+
         // Storage configuration
-        List<StorageSpec> storage = new ArrayList<>();
-        StorageSpec rootStorage = new StorageSpec();
-        rootStorage.setType(StorageSpec.TypeEnum.ROOT);
-        rootStorage.setSizeGb(60);
-        rootStorage.setStorageClass("ssd");
-        rootStorage.setBootable(true);
-        storage.add(rootStorage);
+        DiskSpec rootDisk = new DiskSpec();
+        rootDisk.setSizeMb(60 * 1024); // 60 GB
+        rootDisk.setStorageClass("ssd");
+
+        StorageSpec storage = new StorageSpec();
+        List<DiskSpec> disks = new ArrayList<>();
+        disks.add(rootDisk);
+        storage.setDisks(disks);
+        storage.setVmStorageClass("ssd");
         spec.setStorage(storage);
-        
+
         // Network configuration
-        List<NetworkSpec> network = new ArrayList<>();
-        NetworkSpec primaryNetwork = new NetworkSpec();
-        primaryNetwork.setType(NetworkSpec.TypeEnum.PRIMARY);
-        primaryNetwork.setNetwork("default");
-        primaryNetwork.setIpAllocation(NetworkSpec.IpAllocationEnum.DHCP);
-        network.add(primaryNetwork);
+        NicSpec primaryNic = new NicSpec();
+        primaryNic.setIsPrimary(true);
+        primaryNic.setNetwork("default");
+        primaryNic.setIpAllocation(NicSpec.IpAllocationEnum.DHCP);
+
+        NetworkSpec network = new NetworkSpec();
+        List<NicSpec> nics = new ArrayList<>();
+        nics.add(primaryNic);
+        network.setNics(nics);
         spec.setNetwork(network);
-        
+
         // OS configuration
         OsSpec os = new OsSpec();
         os.setType(OsSpec.TypeEnum.WINDOWS);
         os.setDistribution("windows-server");
         os.setVersion("2022");
         spec.setOs(os);
-        
+
         return spec;
     }
 

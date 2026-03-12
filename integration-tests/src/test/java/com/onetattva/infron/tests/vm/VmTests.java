@@ -369,9 +369,11 @@ public class VmTests extends BaseIntegrationTest {
     public void testCreateVmWithInvalidSpec() {
         String vmName = VmTestUtil.generateUniqueVmName();
         
-        // Create a VM spec with invalid configuration (0 CPU cores)
+        // Create a VM spec with invalid configuration (0 CPUs)
         VmSpec invalidSpec = VmTestUtil.createBasicVmSpec();
-        invalidSpec.getCpu().setCores(0);
+        if (invalidSpec.getCompute() != null) {
+            invalidSpec.getCompute().setCpus(0);
+        }
 
         Response response = VmTestUtil.createVm(vmName, tenantDatacenterGrantId, invalidSpec);
         assertStatusCode(response, 400);
@@ -456,34 +458,25 @@ public class VmTests extends BaseIntegrationTest {
     public void testCreateVmWithExcessiveResources() {
         String vmName = VmTestUtil.generateUniqueVmName();
         
-        // Create a VM spec with excessive resources
+        // Create a VM spec with excessive resources using the current schema
         VmSpec excessiveSpec = new VmSpec();
-        
-        // CPU with too many cores
-        CpuSpec cpu = new CpuSpec();
-        cpu.setCores(1000); // Excessive number of cores
-        cpu.setSockets(1);
-        cpu.setThreads(1);
-        excessiveSpec.setCpu(cpu);
-        
-        // Memory with too much size
-        MemorySpec memory = new MemorySpec();
-        memory.setSizeMb(10000000); // Excessive memory size
-        excessiveSpec.setMemory(memory);
-        
-        // Add minimal storage to make it valid
-        List<StorageSpec> storage = List.of(
-            createMinimalStorageSpec()
-        );
+
+        ComputeSpec compute = new ComputeSpec();
+        compute.setCpus(1000);          // Excessive number of CPUs
+        compute.setMemorySizeMb(10_000_000); // Excessive memory size
+        excessiveSpec.setCompute(compute);
+
+        // Minimal storage to satisfy schema requirements
+        DiskSpec rootDisk = new DiskSpec();
+        rootDisk.setSizeMb(10 * 1024);
+        rootDisk.setStorageClass("ssd");
+
+        StorageSpec storage = new StorageSpec();
+        storage.setDisks(List.of(rootDisk));
+        storage.setVmStorageClass("ssd");
         excessiveSpec.setStorage(storage);
-        
-        // Add minimal network
-        List<NetworkSpec> network = List.of(
-            createMinimalNetworkSpec()
-        );
-        excessiveSpec.setNetwork(network);
-        
-        // Add minimal OS
+
+        // Minimal OS configuration
         OsSpec os = new OsSpec();
         os.setType(OsSpec.TypeEnum.LINUX);
         excessiveSpec.setOs(os);
@@ -493,21 +486,5 @@ public class VmTests extends BaseIntegrationTest {
         response.then()
             .body("error", notNullValue())
             .body("message", anyOf(containsString("cpu"), containsString("memory")));
-    }
-
-    private static StorageSpec createMinimalStorageSpec() {
-        StorageSpec storage = new StorageSpec();
-        storage.setType(StorageSpec.TypeEnum.ROOT);
-        storage.setSizeGb(10);
-        storage.setBootable(true);
-        return storage;
-    }
-
-    private static NetworkSpec createMinimalNetworkSpec() {
-        NetworkSpec network = new NetworkSpec();
-        network.setType(NetworkSpec.TypeEnum.PRIMARY);
-        network.setNetwork("default");
-        network.setIpAllocation(NetworkSpec.IpAllocationEnum.DHCP);
-        return network;
     }
 }
