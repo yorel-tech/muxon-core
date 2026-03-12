@@ -38,9 +38,9 @@ public class ResourceActionRegistry {
             }
 
             RequestMappingInfo mappingInfo = entry.getKey();
-            Optional<String> pathTemplate = mappingInfo.getPathPatternsCondition() != null
-                    ? mappingInfo.getPathPatternsCondition().getPatterns().stream().findFirst().map(Object::toString)
-                    : mappingInfo.getPatternsCondition().getPatterns().stream().findFirst();
+            Optional<String> pathTemplate = Optional.ofNullable(mappingInfo.getPathPatternsCondition())
+                    .flatMap(pc -> pc.getPatterns().stream().findFirst())
+                    .map(Object::toString);
 
             if (pathTemplate.isEmpty()) {
                 continue;

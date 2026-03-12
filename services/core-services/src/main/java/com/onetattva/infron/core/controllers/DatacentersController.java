@@ -1,102 +1,76 @@
 package com.onetattva.infron.core.controllers;
 
+import com.onetattva.infron.api.DatacentersApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.services.DatacentersService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import org.springframework.lang.Nullable;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1")
-public class DatacentersController {
+public class DatacentersController implements DatacentersApi {
 
     @Autowired
     private DatacentersService datacentersService;
 
-    @PostMapping("/datacenters")
-    public ResponseEntity<Datacenter> createDatacenter(@Valid @RequestBody DatacenterCreate datacenterCreate) {
+    @Override
+    public ResponseEntity<Datacenter> createDatacenter(DatacenterCreate datacenterCreate) {
         Datacenter datacenter = datacentersService.createDatacenter(datacenterCreate);
         return ResponseEntity.status(201).body(datacenter);
     }
 
-    @DeleteMapping("/datacenters/{datacenterId}")
-    public ResponseEntity<Void> deleteDatacenter(@NotNull @PathVariable("datacenterId") UUID datacenterId) {
+    @Override
+    public ResponseEntity<Void> deleteDatacenter(UUID datacenterId) {
         datacentersService.deleteDatacenter(datacenterId);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/datacenters/{datacenterId}")
-    public ResponseEntity<Datacenter> getDatacenter(@NotNull @PathVariable("datacenterId") UUID datacenterId) {
+    @Override
+    public ResponseEntity<Datacenter> getDatacenter(UUID datacenterId) {
         Datacenter datacenter = datacentersService.getDatacenter(datacenterId);
         return ResponseEntity.ok(datacenter);
     }
 
-    @GetMapping("/datacenters/{datacenterId}/settings")
-    public ResponseEntity<DatacenterSettings> getDatacenterSettings(@NotNull @PathVariable("datacenterId") UUID datacenterId) {
+    @Override
+    public ResponseEntity<DatacenterSettings> getDatacenterSettings(UUID datacenterId) {
         DatacenterSettings settings = datacentersService.getDatacenterSettings(datacenterId);
         return ResponseEntity.ok(settings);
     }
 
-    @GetMapping("/datacenters")
-    public ResponseEntity<DatacenterList> listDatacenters(
-            @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-            @RequestParam(value = "perPage", required = false, defaultValue = "20") Integer perPage,
-            @RequestParam(value = "providerType", required = false) @Nullable ProviderType providerType
-    ) {
+    @Override
+    public ResponseEntity<DatacenterList> listDatacenters(Integer page, Integer perPage, ProviderType providerType) {
         DatacenterList datacenterList = datacentersService.listDatacenters(page, perPage, providerType);
         return ResponseEntity.ok(datacenterList);
     }
 
-    @PutMapping("/datacenters/{datacenterId}")
-    public ResponseEntity<Datacenter> replaceDatacenter(
-            @NotNull @PathVariable("datacenterId") UUID datacenterId,
-            @Valid @RequestBody DatacenterUpdate datacenterUpdate
-    ) {
+    @Override
+    public ResponseEntity<Datacenter> replaceDatacenter(UUID datacenterId, DatacenterUpdate datacenterUpdate) {
         Datacenter datacenter = datacentersService.replaceDatacenter(datacenterId, datacenterUpdate);
         return ResponseEntity.ok(datacenter);
     }
 
-    @PutMapping("/datacenters/{datacenterId}/settings")
-    public ResponseEntity<DatacenterSettings> replaceDatacenterSettings(
-            @NotNull @PathVariable("datacenterId") UUID datacenterId,
-            @Valid @RequestBody DatacenterSettings datacenterSettings
-    ) {
+    @Override
+    public ResponseEntity<DatacenterSettings> replaceDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
         DatacenterSettings settings = datacentersService.replaceDatacenterSettings(datacenterId, datacenterSettings);
         return ResponseEntity.ok(settings);
     }
 
-    @PatchMapping("/datacenters/{datacenterId}")
-    public ResponseEntity<Datacenter> updateDatacenter(
-            @NotNull @PathVariable("datacenterId") UUID datacenterId,
-            @Valid @RequestBody DatacenterUpdate datacenterUpdate
-    ) {
+    @Override
+    public ResponseEntity<Datacenter> updateDatacenter(UUID datacenterId, DatacenterUpdate datacenterUpdate) {
         Datacenter datacenter = datacentersService.updateDatacenter(datacenterId, datacenterUpdate);
         return ResponseEntity.ok(datacenter);
     }
 
-    @PatchMapping("/datacenters/{datacenterId}/settings")
-    public ResponseEntity<DatacenterSettings> updateDatacenterSettings(
-            @NotNull @PathVariable("datacenterId") UUID datacenterId,
-            @Valid @RequestBody DatacenterSettings datacenterSettings
-    ) {
+    @Override
+    public ResponseEntity<DatacenterSettings> updateDatacenterSettings(UUID datacenterId, DatacenterSettings datacenterSettings) {
         DatacenterSettings settings = datacentersService.updateDatacenterSettings(datacenterId, datacenterSettings);
         return ResponseEntity.ok(settings);
     }
 
-    /**
-     * Update datacenter capacity.
-     */
-    @PutMapping("/datacenters/{datacenterId}/capacity")
-    public ResponseEntity<DatacenterCapacity> updateDatacenterCapacity(
-            @NotNull @PathVariable("datacenterId") UUID datacenterId,
-            @Valid @RequestBody DatacenterCapacity capacity
-    ) {
+    //@PutMapping("/datacenters/{datacenterId}/capacity")
+    public ResponseEntity<DatacenterCapacity> updateDatacenterCapacity(UUID datacenterId, DatacenterCapacity capacity) {
         DatacenterCapacity updated = datacentersService.updateDatacenterCapacity(datacenterId, capacity);
         return ResponseEntity.ok(updated);
     }

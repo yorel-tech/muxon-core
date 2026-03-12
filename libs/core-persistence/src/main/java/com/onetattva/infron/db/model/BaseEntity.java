@@ -3,8 +3,8 @@ package com.onetattva.infron.db.model;
 import com.onetattva.infron.api.model.Link;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
@@ -22,8 +22,7 @@ import java.util.UUID;
 public abstract class BaseEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @UuidGenerator
     private UUID id;
     
     @Column(nullable = false)

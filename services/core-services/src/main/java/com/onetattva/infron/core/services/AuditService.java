@@ -1,7 +1,8 @@
 package com.onetattva.infron.core.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.db.model.AuditLogEntity;
 import com.onetattva.infron.db.model.IdpUserEntity;
 import com.onetattva.infron.db.model.TenantEntity;
@@ -64,7 +65,7 @@ public class AuditService {
                 }
                 try {
                     auditLog.setPayload(objectMapper.writeValueAsString(payload));
-                } catch (JsonProcessingException e) {
+                } catch (JacksonException e) {
                     logger.warn("Failed to serialize audit payload: {}", e.getMessage());
                 }
             }

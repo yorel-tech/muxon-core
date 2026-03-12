@@ -3,7 +3,7 @@ package com.onetattva.infron.core.services;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.api.enums.EntityType;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;

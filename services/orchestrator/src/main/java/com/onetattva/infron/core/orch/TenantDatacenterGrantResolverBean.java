@@ -5,10 +5,10 @@ import com.onetattva.infron.core.providers.TenantDatacenterGrantResolver;
 import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.repository.TenantDatacenterGrantRepository;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -16,12 +16,12 @@ import java.util.UUID;
 /**
  * Resolves the VM provider ID for a tenant datacenter grant by loading grant and datacenter from the database.
  */
-@ApplicationScoped
+@Service
 public class TenantDatacenterGrantResolverBean implements TenantDatacenterGrantResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(TenantDatacenterGrantResolverBean.class);
 
-    @Inject
+    @Autowired
     TenantDatacenterGrantRepository tenantDatacenterGrantRepository;
 
     @Override

@@ -1,3 +1,13 @@
 package com.onetattva.infron.core.orch;
-import io.quarkus.runtime.Quarkus;
-public class OrchestratorApp { public static void main(String[] args){ Quarkus.run(args); } }
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@SpringBootApplication
+@EnableScheduling
+public class OrchestratorApp {
+    public static void main(String[] args) {
+        SpringApplication.run(OrchestratorApp.class, args);
+    }
+}

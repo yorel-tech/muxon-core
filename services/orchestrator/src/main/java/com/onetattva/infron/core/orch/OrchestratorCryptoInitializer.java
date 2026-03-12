@@ -1,29 +1,24 @@
 package com.onetattva.infron.core.orch;
 
 import com.onetattva.infron.core.common.InfronCryptoConfigUtil;
-import io.quarkus.runtime.Startup;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
- * Quarkus-specific initializer for Infron encryption.
+ * Spring Boot initializer for Infron encryption.
  * Initializes EncryptionUtil key at startup using shared crypto logic.
  */
-@ApplicationScoped
-@Startup
+@Component
 public class OrchestratorCryptoInitializer {
 
-    @ConfigProperty(name = "infron.instanceName", defaultValue = "local")
+    @Value("${infron.instanceName:local}")
     String instanceName;
 
-    @ConfigProperty(name = "infron.instanceId", defaultValue = "1")
+    @Value("${infron.instanceId:1}")
     int instanceId;
 
-    public OrchestratorCryptoInitializer() {
-        // default constructor for CDI
-    }
-
-    @jakarta.annotation.PostConstruct
+    @PostConstruct
     void init() {
         InfronCryptoConfigUtil.initEncryptionKey(instanceName, instanceId);
     }

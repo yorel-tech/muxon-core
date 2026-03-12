@@ -1,10 +1,10 @@
 package com.onetattva.infron.core.providers;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
@@ -15,9 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Registry for VM providers.
  * Resolves the provider for a tenant datacenter grant via {@link TenantDatacenterGrantResolver}
- * (database-backed) and caches the result. Provider instances are discovered from the CDI container.
+ * (database-backed) and caches the result. Provider instances are discovered from the Spring container.
  */
-@ApplicationScoped
+@Component
 public class VmProviderRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(VmProviderRegistry.class);
@@ -25,10 +25,10 @@ public class VmProviderRegistry {
 
     private final Map<String, VmProvider> providersById = new ConcurrentHashMap<>();
 
-    @Inject
+    @Autowired
     TenantDatacenterGrantResolver grantResolver;
 
-    @Inject
+    @Autowired
     List<VmProvider> providerBeans;
 
     private static final class CachedEntry {

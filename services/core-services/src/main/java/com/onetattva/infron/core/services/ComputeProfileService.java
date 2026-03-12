@@ -9,7 +9,7 @@ import com.onetattva.infron.api.model.Spec;
 import com.onetattva.infron.db.model.ComputeProfileEntity;
 import com.onetattva.infron.db.repository.ComputeProfileRepository;
 import com.onetattva.infron.db.repository.VmRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;

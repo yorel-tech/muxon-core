@@ -1,6 +1,6 @@
 package com.onetattva.infron.tests.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.tests.InfronEnvironment;
 import io.restassured.response.Response;

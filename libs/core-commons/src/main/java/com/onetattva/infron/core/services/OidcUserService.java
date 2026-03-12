@@ -1,8 +1,8 @@
 package com.onetattva.infron.core.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.core.services.model.OidcUserInfo;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
@@ -46,7 +46,7 @@ public class OidcUserService {
                 userInfos.add(info);
             }
             return userInfos;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to parse users", e);
         }
     }
@@ -74,7 +74,7 @@ public class OidcUserService {
                 return info;
             }
             return null;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to parse user", e);
         }
     }
@@ -99,7 +99,7 @@ public class OidcUserService {
             info.setName(user.get("firstName") != null && user.get("lastName") != null ?
                 user.get("firstName").asText() + " " + user.get("lastName").asText() : null);
             return info;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to parse user", e);
         }
     }
@@ -122,7 +122,7 @@ public class OidcUserService {
             try {
                 JsonNode json = objectMapper.readTree(response.getBody());
                 return json.get("access_token").asText();
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 throw new RuntimeException("Failed to parse token response", e);
             }
         } catch (HttpClientErrorException e) {

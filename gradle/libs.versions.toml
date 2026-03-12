@@ -1,24 +1,28 @@
 [versions]
 java = "25"
-spring-boot = "3.5.6"
-spring-dep-mgmt = "1.1.7"
-springdoc = "2.8.14"
-hibernate-types = "3.12.0"
-quarkus = "3.28.3"
+spring-boot = "4.0.3"
+spring-dep-mgmt = "1.2.0"
+springdoc = "3.0.0"
+hibernate-types = "3.15.2"
+spring-framework = "7.0.5"
 micronaut = "4.8.0"
 micronaut-app = "4.5.5"
-micrometer = "1.15.5"
+micrometer = "1.16.4"
 postgres = "42.7.8"
 flyway = "11.14.1"
 otel = "2.18.1"
 openapi = "7.17.0"
-jackson = "2.18.0"
-spring-web = "6.2.12"
+jackson = "3.1.0"
+jackson-annotations = "2.21"
+spring-web = "7.0.5"
 servlet-api = "6.1.0"
 swagger = "2.2.40"
 libvirt = "0.5.3"
-spring-data-redis = "3.4.1"
+spring-data-redis = "4.0.3"
 lombok = "1.18.38"
+grpc-spring-boot = "4.0.0"
+graalvm-buildtools = "0.10.4"
+spring-cloud = "2025.1.0"
 
 # Plugin versions
 node-gradle = "7.1.0"
@@ -28,12 +32,11 @@ npm = "11.6.2"
 redocly-cli = "2.10.0"
 
 [plugins]
-quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 micronaut-app = { id = "io.micronaut.application", version.ref = "micronaut-app"}
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
-spring-dep-mgmt = { id = "io.spring.dependency-management", version.ref = "spring-dep-mgmt" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi" }
 node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle" }
+graalvm-buildtools = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-buildtools" }
 
 [libraries]
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
@@ -45,26 +48,25 @@ spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis", version.ref = "spring-boot" }
 spring-boot-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring-boot" }
 springdoc-openapi-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
-vladmihalcea-hibernate-types = { module = "io.hypersistence:hypersistence-utils-hibernate-63", version.ref = "hibernate-types" }
+vladmihalcea-hibernate-types = { module = "io.hypersistence:hypersistence-utils-hibernate-71", version.ref = "hibernate-types" }
 
-jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson-annotations" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+spring-boot-devtools = { module = "org.springframework.boot:spring-boot-devtools", version.ref = "spring-boot" }
 spring-web = { module = "org.springframework:spring-web", version.ref = "spring-web" }
 servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "servlet-api" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
+# gRPC
+grpc-spring-boot-starter = { module = "org.springframework.grpc:spring-grpc-spring-boot-starter", version = "1.0.0" }
+
+# OpenTelemetry & Micrometer
+micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel", version = "1.4.0" }
+opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version = "1.46.0" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
-
-# Quarkus
-quarkus-bom = { module = "io.quarkus:quarkus-bom", version.ref = "quarkus" }
-quarkus-grpc = { module = "io.quarkus:quarkus-grpc" }
-quarkus-opentelemetry = { module = "io.quarkus:quarkus-opentelemetry" }
-quarkus-arc = { module = "io.quarkus:quarkus-arc" }
-quarkus-spring-di = { module = "io.quarkus:quarkus-spring-di" }
-quarkus-scheduler = { module = "io.quarkus:quarkus-scheduler" }
-quarkus-redis-client = { module = "io.quarkus:quarkus-redis-client" }
 
 # Micronaut
 micronaut-bom = { module = "io.micronaut:micronaut-bom", version.ref = "micronaut" }
@@ -73,9 +75,12 @@ micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus
 libvirt = { module = "org.libvirt:libvirt", version.ref = "libvirt" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.7" }
 spring-data-redis = { module = "org.springframework.data:spring-data-redis", version.ref = "spring-data-redis" }
-spring-cloud-gateway = { module = "org.springframework.cloud:spring-cloud-starter-gateway", version = "4.3.2" }
+spring-cloud-gateway = { module = "org.springframework.cloud:spring-cloud-starter-gateway", version.ref = "spring-cloud" }
 fasterxml-uuid = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.1.0" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+# Spring Boot 4 OTEL starter
+spring-boot-starter-otel = { module = "org.springframework.boot:spring-boot-starter-otel", version.ref = "spring-boot" }
 
 
 [bundles]

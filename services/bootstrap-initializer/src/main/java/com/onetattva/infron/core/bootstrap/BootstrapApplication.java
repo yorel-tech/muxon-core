@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.bootstrap;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 import com.onetattva.infron.api.enums.BootstrapStatus;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.common.EncryptionUtil;
@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -43,8 +43,9 @@ import static com.onetattva.infron.core.common.Constants.BOOTSTRAP_STATUS_KEY;
 @EnableJpaRepositories(basePackages = "com.onetattva.infron.db.repository")
 public class BootstrapApplication implements CommandLineRunner {
 
-    private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory())
-            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper yamlMapper = YAMLMapper.builder()
+            .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     @Autowired
     private IdentityProviderRepository identityProviderRepository;
@@ -125,12 +126,13 @@ public class BootstrapApplication implements CommandLineRunner {
         }
 
         // Load initial config to set system properties for Spring Boot
-        ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory())
-                .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectMapper yamlMapper = YAMLMapper.builder()
+                .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .build();
         BootstrapConfig config;
         try {
             config = yamlMapper.readValue(new File(configPath), BootstrapConfig.class);
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Failed to load initial config: " + e.getMessage());
             System.exit(1);
             return;

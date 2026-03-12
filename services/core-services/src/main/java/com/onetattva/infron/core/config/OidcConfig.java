@@ -1,7 +1,6 @@
 package com.onetattva.infron.core.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.core.services.OidcUserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,9 +11,8 @@ public class OidcConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        return mapper;
+        // Jackson 3 has built-in Java 8 date/time support, no module registration needed
+        return new ObjectMapper();
     }
 
     @Bean

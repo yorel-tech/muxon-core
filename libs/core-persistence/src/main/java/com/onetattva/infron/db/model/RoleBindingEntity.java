@@ -7,7 +7,7 @@ import com.onetattva.infron.api.enums.RoleBindingSubjectType;
 import com.onetattva.infron.api.enums.RoleScopeType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
+import org.hibernate.dialect.type.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
 import java.util.UUID;
