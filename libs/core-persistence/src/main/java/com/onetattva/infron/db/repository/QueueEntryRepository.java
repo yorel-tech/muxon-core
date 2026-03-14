@@ -8,8 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -105,8 +107,10 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
     /**
      * Mark an entry as failed with error message
      */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
     @Query("UPDATE QueueEntryEntity q SET q.status = 'FAILED', q.errorMessage = :errorMessage, q.processedAt = :processedAt WHERE q.id = :id")
-    void markFailed(
+    int markFailed(
         @Param("id") UUID id,
         @Param("errorMessage") String errorMessage,
         @Param("processedAt") Instant processedAt
@@ -115,8 +119,10 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
     /**
      * Mark an entry as completed
      */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
     @Query("UPDATE QueueEntryEntity q SET q.status = 'COMPLETED', q.processedAt = :processedAt WHERE q.id = :id")
-    void markCompleted(
+    int markCompleted(
         @Param("id") UUID id,
         @Param("processedAt") Instant processedAt
     );

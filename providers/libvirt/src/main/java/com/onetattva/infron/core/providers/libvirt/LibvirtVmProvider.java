@@ -31,7 +31,7 @@ public class LibvirtVmProvider implements VmProvider {
     /**
      * Creates a new Libvirt VM provider instance.
      *
-     * @param node The node specification containing hypervisor configuration
+     * @param node The node specification containing hypervisor configurationawa
      */
     public LibvirtVmProvider(NodeSpec node) {
         this.node = node;
