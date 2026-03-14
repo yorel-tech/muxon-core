@@ -3,7 +3,7 @@ package com.onetattva.infron.core.services;
 import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,8 @@ public class QueueProducer {
      * Emit a command event to the queue
      */
     @Transactional
-    public QueueEntry emitCommand(String queueType, EntityType entityType, UUID entityId,
-                                  Map<String, Object> payload, String correlationId, String requestId) {
+    public QueueEntryEntity emitCommand(String queueType, EntityType entityType, UUID entityId,
+                                        Map<String, Object> payload, String correlationId, String requestId) {
         return emitQueueEntry(queueType, entityType, entityId, QueueCategory.COMMAND,
                 payload, correlationId, requestId);
     }
@@ -37,8 +37,8 @@ public class QueueProducer {
      * Emit a status event to the queue
      */
     @Transactional
-    public QueueEntry emitStatus(String queueType, EntityType entityType, UUID entityId,
-                                 Map<String, Object> payload, String correlationId, String requestId) {
+    public QueueEntryEntity emitStatus(String queueType, EntityType entityType, UUID entityId,
+                                       Map<String, Object> payload, String correlationId, String requestId) {
         return emitQueueEntry(queueType, entityType, entityId, QueueCategory.STATUS,
                 payload, correlationId, requestId);
     }
@@ -47,8 +47,8 @@ public class QueueProducer {
      * Emit an audit event to the queue
      */
     @Transactional
-    public QueueEntry emitAudit(String queueType, EntityType entityType, UUID entityId,
-                                Map<String, Object> payload, String correlationId, String requestId) {
+    public QueueEntryEntity emitAudit(String queueType, EntityType entityType, UUID entityId,
+                                      Map<String, Object> payload, String correlationId, String requestId) {
         return emitQueueEntry(queueType, entityType, entityId, QueueCategory.AUDIT,
                 payload, correlationId, requestId);
     }
@@ -57,12 +57,12 @@ public class QueueProducer {
      * Emit a queue entry with actor information
      */
     @Transactional
-    public QueueEntry emitWithActor(String queueType, EntityType entityType, UUID entityId,
-                                    QueueCategory category, Map<String, Object> payload,
-                                    UUID actorUserId, String actorService, String actorType,
-                                    String correlationId, String requestId) {
+    public QueueEntryEntity emitWithActor(String queueType, EntityType entityType, UUID entityId,
+                                          QueueCategory category, Map<String, Object> payload,
+                                          UUID actorUserId, String actorService, String actorType,
+                                          String correlationId, String requestId) {
 
-        QueueEntry entry = new QueueEntry();
+        QueueEntryEntity entry = new QueueEntryEntity();
         entry.setQueueType(queueType);
         entry.setEntityType(entityType);
         entry.setEntityId(entityId);
@@ -83,11 +83,11 @@ public class QueueProducer {
     /**
      * Internal method to emit a queue entry
      */
-    private QueueEntry emitQueueEntry(String queueType, EntityType entityType, UUID entityId,
-                                      QueueCategory category, Map<String, Object> payload,
-                                      String correlationId, String requestId) {
+    private QueueEntryEntity emitQueueEntry(String queueType, EntityType entityType, UUID entityId,
+                                            QueueCategory category, Map<String, Object> payload,
+                                            String correlationId, String requestId) {
 
-        QueueEntry entry = new QueueEntry();
+        QueueEntryEntity entry = new QueueEntryEntity();
         entry.setQueueType(queueType);
         entry.setEntityType(entityType);
         entry.setEntityId(entityId);

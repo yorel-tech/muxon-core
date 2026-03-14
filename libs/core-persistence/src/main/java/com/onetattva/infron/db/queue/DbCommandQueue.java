@@ -4,7 +4,7 @@ import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,21 +28,21 @@ public class DbCommandQueue implements CommandQueue {
     @Override
     @Transactional
     public UUID sendCommand(CommandMessage command) {
-        QueueEntry entry = QueueEntryMapper.toQueueEntry(command);
-        QueueEntry saved = repository.save(entry);
+        QueueEntryEntity entry = QueueEntryMapper.toQueueEntry(command);
+        QueueEntryEntity saved = repository.save(entry);
         return saved.getId();
     }
 
     @Override
     @Transactional
     public List<CommandMessage> pollCommands(EntityType entityType, int limit) {
-        List<QueueEntry> entries = repository.findPendingByEntityTypeForUpdate(
+        List<QueueEntryEntity> entries = repository.findPendingByEntityTypeForUpdate(
             entityType,
             QueueStatus.PENDING,
             PageRequest.of(0, limit)
         );
         Instant now = Instant.now();
-        for (QueueEntry entry : entries) {
+        for (QueueEntryEntity entry : entries) {
             entry.setStatus(QueueStatus.PROCESSING);
             entry.setProcessedAt(now);
         }
@@ -77,8 +77,8 @@ public class DbCommandQueue implements CommandQueue {
     @Transactional
     public int resetStalledEntries(int staleThresholdMinutes) {
         Instant cutoff = Instant.now().minusSeconds(staleThresholdMinutes * 60L);
-        List<QueueEntry> stalled = repository.findStaleProcessingEntries(cutoff);
-        for (QueueEntry entry : stalled) {
+        List<QueueEntryEntity> stalled = repository.findStaleProcessingEntries(cutoff);
+        for (QueueEntryEntity entry : stalled) {
             entry.setStatus(QueueStatus.PENDING);
             entry.setProcessedAt(null);
             entry.setErrorMessage(null);

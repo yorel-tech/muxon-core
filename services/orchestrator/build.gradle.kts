@@ -6,13 +6,18 @@ dependencies {
     implementation(project(":libs:core-commons"))
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-persistence"))
-    implementation(project(":libs:core-spi"))
     implementation(project(":libs:core-provider"))
+    
+    // Provider modules
+    implementation(project(":providers:mock"))
+    implementation(project(":providers:libvirt"))
+    implementation(project(":providers:proxmox"))
     
     // Spring Boot starters
     implementation(libs.bundles.spring.boot.starter)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.data.redis)
+    implementation(libs.postgresql)
     
     // gRPC
     implementation(libs.grpc.spring.boot.starter)

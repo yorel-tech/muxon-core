@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     api(libs.spring.boot.starter.data.jpa)
-    api(project(":libs:core-spi"))
+    api(project(":libs:core-provider"))
     compileOnly(libs.swagger.annotations)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

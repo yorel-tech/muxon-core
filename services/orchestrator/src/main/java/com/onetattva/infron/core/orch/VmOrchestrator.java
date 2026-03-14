@@ -3,7 +3,7 @@ package com.onetattva.infron.core.orch;
 import com.onetattva.infron.core.providers.VmCreationRequest;
 import com.onetattva.infron.core.providers.VmCreationResult;
 import com.onetattva.infron.core.providers.VmProvider;
-import com.onetattva.infron.core.providers.VmProviderRegistry;
+import com.onetattva.infron.core.providers.TenantAwareVmProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.EventPublisher;
@@ -45,7 +45,7 @@ public class VmOrchestrator {
     private VmRepository vmRepository;
 
     @Autowired
-    private VmProviderRegistry providerRegistry;
+    private TenantAwareVmProviderRegistry providerRegistry;
 
     /**
      * Scheduled task to poll for pending VM command queue entries
@@ -135,7 +135,7 @@ public class VmOrchestrator {
                 "after_status", VmStatus.PLANNED.toString()
         ));
 
-        VmProvider provider = providerRegistry.getProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
+        VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
                 .orElseThrow(() -> new RuntimeException("No provider available for datacenter"));
 
         String specJson = vm.getSpec();

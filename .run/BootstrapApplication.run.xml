@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="BootstrapApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+    <module name="infron-core.services.bootstrap-initializer.main" />
+    <option name="PROGRAM_PARAMETERS" value="--initial-config $PROJECT_DIR$/services/bootstrap-initializer/src/main/resources/initial-config.yaml --output-folder $PROJECT_DIR$/services/core-services/src/main/resources --infron-passphrase $USER_HOME$/.secrets/passphrase --infron-oidc-secret $USER_HOME$/.secrets/infron-oidc-secret --infron-db-password $USER_HOME$/.secrets/passphrase" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.onetattva.infron.core.bootstrap.BootstrapApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

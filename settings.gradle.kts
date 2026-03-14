@@ -5,7 +5,6 @@ include(
     "libs:core-persistence",
     "libs:core-proto",
     "libs:core-auth",
-    "libs:core-spi",
     "libs:core-commons",
     "libs:core-provider",
     "services:auth-api",

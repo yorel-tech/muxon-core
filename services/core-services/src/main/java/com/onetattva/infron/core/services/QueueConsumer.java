@@ -2,7 +2,7 @@ package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.QueueStatus;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -33,9 +33,9 @@ public class QueueConsumer {
      * @return List of pending queue entries
      */
     @Transactional
-    public List<QueueEntry> poll(EntityType entityType, String queueType, int limit) {
+    public List<QueueEntryEntity> poll(EntityType entityType, String queueType, int limit) {
         PageRequest pageRequest = PageRequest.of(0, limit);
-        Page<QueueEntry> page;
+        Page<QueueEntryEntity> page;
 
         if (entityType != null && queueType != null) {
             page = queueEntryRepository.findByEntityTypeAndQueueType(
@@ -48,8 +48,8 @@ public class QueueConsumer {
         }
 
         // Mark entries as processing
-        List<QueueEntry> entries = page.getContent();
-        for (QueueEntry entry : entries) {
+        List<QueueEntryEntity> entries = page.getContent();
+        for (QueueEntryEntity entry : entries) {
             entry.setStatus(QueueStatus.PROCESSING);
             entry.setProcessedAt(Instant.now());
         }
@@ -69,9 +69,9 @@ public class QueueConsumer {
      * @return List of pending queue entries
      */
     @Transactional
-    public List<QueueEntry> pollByCorrelationId(String correlationId, int limit) {
+    public List<QueueEntryEntity> pollByCorrelationId(String correlationId, int limit) {
         // Note: findByCorrelationId returns List, not Page
-        List<QueueEntry> entries = queueEntryRepository.findByCorrelationId(correlationId);
+        List<QueueEntryEntity> entries = queueEntryRepository.findByCorrelationId(correlationId);
         return entries.stream().limit(limit).toList();
     }
 
@@ -83,7 +83,7 @@ public class QueueConsumer {
      * @return List of queue entries
      */
     @Transactional
-    public List<QueueEntry> getEntriesForEntity(EntityType entityType, UUID entityId) {
+    public List<QueueEntryEntity> getEntriesForEntity(EntityType entityType, UUID entityId) {
         return queueEntryRepository.findByEntityId(entityId);
     }
 
@@ -114,7 +114,7 @@ public class QueueConsumer {
      * @return List of stalled entries
      */
     @Transactional
-    public List<QueueEntry> getStalledEntries(int stallThresholdMinutes) {
+    public List<QueueEntryEntity> getStalledEntries(int stallThresholdMinutes) {
         Instant threshold = Instant.now().minusSeconds(stallThresholdMinutes * 60L);
         return queueEntryRepository.findStalePendingEntries(threshold);
     }
@@ -123,8 +123,8 @@ public class QueueConsumer {
      * Reset stalled entries to pending for retry
      */
     @Transactional
-    public void resetStalledEntries(List<QueueEntry> stalled) {
-        for (QueueEntry entry : stalled) {
+    public void resetStalledEntries(List<QueueEntryEntity> stalled) {
+        for (QueueEntryEntity entry : stalled) {
             entry.setStatus(QueueStatus.PENDING);
             entry.setProcessedAt(null);
         }
@@ -136,7 +136,7 @@ public class QueueConsumer {
     /**
      * Get queue entry by ID
      */
-    public QueueEntry getEntry(UUID entryId) {
+    public QueueEntryEntity getEntry(UUID entryId) {
         return queueEntryRepository.findById(entryId).orElse(null);
     }
 }

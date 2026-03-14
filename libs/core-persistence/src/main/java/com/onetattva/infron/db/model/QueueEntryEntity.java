@@ -16,7 +16,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "queue_entry")
-public class QueueEntry {
+public class QueueEntryEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -94,7 +94,7 @@ public class QueueEntry {
     private String errorMessage;
 
     // Constructors
-    public QueueEntry() {
+    public QueueEntryEntity() {
     }
 
     // Getters and setters

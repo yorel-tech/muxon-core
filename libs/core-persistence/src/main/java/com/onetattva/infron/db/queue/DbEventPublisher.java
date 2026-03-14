@@ -4,7 +4,7 @@ import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.EventPublisher;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +29,7 @@ public class DbEventPublisher implements EventPublisher {
     @Override
     @Transactional
     public void publishEvent(EntityType entityType, UUID entityId, String eventType, Map<String, Object> payload) {
-        QueueEntry entry = new QueueEntry();
+        QueueEntryEntity entry = new QueueEntryEntity();
         entry.setQueueType(eventType);
         entry.setEntityType(entityType);
         entry.setEntityId(entityId);

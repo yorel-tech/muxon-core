@@ -1,9 +1,7 @@
 package com.onetattva.infron.core.providers;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,78 +11,45 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Registry for VM providers.
- * Resolves the provider for a tenant datacenter grant via {@link TenantDatacenterGrantResolver}
- * (database-backed) and caches the result. Provider instances are discovered from the Spring container.
+ * Simplified registry for VM providers.
+ * This is a basic interface that can be extended by the orchestrator service
+ * to provide tenant datacenter grant resolution and caching.
  */
 @Component
 public class VmProviderRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(VmProviderRegistry.class);
-    private static final long CACHE_TTL_MS = 300_000L; // 5 minutes
-
+    
     private final Map<String, VmProvider> providersById = new ConcurrentHashMap<>();
 
-    @Autowired
-    TenantDatacenterGrantResolver grantResolver;
-
-    @Autowired
-    List<VmProvider> providerBeans;
-
-    private static final class CachedEntry {
-        final Optional<VmProvider> provider;
-        final long expireAt;
-
-        CachedEntry(Optional<VmProvider> provider, long expireAt) {
-            this.provider = provider;
-            this.expireAt = expireAt;
-        }
-    }
-
-    private final Map<UUID, CachedEntry> cache = new ConcurrentHashMap<>();
-
-    @PostConstruct
-    void init() {
-        if (providerBeans != null) {
-            for (VmProvider p : providerBeans) {
-                String id = p.id();
-                if (id != null) {
-                    providersById.put(id, p);
-                    logger.info("Registered VM provider: {} - {}", id, p.description());
-                }
-            }
+    public VmProviderRegistry(List<VmProvider> providerBeans) {
+        for (VmProvider provider : providerBeans) {
+            providersById.put(provider.id(), provider);
+            logger.info("Registered VmProvider: {} ({})", provider.id(), provider.description());
         }
     }
 
     /**
-     * Get provider for a specific tenant datacenter grant.
-     * Uses the resolver to load grant/datacenter from the database and caches the result.
+     * Get a provider by ID.
+     * 
+     * @param providerId the provider ID
+     * @return the provider if found
      */
-    public Optional<VmProvider> getProviderForTenantDatacenter(UUID tenantDatacenterGrantId) {
-        if (providersById.isEmpty()) {
+    public Optional<VmProvider> getProvider(String providerId) {
+        VmProvider provider = providersById.get(providerId);
+        if (provider == null) {
+            logger.warn("VmProvider not found for id: {}", providerId);
             return Optional.empty();
         }
-
-        long now = System.currentTimeMillis();
-        CachedEntry entry = cache.get(tenantDatacenterGrantId);
-        if (entry != null && entry.expireAt > now) {
-            return entry.provider;
-        }
-
-        Optional<String> providerIdOpt = grantResolver.resolveProviderId(tenantDatacenterGrantId);
-        Optional<VmProvider> result = providerIdOpt.flatMap(this::getProvider);
-        cache.put(tenantDatacenterGrantId, new CachedEntry(result, now + CACHE_TTL_MS));
-
-        if (result.isEmpty() && providerIdOpt.isEmpty()) {
-            logger.warn("No tenant datacenter grant or provider linked for grant ID: {}", tenantDatacenterGrantId);
-        } else if (result.isEmpty()) {
-            logger.warn("Provider ID resolved but no VM provider registered for ID: {}", providerIdOpt.get());
-        }
-
-        return result;
+        return Optional.of(provider);
     }
 
-    private Optional<VmProvider> getProvider(String providerId) {
-        return Optional.ofNullable(providersById.get(providerId));
+    /**
+     * Get all registered providers.
+     * 
+     * @return all providers
+     */
+    public Map<String, VmProvider> getAllProviders() {
+        return Map.copyOf(providersById);
     }
 }

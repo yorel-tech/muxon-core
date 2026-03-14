@@ -3,11 +3,10 @@ package com.onetattva.infron.db.queue;
 import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
-import com.onetattva.infron.db.model.QueueEntry;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Maps between QueueEntry (JPA) and CommandMessage (transport-agnostic DTO).
@@ -19,7 +18,7 @@ public final class QueueEntryMapper {
     private QueueEntryMapper() {
     }
 
-    public static CommandMessage toCommandMessage(QueueEntry entry) {
+    public static CommandMessage toCommandMessage(QueueEntryEntity entry) {
         if (entry == null) {
             return null;
         }
@@ -40,11 +39,11 @@ public final class QueueEntryMapper {
             .build();
     }
 
-    public static QueueEntry toQueueEntry(CommandMessage msg) {
+    public static QueueEntryEntity toQueueEntry(CommandMessage msg) {
         if (msg == null) {
             return null;
         }
-        QueueEntry entry = new QueueEntry();
+        QueueEntryEntity entry = new QueueEntryEntity();
         if (msg.id() != null) {
             entry.setId(msg.id());
         }
