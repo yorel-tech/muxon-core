@@ -66,6 +66,7 @@ grpc-spring-boot-starter = { module = "org.springframework.grpc:spring-grpc-spri
 micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel", version = "1.4.0" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version = "1.46.0" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway", version.ref = "spring-boot" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
@@ -88,4 +89,4 @@ spring-boot-starter-otel = { module = "org.springframework.boot:spring-boot-star
 [bundles]
 spring-boot-starter = ["spring-boot-starter-web", "spring-boot-starter-security", "spring-boot-starter-oauth2-resource-server",
     "spring-boot-starter-actuator", "springdoc-openapi-webmvc-ui"]
-spring-boot-jdbc = ["spring-boot-starter-jdbc", "postgresql", "flyway-core", "flyway-postgres"]
+spring-boot-jdbc = ["spring-boot-starter-jdbc", "postgresql", "spring-boot-starter-flyway", "flyway-postgres"]

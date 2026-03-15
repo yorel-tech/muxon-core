@@ -58,7 +58,9 @@ public final class QueueEntryMapper {
         entry.setActorType(msg.actorType());
         entry.setActorUserId(msg.actorUserId());
         entry.setActorService(msg.actorService());
-        entry.setCreatedAt(msg.createdAt() != null ? msg.createdAt() : Instant.now());
+        Instant now = Instant.now();
+        entry.setCreatedAt(msg.createdAt() != null ? msg.createdAt() : now);
+        entry.setUpdatedAt(now);
         entry.setRequestId(msg.requestId());
         entry.setCorrelationId(msg.correlationId());
         entry.setVersion(DEFAULT_VERSION);

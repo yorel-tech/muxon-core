@@ -88,3 +88,79 @@ Public key goes to the libvirt server's ~/.ssh/authorized_keys file
 Private key is registered with Infron via the API
 Infron uses the private key to authenticate via SSH when managing VMs
 No password is needed after initial setup
+
+---
+
+## Local QEMU/Libvirt (no SSH)
+
+For development or when Libvirt runs on the same host as Infron, use the **direct socket** URI so no SSH or SSH server is required.
+
+**Error you avoid:**  
+`Cannot recv data: ssh: connect to host 127.0.0.1 port 22: Connection refused`  
+That happens when the app uses `qemu+ssh://user@127.0.0.1/system` but no SSH server is listening.
+
+**Fix:** Use the local Libvirt URI via **node** credentials.
+
+1. Create the Libvirt provider as usual (endpoint can be e.g. `libvirt://localhost`). The API still requires provider credentials to include `sshPrivateKey`; for local-only you can use any placeholder (e.g. a minimal PEM string) since the node’s `uri` will be used instead of SSH.
+2. When creating the **node** for that provider, set node credentials to use the direct URI:
+
+   ```json
+   {
+     "uri": "qemu:///system"
+   }
+   ```
+
+   If the node already exists, update it so its credentials include `"uri": "qemu:///system"`.
+
+Infron will then connect with `qemu:///system` (Unix socket to local libvirtd) instead of `qemu+ssh://user@host/system`.
+
+---
+
+## Debugging local QEMU/Libvirt
+
+### 1. Check libvirtd is running
+
+```bash
+sudo systemctl status libvirtd
+# or
+sudo systemctl status libvirt
+```
+
+Start if needed:
+
+```bash
+sudo systemctl start libvirtd
+```
+
+### 2. Test connection with virsh
+
+```bash
+virsh -c qemu:///system list --all
+```
+
+If this works, the same URI will work from Infron (with node credentials `{"uri": "qemu:///system"}`).
+
+### 3. Permission / group
+
+Your process (e.g. the user running the Infron app) must be in the `libvirt` group to use the default socket:
+
+```bash
+groups
+# add if missing:
+sudo usermod -aG libvirt $USER
+# then log out and back in (or new shell)
+```
+
+### 4. KVM availability (for full virtualization)
+
+```bash
+# Optional: check KVM module
+lsmod | grep kvm
+# Optional: /dev/kvm present
+ls -la /dev/kvm
+```
+
+### 5. What Infron uses
+
+- **Remote:** node credentials `host` + `user` → URI `qemu+ssh://user@host/system` (requires SSH on the host).
+- **Local:** node credentials `uri` → that value used as-is (e.g. `qemu:///system`). No SSH.

@@ -53,8 +53,21 @@ public class LibvirtConnectionManager {
             connectionPool.remove(key);
         }
 
-        logger.debug("Creating new Libvirt connection for URI: {}", uri);
-        Connect conn = new Connect(uri);
+        // Allow custom certificate path via environment variable or URI parameter
+        String connectUri = uri;
+//        String customCertPath = System.getenv("LIBVIRT_CERT_PATH");
+//        if (customCertPath != null && !customCertPath.isEmpty()) {
+//            // Append pkipath parameter if not already present
+//            if (connectUri.contains("?")) {
+//                connectUri += "&pkipath=" + customCertPath;
+//            } else {
+//                connectUri += "?pkipath=" + customCertPath;
+//            }
+//            logger.debug("Using custom certificate path: {}", customCertPath);
+//        }
+
+        logger.debug("Creating new Libvirt connection for URI: {}", connectUri);
+        Connect conn = new Connect(connectUri);
         connectionPool.put(key, conn);
         return conn;
     }

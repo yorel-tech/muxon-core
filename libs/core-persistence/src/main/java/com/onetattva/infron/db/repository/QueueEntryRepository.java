@@ -109,7 +109,7 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("UPDATE QueueEntryEntity q SET q.status = 'FAILED', q.errorMessage = :errorMessage, q.processedAt = :processedAt WHERE q.id = :id")
+    @Query("UPDATE QueueEntryEntity q SET q.status = 'FAILED', q.errorMessage = :errorMessage, q.processedAt = :processedAt, q.updatedAt = :processedAt WHERE q.id = :id")
     int markFailed(
         @Param("id") UUID id,
         @Param("errorMessage") String errorMessage,
@@ -121,7 +121,7 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("UPDATE QueueEntryEntity q SET q.status = 'COMPLETED', q.processedAt = :processedAt WHERE q.id = :id")
+    @Query("UPDATE QueueEntryEntity q SET q.status = 'COMPLETED', q.processedAt = :processedAt, q.updatedAt = :processedAt WHERE q.id = :id")
     int markCompleted(
         @Param("id") UUID id,
         @Param("processedAt") Instant processedAt

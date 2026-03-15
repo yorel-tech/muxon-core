@@ -45,6 +45,7 @@ public class DbCommandQueue implements CommandQueue {
         for (QueueEntryEntity entry : entries) {
             entry.setStatus(QueueStatus.PROCESSING);
             entry.setProcessedAt(now);
+            entry.setUpdatedAt(now);
         }
         if (!entries.isEmpty()) {
             repository.saveAll(entries);
@@ -78,10 +79,12 @@ public class DbCommandQueue implements CommandQueue {
     public int resetStalledEntries(int staleThresholdMinutes) {
         Instant cutoff = Instant.now().minusSeconds(staleThresholdMinutes * 60L);
         List<QueueEntryEntity> stalled = repository.findStaleProcessingEntries(cutoff);
+        Instant now = Instant.now();
         for (QueueEntryEntity entry : stalled) {
             entry.setStatus(QueueStatus.PENDING);
             entry.setProcessedAt(null);
             entry.setErrorMessage(null);
+            entry.setUpdatedAt(now);
         }
         if (!stalled.isEmpty()) {
             repository.saveAll(stalled);

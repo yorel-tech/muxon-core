@@ -59,8 +59,22 @@ public class LibvirtVmProvider implements VmProvider {
             Connect connection = null;
             try {
                 connection = connectionManager.getConnection();
-                // Convert VmSpec to Libvirt XML
-                String domainXml = LibvirtXmlBuilder.buildDomainXml(request.vmId(), request.spec());
+
+                // Create the disk image in the default storage pool before defining the domain
+                String diskPath = createDiskVolume(connection, request.vmId(), request.spec());
+                if (diskPath == null) {
+                    return VmCreationResult.failure(
+                            ProviderError.builder()
+                                    .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                                    .message("Failed to create disk image in storage pool")
+                                    .providerErrorCode("LIBVIRT_STORAGE_ERROR")
+                                    .retryable(false)
+                                    .build()
+                    );
+                }
+
+                // Convert VmSpec to Libvirt XML using the actual disk path
+                String domainXml = LibvirtXmlBuilder.buildDomainXml(request.vmId(), request.spec(), diskPath);
 
                 logger.debug("Libvirt domain XML for VM {}: {}", request.vmId(), domainXml);
 
@@ -102,6 +116,52 @@ public class LibvirtVmProvider implements VmProvider {
                 }
             }
         });
+    }
+
+    /**
+     * Creates a qcow2 disk volume in the default libvirt storage pool and returns its path.
+     * The pool must exist (e.g. "default" dir pool at /var/lib/libvirt/images).
+     *
+     * @param connection Active libvirt connection
+     * @param vmId VM UUID
+     * @param spec VM spec (disk size could be parsed from here in the future)
+     * @return Absolute path to the created volume, or null on failure
+     */
+    private String createDiskVolume(Connect connection, UUID vmId, String spec) {
+        StoragePool pool = null;
+        StorageVol vol = null;
+        try {
+            pool = connection.storagePoolLookupByName("default");
+            if (pool.isActive() == 0) {
+                pool.create(0);
+            }
+            String volName = "vm-" + vmId + ".qcow2";
+            long capacityGib = LibvirtXmlBuilder.DEFAULT_DISK_CAPACITY_GIB;
+            // TODO: parse spec JSON for disk size when needed
+            String volXml = LibvirtXmlBuilder.buildVolumeXml(volName, capacityGib);
+            vol = pool.storageVolCreateXML(volXml, 0);
+            String path = vol.getPath();
+            logger.debug("Created disk volume {} for VM {} at {}", volName, vmId, path);
+            return path;
+        } catch (LibvirtException e) {
+            logger.error("Failed to create disk volume for VM {}: {}", vmId, e.getMessage(), e);
+            return null;
+        } finally {
+            if (vol != null) {
+                try {
+                    vol.free();
+                } catch (LibvirtException e) {
+                    logger.warn("Error freeing volume: {}", e.getMessage());
+                }
+            }
+            if (pool != null) {
+                try {
+                    pool.free();
+                } catch (LibvirtException e) {
+                    logger.warn("Error freeing pool: {}", e.getMessage());
+                }
+            }
+        }
     }
 
     @Override

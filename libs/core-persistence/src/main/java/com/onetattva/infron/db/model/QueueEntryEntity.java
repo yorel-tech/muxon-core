@@ -90,6 +90,9 @@ public class QueueEntryEntity {
     @Column(name = "updated_by", nullable = true)
     private UUID updatedBy;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Column(name = "error_message", nullable = true)
     private String errorMessage;
 
@@ -248,6 +251,14 @@ public class QueueEntryEntity {
 
     public void setUpdatedBy(UUID updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public String getErrorMessage() {

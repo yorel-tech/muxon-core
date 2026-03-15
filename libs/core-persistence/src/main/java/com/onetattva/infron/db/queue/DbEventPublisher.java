@@ -39,6 +39,7 @@ public class DbEventPublisher implements EventPublisher {
         entry.setActorType("SYSTEM");
         entry.setSource("orchestrator");
         entry.setCreatedAt(Instant.now());
+        entry.setUpdatedAt(Instant.now());
         entry.setVersion(DEFAULT_VERSION);
         repository.save(entry);
     }

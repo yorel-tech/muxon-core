@@ -76,6 +76,7 @@ public class QueueProducer {
         entry.setCorrelationId(correlationId);
         entry.setRequestId(requestId);
         entry.setCreatedAt(Instant.now());
+        entry.setUpdatedAt(Instant.now());
 
         return queueEntryRepository.save(entry);
     }
@@ -99,6 +100,7 @@ public class QueueProducer {
         entry.setCorrelationId(correlationId);
         entry.setRequestId(requestId);
         entry.setCreatedAt(Instant.now());
+        entry.setUpdatedAt(Instant.now());
 
         return queueEntryRepository.save(entry);
     }
@@ -111,6 +113,7 @@ public class QueueProducer {
         queueEntryRepository.findById(entryId).ifPresent(entry -> {
             entry.setStatus(QueueStatus.COMPLETED);
             entry.setProcessedAt(Instant.now());
+            entry.setUpdatedAt(Instant.now());
             queueEntryRepository.save(entry);
         });
     }
@@ -123,6 +126,7 @@ public class QueueProducer {
         queueEntryRepository.findById(entryId).ifPresent(entry -> {
             entry.setStatus(QueueStatus.FAILED);
             entry.setProcessedAt(Instant.now());
+            entry.setUpdatedAt(Instant.now());
             entry.setErrorMessage(errorMessage);
             // Note: errorDetails could be stored in metadata if needed
             if (errorDetails != null) {
