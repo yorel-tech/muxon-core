@@ -1,0 +1,15 @@
+package com.onetattva.infron.core.providers.storage;
+
+public record BucketOperationResult(
+    boolean success,
+    String message,
+    String errorCode
+) {
+    public static BucketOperationResult success() {
+        return new BucketOperationResult(true, null, null);
+    }
+
+    public static BucketOperationResult failure(String message, String errorCode) {
+        return new BucketOperationResult(false, message, errorCode);
+    }
+}
