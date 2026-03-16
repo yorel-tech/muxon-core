@@ -2,8 +2,6 @@ package com.onetattva.infron.core.providers;
 
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.providers.libvirt.LibvirtVmProvider;
-import com.onetattva.infron.core.providers.spec.NodeSpec;
-import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.NodeRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
@@ -116,34 +114,7 @@ public class TenantAwareVmProviderRegistry {
 
         return switch (type) {
             case LIBVIRT -> {
-                // Find the associated node for libvirt provider
-                List<NodeEntity> nodes = nodeRepository.findByProviderId(providerUuid);
-                if (nodes.isEmpty()) {
-                    logger.warn("No nodes found for libvirt provider {}", providerUuid);
-                    yield Optional.empty();
-                }
-                NodeEntity node = nodes.get(0); // Libvirt providers have one node
-                
-                // Build Libvirt connection URI (local qemu:///system or qemu+ssh from credentials)
-                String libvirtUri = buildLibvirtUriFromCredentials(node);
-
-                NodeSpec nodeSpec = NodeSpec.builder()
-                        .id(node.getId())
-                        .name(node.getName())
-                        .externalId(node.getExternalId())
-                        .endpoint(libvirtUri)
-                        .role(node.getRole())
-                        .cpuTotal(node.getCpuTotal())
-                        .memMb(node.getMemMb())
-                        .status(node.getStatus())
-                        .lastSeenAt(node.getLastSeenAt())
-                        .credentials(node.getCredentials())
-                        .ipAddresses(node.getIpAddresses())
-                        .capabilities(node.getCapabilities())
-                        .resources(node.getResources())
-                        .build();
-                
-                yield Optional.of(new LibvirtVmProvider(nodeSpec));
+                yield Optional.of(new LibvirtVmProvider(providerUuid, nodeRepository));
             }
             case PROXMOX, KUBERNETES -> {
                 logger.warn("Dynamic VmProvider creation not implemented for provider type {} (id={})", type, providerUuid);
@@ -179,45 +150,5 @@ public class TenantAwareVmProviderRegistry {
     public void clearCache() {
         cache.clear();
         logger.info("Cleared provider cache");
-    }
-
-    /**
-     * Build Libvirt connection URI from node credentials.
-     * <ul>
-     *   <li>If credentials contain {@code uri}, that value is used (e.g. {@code qemu:///system} for local).</li>
-     *   <li>Otherwise builds SSH URI from {@code host} and {@code user}: {@code qemu+ssh://user@host/system}.</li>
-     * </ul>
-     *
-     * @param node the node entity containing credentials
-     * @return Libvirt URI (e.g. qemu:///system or qemu+ssh://user@host/system)
-     */
-    private String buildLibvirtUriFromCredentials(NodeEntity node) {
-        try {
-            Map<String, String> credentials = node.getCredentials();
-            if (credentials == null) {
-                throw new IllegalArgumentException("Node credentials are required");
-            }
-
-            String uri = credentials.get("uri");
-            if (uri != null && !uri.isBlank()) {
-                logger.debug("Using explicit Libvirt URI for node {}: {}", node.getId(), uri);
-                return uri.trim();
-            }
-
-            String host = credentials.get("host");
-            String user = credentials.get("user");
-            if (host == null || user == null) {
-                throw new IllegalArgumentException(
-                    "Node credentials must contain either 'uri' (e.g. qemu:///system) or both 'host' and 'user' for SSH");
-            }
-
-            String sshUri = String.format("qemu+ssh://%s@%s/system", user, host);
-            logger.debug("Built SSH Libvirt URI for node {}: {}", node.getId(), sshUri);
-            return sshUri;
-        } catch (Exception e) {
-            logger.error("Failed to build Libvirt URI from node credentials for node {}: {}",
-                    node.getId(), e.getMessage(), e);
-            throw new RuntimeException("Invalid node credentials for Libvirt connection", e);
-        }
     }
 }

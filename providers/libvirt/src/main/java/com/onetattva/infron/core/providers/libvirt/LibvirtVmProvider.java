@@ -1,7 +1,8 @@
 package com.onetattva.infron.core.providers.libvirt;
 
 import com.onetattva.infron.core.providers.*;
-import com.onetattva.infron.core.providers.spec.NodeSpec;
+import com.onetattva.infron.db.model.NodeEntity;
+import com.onetattva.infron.db.repository.NodeRepository;
 import com.onetattva.infron.api.enums.VmStatus;
 import com.onetattva.infron.api.enums.VmPowerState;
 import org.libvirt.*;
@@ -16,51 +17,82 @@ import static org.libvirt.DomainInfo.DomainState.VIR_DOMAIN_RUNNING;
 
 /**
  * Infron Libvirt Provider implementation.
- * Manages VM operations on KVM/QEMU hypervisors via libvirt API.
+ * Manages VM operations on multiple KVM/QEMU hypervisors via libvirt API.
  *
- * <p>Libvirt does not have a native cluster concept. When a Libvirt provider is added,
- * a NodeCluster with a single Node is automatically created.</p>
+ * <p>Unlike Proxmox which manages multiple nodes natively, Libvirt SDK manages
+ * only one node at a time. This provider manages multiple Libvirt nodes and
+ * implements placement logic to distribute VMs across nodes based on available resources.</p>
  */
 public class LibvirtVmProvider implements VmProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(LibvirtVmProvider.class);
 
-    private final NodeSpec node;
-    private final LibvirtConnectionManager connectionManager;
+    private final UUID providerId;
+    private final LibvirtMultiNodeConnectionManager multiNodeManager;
+    private final LibvirtNodePlacementService placementService;
+    private final Map<UUID, UUID> vmToNodeMapping = new HashMap<>();
 
     /**
      * Creates a new Libvirt VM provider instance.
      *
-     * @param node The node specification containing hypervisor configurationawa
+     * @param providerId The provider ID
+     * @param nodeRepository The node repository for database access
      */
-    public LibvirtVmProvider(NodeSpec node) {
-        this.node = node;
-        this.connectionManager = new LibvirtConnectionManager(
-                node.endpoint(),
-                node.credentials()
-        );
+    public LibvirtVmProvider(UUID providerId, NodeRepository nodeRepository) {
+        this.providerId = providerId;
+        this.multiNodeManager = new LibvirtMultiNodeConnectionManager(providerId, nodeRepository);
+        this.placementService = new LibvirtNodePlacementService();
     }
 
     @Override
     public String id() {
-        return "libvirt-" + node.id();
+        return "libvirt-" + providerId;
     }
 
     @Override
     public String description() {
-        return "Infron Libvirt provider for " + node.name();
+        List<NodeEntity> nodes = multiNodeManager.getAllNodes();
+        return "Infron Libvirt provider managing " + nodes.size() + " node(s)";
     }
 
     @Override
     public CompletableFuture<VmCreationResult> createVm(VmCreationRequest request) {
-        logger.info("Creating VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Creating VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
             Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                List<NodeEntity> activeNodes = multiNodeManager.getActiveNodes();
+                if (activeNodes.isEmpty()) {
+                    return VmCreationResult.failure(
+                            ProviderError.builder()
+                                    .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                                    .message("No active nodes available for VM placement")
+                                    .providerErrorCode("NO_ACTIVE_NODES")
+                                    .retryable(true)
+                                    .build()
+                    );
+                }
 
-                // Create the disk image in the default storage pool before defining the domain
+                Optional<NodeEntity> selectedNodeOpt = placementService.selectNodeForPlacement(
+                        activeNodes, 2, 2048);
+                
+                if (selectedNodeOpt.isEmpty()) {
+                    return VmCreationResult.failure(
+                            ProviderError.builder()
+                                    .code(ProviderError.ErrorCode.INSUFFICIENT_RESOURCES)
+                                    .message("No node with sufficient resources found")
+                                    .providerErrorCode("INSUFFICIENT_RESOURCES")
+                                    .retryable(true)
+                                    .build()
+                    );
+                }
+
+                NodeEntity selectedNode = selectedNodeOpt.get();
+                logger.info("Selected node {} for VM {}", selectedNode.getName(), request.vmId());
+
+                connection = multiNodeManager.getConnection(selectedNode.getId());
+
                 String diskPath = createDiskVolume(connection, request.vmId(), request.spec());
                 if (diskPath == null) {
                     return VmCreationResult.failure(
@@ -73,26 +105,27 @@ public class LibvirtVmProvider implements VmProvider {
                     );
                 }
 
-                // Convert VmSpec to Libvirt XML using the actual disk path
                 String domainXml = LibvirtXmlBuilder.buildDomainXml(request.vmId(), request.spec(), diskPath);
 
                 logger.debug("Libvirt domain XML for VM {}: {}", request.vmId(), domainXml);
 
-                // Define and start domain
                 Domain domain = connection.domainDefineXML(domainXml);
                 domain.create();
 
-                // Get VM info
+                synchronized (vmToNodeMapping) {
+                    vmToNodeMapping.put(request.vmId(), selectedNode.getId());
+                }
+
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
-                logger.info("Successfully created VM {} on Libvirt provider {} with external ID: {}",
-                        request.vmId(), node.name(), domain.getName());
+                logger.info("Successfully created VM {} on node {} with external ID: {}",
+                        request.vmId(), selectedNode.getName(), domain.getName());
 
                 return VmCreationResult.success(domain.getName(), vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to create VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmCreationResult.failure(
                         ProviderError.builder()
@@ -106,14 +139,6 @@ public class LibvirtVmProvider implements VmProvider {
                                 ))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
@@ -166,41 +191,48 @@ public class LibvirtVmProvider implements VmProvider {
 
     @Override
     public CompletableFuture<VmDeletionResult> deleteVm(VmDeletionRequest request) {
-        logger.info("Deleting VM {} from Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Deleting VM {} from Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    logger.warn("VM {} not found on any node", request.vmId());
+                    return VmDeletionResult.failure("VM not found");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmDeletionResult.failure("VM not found");
                 }
 
                 String domainName = domain.getName();
 
-                // Stop if running
                 if (domain.isActive() == 1) {
                     logger.debug("Stopping VM {} before deletion", domainName);
                     domain.destroy();
                 }
 
-                // Undefine (remove)
                 domain.undefine();
 
+                synchronized (vmToNodeMapping) {
+                    vmToNodeMapping.remove(request.vmId());
+                }
+
                 logger.info("Successfully deleted VM {} from Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmDeletionResult.success();
 
             } catch (LibvirtException e) {
                 logger.error("Failed to delete VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmDeletionResult.failure(
                         ProviderError.builder()
@@ -210,33 +242,29 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> startVm(VmOperationRequest request) {
-        logger.info("Starting VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Starting VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -249,13 +277,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully started VM {} on Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to start VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -265,33 +293,29 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> stopVm(VmOperationRequest request) {
-        logger.info("Stopping VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Stopping VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -304,13 +328,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully stopped VM {} on Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to stop VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -320,33 +344,29 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> restartVm(VmOperationRequest request) {
-        logger.info("Restarting VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Restarting VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -354,13 +374,13 @@ public class LibvirtVmProvider implements VmProvider {
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully restarted VM {} on Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to restart VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -370,33 +390,29 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> suspendVm(VmOperationRequest request) {
-        logger.info("Suspending VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Suspending VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmOperationResult.failure("VM not found");
                 }
 
@@ -405,18 +421,17 @@ public class LibvirtVmProvider implements VmProvider {
                     return VmOperationResult.failure("VM is not running");
                 }
 
-                // Use managedSave to preserve state to disk
                 domain.managedSave();
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully suspended VM {} on Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to suspend VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -426,49 +441,44 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<VmOperationResult> resumeVm(VmOperationRequest request) {
-        logger.info("Resuming VM {} on Libvirt provider {}", request.vmId(), node.name());
+        logger.info("Resuming VM {} on Libvirt provider {}", request.vmId(), providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
             try {
-                connection = connectionManager.getConnection();
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+
+                Connect connection = multiNodeManager.getConnection(nodeId);
                 Domain domain = connection.domainLookupByUUIDString(
                         request.vmId().toString()
                 );
 
                 if (domain == null) {
                     logger.warn("VM {} not found on Libvirt provider {}",
-                            request.vmId(), node.name());
+                            request.vmId(), providerId);
                     return VmOperationResult.failure("VM not found");
                 }
 
-                // Remove managed save state and start
                 domain.managedSaveRemove();
                 domain.create();
                 VmInfo vmInfo = getVmInfoFromDomain(domain);
 
                 logger.info("Successfully resumed VM {} on Libvirt provider {}",
-                        request.vmId(), node.name());
+                        request.vmId(), providerId);
 
                 return VmOperationResult.success(vmInfo);
 
             } catch (LibvirtException e) {
                 logger.error("Failed to resume VM {} on Libvirt provider {}: {}",
-                        request.vmId(), node.name(), e.getMessage(), e);
+                        request.vmId(), providerId, e.getMessage(), e);
 
                 return VmOperationResult.failure(
                         ProviderError.builder()
@@ -478,115 +488,102 @@ public class LibvirtVmProvider implements VmProvider {
                                 .retryable(LibvirtErrorHandler.isRetryable(e))
                                 .build()
                 );
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<Optional<VmInfo>> getVmInfo(String externalVmId) {
-        logger.debug("Getting VM info for {} on Libvirt provider {}", externalVmId, node.name());
+        logger.debug("Getting VM info for {} on Libvirt provider {}", externalVmId, providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
-            try {
-                connection = connectionManager.getConnection();
-                Domain domain = connection.domainLookupByName(externalVmId);
+            List<NodeEntity> nodes = multiNodeManager.getAllNodes();
+            for (NodeEntity node : nodes) {
+                try {
+                    Connect connection = multiNodeManager.getConnection(node.getId());
+                    Domain domain = connection.domainLookupByName(externalVmId);
 
-                if (domain == null) {
-                    logger.debug("VM {} not found on Libvirt provider {}", externalVmId, node.name());
-                    return Optional.empty();
-                }
-
-                return Optional.of(getVmInfoFromDomain(domain));
-
-            } catch (LibvirtException e) {
-                logger.error("Failed to get VM info for {} on Libvirt provider {}: {}",
-                        externalVmId, node.name(), e.getMessage(), e);
-                return Optional.empty();
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
+                    if (domain != null) {
+                        return Optional.of(getVmInfoFromDomain(domain));
                     }
+                } catch (LibvirtException e) {
+                    logger.debug("VM {} not found on node {}", externalVmId, node.getName());
                 }
             }
+            
+            logger.debug("VM {} not found on any node", externalVmId);
+            return Optional.empty();
         });
     }
 
     @Override
     public CompletableFuture<List<VmInfo>> listVms(VmListRequest request) {
-        logger.debug("Listing VMs on Libvirt provider {}", node.name());
+        logger.debug("Listing VMs on Libvirt provider {}", providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
-            try {
-                connection = connectionManager.getConnection();
-                int[] activeDomainIds = connection.listDomains();
-                String[] inactiveDomainIds = connection.listDefinedDomains();
+            List<VmInfo> vmList = new ArrayList<>();
+            List<NodeEntity> nodes = multiNodeManager.getAllNodes();
 
-                List<VmInfo> vmList = new ArrayList<>();
+            for (NodeEntity node : nodes) {
+                try {
+                    Connect connection = multiNodeManager.getConnection(node.getId());
+                    int[] activeDomainIds = connection.listDomains();
+                    String[] inactiveDomainIds = connection.listDefinedDomains();
 
-                // Active domains
-                for (int domainId : activeDomainIds) {
-                    try {
-                        Domain domain = connection.domainLookupByUUIDString(String.valueOf(domainId));
-                        vmList.add(getVmInfoFromDomain(domain));
-                    } catch (LibvirtException e) {
-                        logger.warn("Failed to get info for active domain {}: {}", domainId, e.getMessage());
+                    for (int domainId : activeDomainIds) {
+                        try {
+                            Domain domain = connection.domainLookupByID(domainId);
+                            vmList.add(getVmInfoFromDomain(domain));
+                        } catch (LibvirtException e) {
+                            logger.warn("Failed to get info for active domain {} on node {}: {}", 
+                                    domainId, node.getName(), e.getMessage());
+                        }
                     }
-                }
 
-                // Inactive domains
-                for (String domainId : inactiveDomainIds) {
-                    try {
-                        Domain domain = connection.domainLookupByName(domainId);
-                        vmList.add(getVmInfoFromDomain(domain));
-                    } catch (LibvirtException e) {
-                        logger.warn("Failed to get info for inactive domain {}: {}", domainId, e.getMessage());
+                    for (String domainName : inactiveDomainIds) {
+                        try {
+                            Domain domain = connection.domainLookupByName(domainName);
+                            vmList.add(getVmInfoFromDomain(domain));
+                        } catch (LibvirtException e) {
+                            logger.warn("Failed to get info for inactive domain {} on node {}: {}", 
+                                    domainName, node.getName(), e.getMessage());
+                        }
                     }
-                }
-
-                logger.info("Found {} VMs on Libvirt provider {}", vmList.size(), node.name());
-                return vmList;
-
-            } catch (LibvirtException e) {
-                logger.error("Failed to list VMs on Libvirt provider {}: {}",
-                        node.name(), e.getMessage(), e);
-                return List.of();
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
+                } catch (LibvirtException e) {
+                    logger.error("Failed to list VMs on node {}: {}",
+                            node.getName(), e.getMessage(), e);
                 }
             }
+
+            logger.info("Found {} VMs across {} nodes", vmList.size(), nodes.size());
+            return vmList;
         });
     }
 
     @Override
     public CompletableFuture<ProviderCapabilities> getCapabilities() {
-        logger.debug("Getting capabilities for Libvirt provider {}", node.name());
+        logger.debug("Getting capabilities for Libvirt provider {}", providerId);
 
         return CompletableFuture.supplyAsync(() -> {
-            Connect connection = null;
+            List<NodeEntity> nodes = multiNodeManager.getActiveNodes();
+            if (nodes.isEmpty()) {
+                logger.warn("No active nodes available for capability detection");
+                return ProviderCapabilities.builder()
+                        .supportedCpuTypes(List.of())
+                        .supportedStorageClasses(List.of())
+                        .supportedNetworkTypes(List.of())
+                        .supportedOsTypes(List.of())
+                        .resourceLimits(ResourceLimits.builder().build())
+                        .features(Map.of())
+                        .build();
+            }
+
             try {
-                connection = connectionManager.getConnection();
+                Connect connection = multiNodeManager.getConnection(nodes.get(0).getId());
                 String capabilitiesXml = connection.getCapabilities();
                 LibvirtCapabilities caps = LibvirtCapabilitiesParser.parse(capabilitiesXml);
 
-                logger.debug("Libvirt provider {} capabilities: {}", node.name(), caps);
+                logger.debug("Libvirt provider {} capabilities: {}", providerId, caps);
 
                 return ProviderCapabilities.builder()
                         .supportedCpuTypes(caps.getSupportedCpuTypes())
@@ -602,15 +599,15 @@ public class LibvirtVmProvider implements VmProvider {
                         .features(Map.of(
                                 "virtio", caps.supportsVirtio(),
                                 "nestedVirtualization", caps.supportsNestedVirtualization(),
-                                "liveMigration", caps.supportsLiveMigration()
+                                "liveMigration", caps.supportsLiveMigration(),
+                                "multiNode", true
                         ))
                         .build();
 
             } catch (LibvirtException e) {
                 logger.error("Failed to get capabilities for Libvirt provider {}: {}",
-                        node.name(), e.getMessage(), e);
+                        providerId, e.getMessage(), e);
 
-                // Return empty capabilities on error
                 return ProviderCapabilities.builder()
                         .supportedCpuTypes(List.of())
                         .supportedStorageClasses(List.of())
@@ -619,21 +616,13 @@ public class LibvirtVmProvider implements VmProvider {
                         .resourceLimits(ResourceLimits.builder().build())
                         .features(Map.of())
                         .build();
-            } finally {
-                if (connection != null) {
-                    try {
-                        connection.close();
-                    } catch (LibvirtException e) {
-                        logger.warn("Error closing connection: {}", e.getMessage());
-                    }
-                }
             }
         });
     }
 
     @Override
     public CompletableFuture<ValidationResult> validateVmSpec(String spec) {
-        logger.debug("Validating VM spec for Libvirt provider {}", node.name());
+        logger.debug("Validating VM spec for Libvirt provider {}", providerId);
 
         return CompletableFuture.supplyAsync(() -> {
             List<String> errors = new ArrayList<>();
@@ -655,10 +644,10 @@ public class LibvirtVmProvider implements VmProvider {
 
             boolean valid = errors.isEmpty();
             if (valid) {
-                logger.debug("VM spec validation passed for Libvirt provider {}", node.name());
+                logger.debug("VM spec validation passed for Libvirt provider {}", providerId);
             } else {
                 logger.debug("VM spec validation failed for Libvirt provider {}: {}",
-                        node.name(), errors);
+                        providerId, errors);
             }
 
             return ValidationResult.builder()
@@ -788,9 +777,43 @@ public class LibvirtVmProvider implements VmProvider {
     }
 
     /**
+     * Finds the node where a VM is located.
+     * First checks the in-memory mapping, then searches all nodes.
+     *
+     * @param vmId The VM UUID
+     * @return The node ID where the VM is located, or null if not found
+     */
+    private UUID findNodeForVm(UUID vmId) {
+        synchronized (vmToNodeMapping) {
+            UUID cachedNodeId = vmToNodeMapping.get(vmId);
+            if (cachedNodeId != null) {
+                return cachedNodeId;
+            }
+        }
+
+        List<NodeEntity> nodes = multiNodeManager.getAllNodes();
+        for (NodeEntity node : nodes) {
+            try {
+                Connect connection = multiNodeManager.getConnection(node.getId());
+                Domain domain = connection.domainLookupByUUIDString(vmId.toString());
+                if (domain != null) {
+                    synchronized (vmToNodeMapping) {
+                        vmToNodeMapping.put(vmId, node.getId());
+                    }
+                    return node.getId();
+                }
+            } catch (LibvirtException e) {
+                logger.debug("VM {} not found on node {}", vmId, node.getName());
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Closes all open connections to Libvirt.
      */
     public void close() {
-        connectionManager.closeAll();
+        multiNodeManager.closeAll();
     }
 }
