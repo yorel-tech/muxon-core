@@ -80,7 +80,7 @@ public class LibvirtVmProvider implements VmProvider {
                 if (selectedNodeOpt.isEmpty()) {
                     return VmCreationResult.failure(
                             ProviderError.builder()
-                                    .code(ProviderError.ErrorCode.INSUFFICIENT_RESOURCES)
+                                    .code(ProviderError.ErrorCode.RESOURCE_UNAVAILABLE)
                                     .message("No node with sufficient resources found")
                                     .providerErrorCode("INSUFFICIENT_RESOURCES")
                                     .retryable(true)

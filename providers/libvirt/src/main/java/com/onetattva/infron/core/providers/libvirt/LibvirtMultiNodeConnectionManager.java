@@ -27,7 +27,7 @@ public class LibvirtMultiNodeConnectionManager {
     public Connect getConnection(UUID nodeId) throws LibvirtException {
         LibvirtConnectionManager connectionManager = getOrCreateConnectionManager(nodeId);
         if (connectionManager == null) {
-            throw new LibvirtException("Node not found or invalid: " + nodeId);
+            throw new RuntimeException("Node not found or invalid: " + nodeId);
         }
         return connectionManager.getConnection();
     }
@@ -45,6 +45,28 @@ public class LibvirtMultiNodeConnectionManager {
 
     public Optional<NodeEntity> getNodeById(UUID nodeId) {
         return nodeRepository.findById(nodeId);
+    }
+
+    /**
+     * Get any available connection from active nodes.
+     * Returns the first active node connection, or null if no active nodes are available.
+     *
+     * @return libvirt connection or null if no active connections
+     */
+    public Connect getAnyConnection() {
+        List<NodeEntity> activeNodes = getActiveNodes();
+        if (activeNodes.isEmpty()) {
+            return null;
+        }
+        
+        // Try the first active node
+        NodeEntity firstNode = activeNodes.get(0);
+        try {
+            return getConnection(firstNode.getId());
+        } catch (LibvirtException e) {
+            logger.warn("Failed to get connection for node {}: {}", firstNode.getId(), e.getMessage());
+            return null;
+        }
     }
 
     public boolean testConnection(UUID nodeId) {

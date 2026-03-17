@@ -5,7 +5,7 @@ public record BucketOperationResult(
     String message,
     String errorCode
 ) {
-    public static BucketOperationResult success() {
+    public static BucketOperationResult ok() {
         return new BucketOperationResult(true, null, null);
     }
 

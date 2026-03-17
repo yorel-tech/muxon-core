@@ -39,4 +39,6 @@ public interface ProviderStorageMappingRepository extends JpaRepository<Provider
 
     @Query("SELECT psm FROM ProviderStorageMappingEntity psm WHERE psm.storageClass = :storageClass AND psm.providerId = :providerId AND psm.enabled = true")
     Optional<ProviderStorageMappingEntity> findEnabledMapping(String storageClass, UUID providerId);
+
+    List<ProviderStorageMappingEntity> findByProviderIdAndEnabled(UUID providerId, boolean enabled);
 }

@@ -5,12 +5,16 @@ public record VolumeOperationResult(
     String message,
     String errorCode
 ) {
-    public static VolumeOperationResult success() {
+    public static VolumeOperationResult ok() {
         return new VolumeOperationResult(true, null, null);
     }
 
-    public static VolumeOperationResult success(String message) {
+    public static VolumeOperationResult ok(String message) {
         return new VolumeOperationResult(true, message, null);
+    }
+
+    public static VolumeOperationResult failure(String message) {
+        return new VolumeOperationResult(false, message, null);
     }
 
     public static VolumeOperationResult failure(String message, String errorCode) {

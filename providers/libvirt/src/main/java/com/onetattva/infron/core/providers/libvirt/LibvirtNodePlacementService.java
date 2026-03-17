@@ -58,12 +58,12 @@ public class LibvirtNodePlacementService {
             return totalCpu >= requiredCpuCores && totalMem >= requiredMemMb;
         }
 
-        Integer availableCpu = resources.getCpuAvailable();
-        Integer availableMem = resources.getMemAvailableMb();
+        Integer availableCpu = resources.getCpu() != null ? resources.getCpu().getAvailable() : null;
+        Integer availableMem = resources.getMemory() != null ? resources.getMemory().getAvailableMb() : null;
 
         if (availableCpu == null || availableMem == null) {
-            Integer totalCpu = resources.getCpuTotal();
-            Integer totalMem = resources.getMemTotalMb();
+            Integer totalCpu = resources.getCpu() != null ? resources.getCpu().getTotal() : null;
+            Integer totalMem = resources.getMemory() != null ? resources.getMemory().getTotalMb() : null;
             
             if (totalCpu == null || totalMem == null) {
                 logger.debug("Node {} has incomplete resource information", node.getName());
@@ -90,10 +90,10 @@ public class LibvirtNodePlacementService {
             return 0.0;
         }
 
-        Integer cpuTotal = resources.getCpuTotal();
-        Integer cpuAvailable = resources.getCpuAvailable();
-        Integer memTotal = resources.getMemTotalMb();
-        Integer memAvailable = resources.getMemAvailableMb();
+        Integer cpuTotal = resources.getCpu() != null ? resources.getCpu().getTotal() : null;
+        Integer cpuAvailable = resources.getCpu() != null ? resources.getCpu().getAvailable() : null;
+        Integer memTotal = resources.getMemory() != null ? resources.getMemory().getTotalMb() : null;
+        Integer memAvailable = resources.getMemory() != null ? resources.getMemory().getAvailableMb() : null;
 
         if (cpuTotal == null || cpuAvailable == null || memTotal == null || memAvailable == null) {
             return 0.0;
