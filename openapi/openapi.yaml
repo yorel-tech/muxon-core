@@ -104,6 +104,10 @@ paths:
     $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}'
   /api/v1/datacenters/{datacenterId}/settings:
     $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1settings'
+  /api/v1/datacenters/{datacenterId}/storage-classes:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1storage-classes'
+  /api/v1/datacenters/{datacenterId}/storage-classes/validate:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1storage-classes~1validate'
 
   # Tenants
   /api/v1/tenants:
@@ -122,6 +126,10 @@ paths:
     $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}'
   /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/effective:
     $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1effective'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/storage-classes:
+    $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1storage-classes'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/storage-usage:
+    $ref: './datacenters.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1storage-usage'
 
   # Nodes
   /api/v1/providers/{providerId}/nodes:

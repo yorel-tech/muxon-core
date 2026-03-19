@@ -221,6 +221,56 @@ components:
           items:
             $ref: '#/components/schemas/TenantDatacenterGrant'
 
+    StorageClassWarning:
+      type: object
+      properties:
+        storageClass:
+          type: string
+          description: Storage class name
+        message:
+          type: string
+          description: Warning or error message
+        severity:
+          type: string
+          enum: [WARNING, ERROR]
+          description: Severity level
+
+    StorageClassValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether all storage classes are valid
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageClassWarning'
+          description: List of warnings or errors
+        availableStorageClasses:
+          type: array
+          items:
+            type: string
+          description: List of available storage classes
+
+    StorageUsage:
+      type: object
+      properties:
+        storageClass:
+          type: string
+          description: Storage class name
+        usedGb:
+          type: integer
+          format: int64
+          description: Used storage in GB
+        limitGb:
+          type: integer
+          format: int64
+          description: Storage limit in GB
+        utilizationPercent:
+          type: number
+          format: double
+          description: Utilization percentage
+
 paths:
 
   # Datacenter management
@@ -507,6 +557,61 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
+  # Datacenter storage classes
+  /datacenters/{datacenterId}/storage-classes:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: List available storage classes for datacenter
+      operationId: getDatacenterStorageClasses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Available storage classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /datacenters/{datacenterId}/storage-classes/validate:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    post:
+      tags: [Datacenters]
+      summary: Validate storage class configuration
+      operationId: validateDatacenterStorageClasses
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClassValidationResult'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
   # Tenant <-> Datacenter bindings (grants)
   /tenants/{tenantId}/datacenters:
     parameters:
@@ -665,3 +770,52 @@ paths:
           $ref: './commons.yaml#/components/responses/NotFound'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  # Tenant storage classes
+  /tenants/{tenantId}/datacenters/{datacenterId}/storage-classes:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [TenantDatacenters]
+      summary: Get effective storage classes for tenant in datacenter
+      operationId: getTenantStorageClasses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Effective storage classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/storage-usage:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [TenantDatacenters]
+      summary: Get storage usage per storage class for tenant
+      operationId: getTenantStorageUsage
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Storage usage information
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/StorageUsage'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

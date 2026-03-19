@@ -146,6 +146,12 @@ components:
         maxLoadBalancers:
           type: integer
           minimum: 0
+        storageClassLimitsGb:
+          type: object
+          description: "Per-storage-class limits in GB (e.g., fast-ssd: 1000, capacity-hdd: 10000)"
+          additionalProperties:
+            type: integer
+            minimum: 0
 
     Error:
       type: object

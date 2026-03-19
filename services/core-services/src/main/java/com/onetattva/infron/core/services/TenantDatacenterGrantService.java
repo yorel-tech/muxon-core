@@ -37,6 +37,9 @@ public class TenantDatacenterGrantService {
     @Autowired
     private DatacentersService datacentersService;
 
+    @Autowired
+    private com.onetattva.infron.core.services.storage.StorageClassValidationService storageClassValidationService;
+
     public TenantDatacenterGrant createTenantDatacenterGrant(UUID tenantId, TenantDatacenterGrantCreate create) {
         TenantEntity tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
@@ -203,6 +206,26 @@ public class TenantDatacenterGrantService {
         if (override.getStorageClasses() != null) result.setStorageClasses(override.getStorageClasses());
         if (override.getNetworkDomains() != null) result.setNetworkDomains(override.getNetworkDomains());
         if (override.getProviderSpecificSettings() != null) result.setProviderSpecificSettings(override.getProviderSpecificSettings());
+        return result;
+    }
+
+    public List<String> getEffectiveStorageClasses(UUID tenantId, UUID datacenterId) {
+        return storageClassValidationService.getEffectiveStorageClasses(tenantId, datacenterId);
+    }
+
+    public java.util.Map<String, StorageUsage> getStorageUsageByClass(UUID tenantId, UUID datacenterId) {
+        java.util.Map<String, Long> limits = storageClassValidationService.getStorageClassLimits(tenantId, datacenterId);
+        java.util.Map<String, StorageUsage> result = new java.util.HashMap<>();
+        
+        for (java.util.Map.Entry<String, Long> entry : limits.entrySet()) {
+            StorageUsage usage = new StorageUsage();
+            usage.setStorageClass(entry.getKey());
+            usage.setUsedGb(0L);
+            usage.setLimitGb(entry.getValue());
+            usage.setUtilizationPercent(0.0);
+            result.put(entry.getKey(), usage);
+        }
+        
         return result;
     }
 }

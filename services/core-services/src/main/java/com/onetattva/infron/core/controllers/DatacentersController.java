@@ -74,4 +74,18 @@ public class DatacentersController implements DatacentersApi {
         DatacenterCapacity updated = datacentersService.updateDatacenterCapacity(datacenterId, capacity);
         return ResponseEntity.ok(updated);
     }
+
+    @Override
+    public ResponseEntity<java.util.List<String>> getDatacenterStorageClasses(UUID datacenterId) {
+        java.util.List<String> storageClasses = datacentersService.getAvailableStorageClasses(datacenterId);
+        return ResponseEntity.ok(storageClasses);
+    }
+
+    @Override
+    public ResponseEntity<StorageClassValidationResult> validateDatacenterStorageClasses(
+            UUID datacenterId, 
+            java.util.List<String> requestBody) {
+        StorageClassValidationResult result = datacentersService.validateDatacenterStorageClasses(datacenterId, requestBody);
+        return ResponseEntity.ok(result);
+    }
 }

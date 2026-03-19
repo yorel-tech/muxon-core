@@ -83,4 +83,21 @@ public class TenantDatacentersController implements TenantDatacentersApi {
         TenantDatacenterGrant grant = tenantDatacenterGrantService.updateTenantDatacenterGrant(tenantId, datacenterId, tenantDatacenterGrant);
         return ResponseEntity.ok(grant);
     }
+
+    @Override
+    @RequiresPermission(Permission.TENANT_READ)
+    public ResponseEntity<java.util.List<String>> getTenantStorageClasses(UUID tenantId, UUID datacenterId) {
+        java.util.List<String> storageClasses = tenantDatacenterGrantService.getEffectiveStorageClasses(tenantId, datacenterId);
+        return ResponseEntity.ok(storageClasses);
+    }
+
+    @Override
+    @RequiresPermission(Permission.TENANT_READ)
+    public ResponseEntity<java.util.Map<String, com.onetattva.infron.api.model.StorageUsage>> getTenantStorageUsage(
+            UUID tenantId, 
+            UUID datacenterId) {
+        java.util.Map<String, com.onetattva.infron.api.model.StorageUsage> usage = 
+            tenantDatacenterGrantService.getStorageUsageByClass(tenantId, datacenterId);
+        return ResponseEntity.ok(usage);
+    }
 }

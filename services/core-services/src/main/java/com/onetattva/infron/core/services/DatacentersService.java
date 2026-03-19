@@ -31,6 +31,9 @@ public class DatacentersService {
     @Autowired
     private ProviderRepository providerRepository;
 
+    @Autowired
+    private com.onetattva.infron.core.services.storage.StorageClassValidationService storageClassValidationService;
+
     /**
      * Create a new datacenter.
      * Provider type is derived from the node cluster's provider.
@@ -308,5 +311,15 @@ public class DatacentersService {
             api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
         }
         return api;
+    }
+
+    public List<String> getAvailableStorageClasses(UUID datacenterId) {
+        return storageClassValidationService.getDatacenterStorageClasses(datacenterId);
+    }
+
+    public StorageClassValidationResult validateDatacenterStorageClasses(
+            UUID datacenterId, 
+            List<String> storageClasses) {
+        return storageClassValidationService.validateDatacenterStorageClasses(datacenterId, storageClasses);
     }
 }
