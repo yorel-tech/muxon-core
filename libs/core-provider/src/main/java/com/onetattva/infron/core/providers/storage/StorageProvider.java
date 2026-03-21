@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture;
  * Storage provider interface for block and object storage operations.
  * <p>
  * This SPI defines the contract between Infron's storage orchestration layer
- * and infrastructure providers (Libvirt, Proxmox, Kubernetes, cloud providers).
+ * and infrastructure providers (Libvirt, Proxmox, cloud providers).
  * Implementations handle provider-specific storage operations for volumes,
  * snapshots, and object storage buckets.
  * </p>

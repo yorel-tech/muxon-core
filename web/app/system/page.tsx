@@ -833,7 +833,6 @@ export default function SystemDashboardPage() {
               >
                 <option value="proxmox">Proxmox</option>
                 <option value="libvirt">Libvirt</option>
-                <option value="kubernetes">Kubernetes</option>
               </select>
             </div>
             <div>
@@ -854,10 +853,8 @@ export default function SystemDashboardPage() {
               <Input
                 type="text"
                 placeholder={
-                  selectedProviderType === 'PROXMOX'
+                  selectedProviderType === 'proxmox'
                     ? 'https://proxmox.example.com:8006/api2/json'
-                    : selectedProviderType === 'KUBERNETES'
-                    ? 'https://kubernetes.example.com:6443'
                     : 'ssh://user@host:port or libvirt://system'
                 }
                 value={providerEndpoint}
@@ -925,7 +922,6 @@ export default function SystemDashboardPage() {
               >
                 <option value="libvirt">Libvirt</option>
                 <option value="proxmox">Proxmox</option>
-                <option value="kubernetes">Kubernetes</option>
               </select>
             </div>
             <div>

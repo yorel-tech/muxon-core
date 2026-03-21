@@ -81,7 +81,6 @@ public class TenantAwareVmProviderRegistry {
         return switch (type) {
             case LIBVIRT -> createLibvirtContext(providerEntity, tenantDatacenterGrantId);
             case PROXMOX -> createProxmoxContext(providerEntity, tenantDatacenterGrantId);
-            case KUBERNETES -> createKubernetesContext(providerEntity, tenantDatacenterGrantId);
             default -> Optional.empty();
         };
     }
@@ -109,18 +108,6 @@ public class TenantAwareVmProviderRegistry {
         ));
     }
     
-    private Optional<ProviderContext> createKubernetesContext(ProviderEntity providerEntity, UUID tenantDatacenterGrantId) {
-        // Get namespace from tenant datacenter grant metadata
-        K8sResourceInfo resourceInfo = getTargetResourcesForK8s(tenantDatacenterGrantId);
-        
-        return Optional.of(new com.onetattva.infron.core.providers.kubernetes.KubernetesProviderContext(
-            providerEntity, 
-            resourceInfo.namespace(), 
-            resourceInfo.nodeName(), 
-            resourceInfo.nodeId()
-        ));
-    }
-    
     // Helper methods for context creation
     private UUID selectTargetNodeForLibvirt(UUID tenantDatacenterGrantId) {
         // TODO: Implement node selection logic for Libvirt
@@ -140,14 +127,8 @@ public class TenantAwareVmProviderRegistry {
         return "local-lvm";
     }
     
-    private K8sResourceInfo getTargetResourcesForK8s(UUID tenantDatacenterGrantId) {
-        // TODO: Get K8s resources from tenant datacenter grant metadata
-        return new K8sResourceInfo("default", null, null);
-    }
-    
     // Helper classes for node/resource selection
     private record ProxmoxNodeInfo(String nodeName, String nodeId) {}
-    private record K8sResourceInfo(String namespace, String nodeName, String nodeId) {}
 
     /**
      * Resolve the VM provider for a tenant datacenter grant.
@@ -217,8 +198,6 @@ public class TenantAwareVmProviderRegistry {
             }
             case PROXMOX -> Optional.of(
                     new com.onetattva.infron.core.providers.proxmox.ProxmoxVmProvider(providerUuid, providerRepository, vmRepository));
-            case KUBERNETES -> Optional.of(
-                    new com.onetattva.infron.core.providers.kubernetes.KubernetesVmProvider(providerUuid, providerRepository));
             default -> Optional.empty();
         };
     }

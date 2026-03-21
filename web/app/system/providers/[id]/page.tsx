@@ -77,13 +77,13 @@ export default function ProviderDetailsPage({ params }: ProviderDetailsPageProps
           },
           {
             id: '3',
-            name: 'Staging Kubernetes',
-            type: 'kubernetes',
+            name: 'Staging Proxmox',
+            type: 'proxmox',
             status: 'degraded',
             nodes: 2,
             vms: 8,
             region: 'eu-central',
-            endpoint: 'https://k8s-staging.example.com:6443',
+            endpoint: 'https://pve-staging.example.com:8006/api2/json',
             lastSync: '2024-01-15T08:20:00Z',
             description: 'Staging environment for testing',
             capabilities: { vmLifecycle: true, snapshots: true, backups: true },
@@ -161,8 +161,6 @@ export default function ProviderDetailsPage({ params }: ProviderDetailsPageProps
         return 'Proxmox';
       case 'libvirt':
         return 'Libvirt';
-      case 'kubernetes':
-        return 'Kubernetes';
       default:
         return type ?? '—';
     }

@@ -11,7 +11,7 @@ export interface Link {
 export interface Provider extends Record<string, any> {
   id: string;
   name: string;
-  type: 'proxmox' | 'libvirt' | 'kubernetes';
+  type: 'proxmox' | 'libvirt';
   status: 'online' | 'offline' | 'degraded';
   nodes?: number;
   vms?: number;

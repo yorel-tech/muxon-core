@@ -26,7 +26,7 @@ import type { Link } from '@/types/provider';
 export interface Datacenter extends Record<string, any> {
   id: string;
   name: string;
-  type: 'libvirt' | 'proxmox' | 'kubernetes';
+  type: 'libvirt' | 'proxmox';
   status: 'connected' | 'disconnected' | 'syncing' | 'error';
   health: 'healthy' | 'degraded' | 'down';
   region: string;
@@ -166,8 +166,6 @@ export default function DatacentersPage() {
         return 'Proxmox';
       case 'libvirt':
         return 'Libvirt';
-      case 'kubernetes':
-        return 'Kubernetes';
       default:
         return type;
     }
@@ -473,7 +471,6 @@ export default function DatacentersPage() {
                     <option value="">All</option>
                     <option value="libvirt">Libvirt</option>
                     <option value="proxmox">Proxmox</option>
-                    <option value="kubernetes">Kubernetes</option>
                   </select>
                 </div>
                 <div>

@@ -16,7 +16,6 @@ import java.util.UUID;
  * <ul>
  *   <li>Libvirt: Ceph RBD pool "ssd_pool"</li>
  *   <li>Proxmox: ZFS dataset "tank/ssd"</li>
- *   <li>Kubernetes: StorageClass "ceph-block-ssd"</li>
  * </ul>
  * </p>
  * <p>

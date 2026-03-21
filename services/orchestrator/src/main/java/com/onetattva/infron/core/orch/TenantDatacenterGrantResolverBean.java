@@ -58,7 +58,7 @@ public class TenantDatacenterGrantResolverBean implements TenantDatacenterGrantR
             return "mock";
         }
         return switch (providerType) {
-            case PROXMOX, LIBVIRT, KUBERNETES -> "mock";
+            case PROXMOX, LIBVIRT -> "mock";
             default -> "mock";
         };
     }

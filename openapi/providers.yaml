@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Infron Providers API
   version: 2025-11-03
-  description: Infrastructure provider management API for Proxmox, Libvirt, Kubernetes, etc.
+  description: Infrastructure provider management API for Proxmox, Libvirt, etc.
 
 components:
   parameters:
@@ -59,7 +59,6 @@ components:
             Provider-specific credentials (encrypted at rest). Structure depends on provider type:
             - **PROXMOX**: username, password, realm (optional)
             - **LIBVIRT**: sshPrivateKey, sshPassphrase (optional), sshPort (optional, default: 22)
-            - **KUBERNETES**: kubeconfig, token, clientCertificate, clientKey
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
 
@@ -94,7 +93,7 @@ components:
 
     ProviderType:
       type: string
-      enum: [PROXMOX, LIBVIRT, KUBERNETES]
+      enum: [PROXMOX, LIBVIRT]
 
     ProviderStatus:
       type: string

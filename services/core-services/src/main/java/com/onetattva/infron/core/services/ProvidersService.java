@@ -400,11 +400,6 @@ public class ProvidersService {
                     throw new IllegalArgumentException("Libvirt endpoint must be SSH connection string or libvirt:// URL");
                 }
                 break;
-            case KUBERNETES:
-                if (!endpoint.startsWith("https://") && !endpoint.startsWith("http://")) {
-                    throw new IllegalArgumentException("Kubernetes endpoint must be HTTP/HTTPS URL");
-                }
-                break;
         }
     }
 
@@ -425,11 +420,6 @@ public class ProvidersService {
             case LIBVIRT:
                 if (!credentials.containsKey("sshPrivateKey")) {
                     throw new IllegalArgumentException("Libvirt requires sshPrivateKey");
-                }
-                break;
-            case KUBERNETES:
-                if (!credentials.containsKey("kubeconfig") && !credentials.containsKey("token")) {
-                    throw new IllegalArgumentException("Kubernetes requires kubeconfig or token");
                 }
                 break;
         }

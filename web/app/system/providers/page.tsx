@@ -34,7 +34,7 @@ export default function ProvidersPage() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [providerName, setProviderName] = useState<string>('');
-  const [providerType, setProviderType] = useState<'proxmox' | 'libvirt' | 'kubernetes'>('libvirt');
+  const [providerType, setProviderType] = useState<'proxmox' | 'libvirt'>('libvirt');
   const [providerEndpoint, setProviderEndpoint] = useState<string>('');
   const [providerUsername, setProviderUsername] = useState<string>('');
   const [providerPassword, setProviderPassword] = useState<string>('');
@@ -80,7 +80,7 @@ export default function ProvidersPage() {
         setActionLoading(null);
         const full = await apiGet<Provider>(`/api/v1/providers/${provider.id}`);
         setProviderName(full.name ?? '');
-        setProviderType((full.type ?? 'libvirt').toLowerCase() as 'proxmox' | 'libvirt' | 'kubernetes');
+        setProviderType((full.type ?? 'libvirt').toLowerCase() as 'proxmox' | 'libvirt');
         setProviderEndpoint(full.endpoint ?? '');
         setProviderUsername((full as any).credentials?.username ?? '');
         setProviderPassword(''); // never pre-fill password
@@ -147,8 +147,6 @@ export default function ProvidersPage() {
         return 'Proxmox';
       case 'libvirt':
         return 'Libvirt';
-      case 'kubernetes':
-        return 'Kubernetes';
       default:
         return type;
     }
@@ -482,14 +480,13 @@ export default function ProvidersPage() {
                             className="w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                             value={providerType}
                             onChange={(e) => {
-                              const v = e.target.value as 'proxmox' | 'libvirt' | 'kubernetes';
+                              const v = e.target.value as 'proxmox' | 'libvirt';
                               setProviderType(v);
                               if (v !== 'libvirt') setLibvirtStep(1);
                             }}
                           >
                             <option value="proxmox">Proxmox</option>
                             <option value="libvirt">Libvirt</option>
-                            <option value="kubernetes">Kubernetes</option>
                           </select>
                           <p className="text-xs text-gray-500 mt-1">Choose Libvirt for multi-step setup (cluster + nodes).</p>
                         </div>
@@ -606,12 +603,11 @@ export default function ProvidersPage() {
                       <select
                         className={`w-full px-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${editingProvider ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         value={providerType}
-                        onChange={(e) => !editingProvider && setProviderType(e.target.value as 'proxmox' | 'libvirt' | 'kubernetes')}
+                        onChange={(e) => !editingProvider && setProviderType(e.target.value as 'proxmox' | 'libvirt')}
                         disabled={!!editingProvider}
                       >
                         <option value="proxmox">Proxmox</option>
                         <option value="libvirt">Libvirt</option>
-                        <option value="kubernetes">Kubernetes</option>
                       </select>
                     </div>
                     <div>
@@ -624,8 +620,6 @@ export default function ProvidersPage() {
                         placeholder={
                           providerType === 'proxmox'
                             ? 'https://proxmox.example.com:8006/api2/json'
-                            : providerType === 'kubernetes'
-                            ? 'https://kubernetes.example.com:6443'
                             : 'ssh://user@host:port or libvirt://system'
                         }
                         value={providerEndpoint}

@@ -12,8 +12,6 @@ dependencies {
     implementation(project(":providers:mock"))
     implementation(project(":providers:libvirt"))
     implementation(project(":providers:proxmox"))
-    implementation(project(":providers:kubernetes"))
-    
     // Spring Boot starters
     implementation(libs.bundles.spring.boot.starter)
     implementation(libs.spring.boot.starter.data.jpa)
