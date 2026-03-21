@@ -1,5 +1,6 @@
 package com.onetattva.infron.core.orch;
 
+import com.onetattva.infron.core.providers.ProviderContext;
 import com.onetattva.infron.core.providers.VmCreationRequest;
 import com.onetattva.infron.core.providers.VmCreationResult;
 import com.onetattva.infron.core.providers.VmProvider;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -135,6 +137,13 @@ public class VmOrchestrator {
                 "after_status", VmStatus.PLANNED.toString()
         ));
 
+        // Create provider context instead of using placement(null)
+        Optional<ProviderContext> contextOpt = providerRegistry.createContextForTenantDatacenter(vm.getTenantDatacenterGrantId());
+        if (contextOpt.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "Failed to create provider context");
+            return;
+        }
+
         VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
                 .orElseThrow(() -> new RuntimeException("No provider available for datacenter"));
 
@@ -151,7 +160,7 @@ public class VmOrchestrator {
         VmCreationRequest createRequest = VmCreationRequest.builder()
                 .vmId(vmId)
                 .spec(specJson)
-                .placement(null)
+                .providerContext(contextOpt.get())  // Use ProviderContext instead of PlacementHints
                 .metadata(null)
                 .correlationId(requestId)
                 .build();

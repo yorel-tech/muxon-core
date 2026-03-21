@@ -1,6 +1,6 @@
 package com.onetattva.infron.tests.util;
 
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.onetattva.infron.api.model.RoleBindingBulkCreate;
 import com.onetattva.infron.api.model.RoleBindingCreateItem;
 import com.onetattva.infron.api.model.RoleBindingCreateItem;

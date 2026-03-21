@@ -4,12 +4,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Request for VM creation
+ * Request for VM creation with provider context
  */
 public record VmCreationRequest(
         UUID vmId,
         String spec,
-        PlacementHints placement,
+        ProviderContext providerContext,  // Replaces PlacementHints
         Map<String, String> metadata,
         String correlationId
 ) {
@@ -20,7 +20,7 @@ public record VmCreationRequest(
     public static class VmCreationRequestBuilder {
         private UUID vmId;
         private String spec;
-        private PlacementHints placement;
+        private ProviderContext providerContext;
         private Map<String, String> metadata;
         private String correlationId;
 
@@ -34,8 +34,8 @@ public record VmCreationRequest(
             return this;
         }
 
-        public VmCreationRequestBuilder placement(PlacementHints placement) {
-            this.placement = placement;
+        public VmCreationRequestBuilder providerContext(ProviderContext providerContext) {
+            this.providerContext = providerContext;
             return this;
         }
 
@@ -50,7 +50,7 @@ public record VmCreationRequest(
         }
 
         public VmCreationRequest build() {
-            return new VmCreationRequest(vmId, spec, placement, metadata, correlationId);
+            return new VmCreationRequest(vmId, spec, providerContext, metadata, correlationId);
         }
     }
 }

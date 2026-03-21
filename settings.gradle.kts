@@ -17,5 +17,6 @@ include(
     "providers:mock",
     "providers:libvirt",
     "providers:proxmox",
+    "providers:kubernetes",
     "integration-tests"
 )
