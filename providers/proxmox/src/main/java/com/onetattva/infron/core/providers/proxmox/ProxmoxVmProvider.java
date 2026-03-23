@@ -473,12 +473,26 @@ public class ProxmoxVmProvider implements VmProvider {
                         SecurityConfig.insecure()
                     );
                 } else {
+                    String realm = credentials.get("realm");
+                    if (realm == null || realm.isBlank()) {
+                        realm = "pam";
+                    }
+
+                    // Accept username as "user@realm" and split for pve4j.
+                    if (username != null) {
+                        int atIndex = username.indexOf('@');
+                        if (atIndex > 0 && atIndex < username.length() - 1) {
+                            realm = username.substring(atIndex + 1);
+                            username = username.substring(0, atIndex);
+                        }
+                    }
+
                     return Proxmox.createWithPassword(
                         extractHost(context.getClusterEndpoint()),
                         8006,
                         username,
                         password,
-                        "pve",
+                        realm,
                         SecurityConfig.insecure()
                     );
                 }

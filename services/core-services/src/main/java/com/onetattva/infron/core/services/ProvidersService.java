@@ -1,9 +1,12 @@
 package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
+import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.VmRepository;
+import com.onetattva.infron.core.spi.queue.CommandMessage;
+import com.onetattva.infron.core.spi.queue.CommandQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,10 +39,18 @@ public class ProvidersService {
     @Autowired
     private VmRepository vmRepository;
 
+    @Autowired
+    private CommandQueue commandQueue;
+
+    private static final String PROVIDER_CONNECTION_TEST_COMMAND = "PROVIDER_CONNECTION_TEST_COMMAND";
+    private static final String PROVIDER_CAPABILITIES_DISCOVERY_COMMAND = "PROVIDER_CAPABILITIES_DISCOVERY_COMMAND";
+    private static final String META_CORRELATION_ID = "connectionTestCorrelationId";
+    private static final String META_MESSAGE = "connectionTestMessage";
+    private static final String META_LATENCY_MS = "connectionTestLatencyMs";
+
     /**
      * Create a new provider
      */
-    @Transactional
     public Provider createProvider(ProviderCreate request) {
         logger.info("Creating provider: {}", request.getName());
 
@@ -61,26 +72,27 @@ public class ProvidersService {
         entity.setType(request.getType());
         entity.setEndpoint(request.getEndpoint());
         entity.setCredentials(request.getCredentials());
-        entity.setMetadata(request.getMetadata());
+        entity.setMetadata(request.getMetadata() != null ? new HashMap<>(request.getMetadata()) : new HashMap<>());
         entity.setStatus(ProviderStatus.CONNECTING.name());
 
         // Save to database
         ProviderEntity savedEntity = providerRepository.save(entity);
 
-        // Discover and store capabilities
-        try {
-            Map<String, String> discoveredCapabilities = discoverCapabilities(savedEntity);
-            savedEntity.setCapabilities(discoveredCapabilities);
-            savedEntity = providerRepository.save(savedEntity);
-            logger.info("Discovered capabilities for provider {}: {}", savedEntity.getId(), discoveredCapabilities);
-        } catch (Exception e) {
-            logger.warn("Failed to discover capabilities for provider {}: {}", savedEntity.getId(), e.getMessage());
-            // Continue with provider creation even if capability discovery fails
+        // Provider add path must validate connectivity before returning success.
+        ProviderConnectionTestResult testResult = testProviderConnection(savedEntity.getId());
+        if (!Boolean.TRUE.equals(testResult.getSuccess())) {
+            providerRepository.delete(savedEntity);
+            throw new IllegalArgumentException("Unable to add provider: " + testResult.getMessage());
         }
 
-        // Update status to ACTIVE
-        savedEntity.setStatus(ProviderStatus.ACTIVE.name());
-        providerRepository.save(savedEntity);
+        // For Proxmox, capability discovery runs asynchronously in orchestrator.
+        UUID providerId = savedEntity.getId();
+        if (savedEntity.getType() == ProviderType.PROXMOX) {
+            enqueueCapabilitiesDiscovery(providerId);
+        }
+
+        savedEntity = providerRepository.findById(providerId)
+                .orElseThrow(() -> new IllegalArgumentException("Provider not found after creation: " + providerId));
 
         logger.info("Provider created successfully: {}", savedEntity.getId());
         return mapEntityToApi(savedEntity);
@@ -291,53 +303,120 @@ public class ProvidersService {
     /**
      * Test provider connection
      */
-    @Transactional
     public ProviderConnectionTestResult testProviderConnection(UUID providerId) {
         logger.info("Testing provider connection: {}", providerId);
 
         ProviderEntity entity = providerRepository.findById(providerId)
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
 
-        long startTime = System.currentTimeMillis();
+        String correlationId = UUID.randomUUID().toString();
 
-        try {
-            // Discover fresh capabilities during connection test
-            Map<String, String> discoveredCapabilities = discoverCapabilities(entity);
-            entity.setCapabilities(discoveredCapabilities);
-            providerRepository.save(entity);
-
-            long latency = System.currentTimeMillis() - startTime;
-
-            ProviderConnectionTestResult result = new ProviderConnectionTestResult();
-            result.setSuccess(true);
-            result.setStatus(ProviderStatus.ACTIVE);
-            result.setMessage("Successfully connected to provider");
-            result.setCapabilities(mapEntityCapabilitiesToApi(entity.getCapabilities()));
-            result.setLatencyMs((int) latency);
-
-            // Update provider status
-            entity.setStatus(ProviderStatus.ACTIVE.name());
-            providerRepository.save(entity);
-
-            logger.info("Provider connection test successful: {}", providerId);
-            return result;
-
-        } catch (Exception e) {
-            logger.error("Provider connection test failed: {}", providerId, e);
-
-            // Update provider status to ERROR
-            entity.setStatus(ProviderStatus.ERROR.name());
-            providerRepository.save(entity);
-
-            ProviderConnectionTestResult result = new ProviderConnectionTestResult();
-            result.setSuccess(false);
-            result.setStatus(ProviderStatus.ERROR);
-            result.setMessage("Connection failed: " + e.getMessage());
-            result.setCapabilities(null);
-            result.setLatencyMs(null);
-
-            return result;
+        // Mark provider as CONNECTING and attach correlation metadata.
+        entity.setStatus(ProviderStatus.CONNECTING.name());
+        if (entity.getMetadata() == null) {
+            entity.setMetadata(new HashMap<>());
         }
+        entity.getMetadata().put(META_CORRELATION_ID, correlationId);
+        entity.getMetadata().remove(META_MESSAGE);
+        entity.getMetadata().remove(META_LATENCY_MS);
+        entity.setUpdatedAt(Instant.now());
+        providerRepository.save(entity);
+
+        // Enqueue provider connection test command for the orchestrator.
+        CommandMessage command = CommandMessage.builder()
+                .queueType(PROVIDER_CONNECTION_TEST_COMMAND)
+                .entityType(EntityType.PROVIDER)
+                .entityId(providerId)
+                .payload(Map.of())
+                .metadata(Map.of("source", "api"))
+                .source("core-services")
+                .actorType("USER")
+                .actorService("api")
+                .createdAt(Instant.now())
+                .correlationId(correlationId)
+                .build();
+
+        commandQueue.sendCommand(command);
+
+        long deadline = System.currentTimeMillis() + 30_000L;
+        while (System.currentTimeMillis() < deadline) {
+            ProviderEntity current = providerRepository.findById(providerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
+
+            String currentCorrelationId = current.getMetadata().get(META_CORRELATION_ID);
+            if (correlationId.equals(currentCorrelationId)) {
+                ProviderStatus status = ProviderStatus.valueOf(current.getStatus());
+                if (status != ProviderStatus.CONNECTING) {
+                    return mapConnectionTestResult(current, status);
+                }
+            }
+
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        // Timeout: mark as ERROR so callers get a deterministic failure.
+        ProviderEntity timedOut = providerRepository.findById(providerId)
+                .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
+
+        timedOut.setStatus(ProviderStatus.ERROR.name());
+        timedOut.getMetadata().put(META_MESSAGE, "Connection test timed out");
+        timedOut.getMetadata().put(META_LATENCY_MS, "0");
+        timedOut.setUpdatedAt(Instant.now());
+        providerRepository.save(timedOut);
+
+        ProviderConnectionTestResult result = new ProviderConnectionTestResult();
+        result.setSuccess(false);
+        result.setStatus(ProviderStatus.ERROR);
+        result.setMessage("Connection test timed out");
+        result.setCapabilities(null);
+        result.setLatencyMs(null);
+        return result;
+    }
+
+    private void enqueueCapabilitiesDiscovery(UUID providerId) {
+        CommandMessage command = CommandMessage.builder()
+                .queueType(PROVIDER_CAPABILITIES_DISCOVERY_COMMAND)
+                .entityType(EntityType.PROVIDER)
+                .entityId(providerId)
+                .payload(Map.of())
+                .metadata(Map.of("source", "api"))
+                .source("core-services")
+                .actorType("USER")
+                .actorService("api")
+                .createdAt(Instant.now())
+                .correlationId(UUID.randomUUID().toString())
+                .build();
+
+        commandQueue.sendCommand(command);
+    }
+
+    private ProviderConnectionTestResult mapConnectionTestResult(ProviderEntity entity, ProviderStatus status) {
+        ProviderConnectionTestResult result = new ProviderConnectionTestResult();
+        boolean success = status == ProviderStatus.ACTIVE;
+        result.setSuccess(success);
+        result.setStatus(status);
+
+        String message = entity.getMetadata().get(META_MESSAGE);
+        result.setMessage(message != null ? message : (success ? "Successfully connected to provider" : "Connection failed"));
+
+        String latencyStr = entity.getMetadata().get(META_LATENCY_MS);
+        if (latencyStr != null) {
+            try {
+                result.setLatencyMs(Integer.parseInt(latencyStr));
+            } catch (NumberFormatException ignored) {
+                result.setLatencyMs(null);
+            }
+        } else {
+            result.setLatencyMs(null);
+        }
+
+        result.setCapabilities(success ? mapEntityCapabilitiesToApi(entity.getCapabilities()) : null);
+        return result;
     }
 
     /**
@@ -468,29 +547,4 @@ public class ProvidersService {
                 .build();
     }
 
-    /**
-     * Discover capabilities for the provider.
-     * Uses default capabilities; live discovery from hypervisors is done by the orchestrator,
-     * which has the real VmProvider implementations (Libvirt, Proxmox, etc.) and registry.
-     */
-    private Map<String, String> discoverCapabilities(ProviderEntity entity) {
-        logger.debug("Discovering capabilities for provider: {}", entity.getId());
-        return getDefaultCapabilities();
-    }
-
-    /**
-     * Get default capabilities for providers that don't support discovery
-     */
-    private Map<String, String> getDefaultCapabilities() {
-        Map<String, String> defaults = new java.util.HashMap<>();
-        defaults.put("supportedCpuTypes", "kvm64,host");
-        defaults.put("supportedStorageClasses", "local,nfs");
-        defaults.put("supportedNetworkTypes", "bridge,ovs");
-        defaults.put("supportedOsTypes", "linux,windows");
-        defaults.put("maxCpus", "1000");
-        defaults.put("maxMemoryMb", "409600");
-        defaults.put("maxStorageGb", "20000");
-        defaults.put("maxVms", "500");
-        return defaults;
-    }
 }
