@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebarCounts } from '@/lib/use-sidebar-counts';
 import { useAuth } from '@/lib/auth-context';
-import { getUserManager } from '@/lib/oidc';
+import { fetchOidcConfigIfNeeded, getUserManager } from '@/lib/oidc';
 import {
   LayoutDashboard,
   Settings,
@@ -142,6 +142,7 @@ export const CollapsibleSidebar = forwardRef<HTMLDivElement, CollapsibleSidebarP
 
     const handleSignOut = async () => {
       try {
+        await fetchOidcConfigIfNeeded();
         const manager = getUserManager();
         if (manager) {
           await manager.signoutRedirect();

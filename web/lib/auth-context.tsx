@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { getUserManager } from './oidc';
+import { fetchOidcConfigIfNeeded, getUserManager } from './oidc';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     setIsLoading(true);
     try {
+      await fetchOidcConfigIfNeeded();
       const um = getUserManager();
       if (!um) {
         setIsAuthenticated(false);

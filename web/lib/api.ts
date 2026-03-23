@@ -3,7 +3,7 @@
  * Automatically adds Bearer token from OIDC session to all requests
  */
 
-import { getUserManager, clearUserSession } from './oidc';
+import { fetchOidcConfigIfNeeded, getUserManager, clearUserSession } from './oidc';
 import { Link } from '@/types/provider';
 
 // Global auth state for components to check
@@ -36,6 +36,9 @@ export interface ApiRequestOptions extends RequestInit {
  * Get the current access token from OIDC session
  */
 async function getAccessToken(): Promise<string | null> {
+  if (typeof window !== 'undefined') {
+    await fetchOidcConfigIfNeeded();
+  }
   const um = getUserManager();
   if (!um) return null;
 

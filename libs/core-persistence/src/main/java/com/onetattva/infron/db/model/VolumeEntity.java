@@ -21,10 +21,10 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "volumes", indexes = {
-    @Index(name = "idx_workspace_id", columnList = "workspace_id"),
-    @Index(name = "idx_provider_id", columnList = "provider_id"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_storage_class", columnList = "storage_class")
+    @Index(name = "idx_volumes_workspace_id", columnList = "workspace_id"),
+    @Index(name = "idx_volumes_provider_id", columnList = "provider_id"),
+    @Index(name = "idx_volumes_status", columnList = "status"),
+    @Index(name = "idx_volumes_storage_class", columnList = "storage_class")
 })
 public class VolumeEntity {
 

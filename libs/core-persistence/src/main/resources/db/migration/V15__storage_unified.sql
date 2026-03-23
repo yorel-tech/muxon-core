@@ -77,9 +77,9 @@ CREATE TABLE provider_storage_mappings (
     version BIGINT DEFAULT 0
 );
 
--- Create indexes for performance
-CREATE INDEX idx_storage_class ON provider_storage_mappings(storage_class);
-CREATE INDEX idx_provider_id ON provider_storage_mappings(provider_id);
+-- Create indexes for performance (names must be unique within the schema in PostgreSQL)
+CREATE INDEX idx_psm_storage_class ON provider_storage_mappings(storage_class);
+CREATE INDEX idx_psm_provider_id ON provider_storage_mappings(provider_id);
 
 -- Add unique constraint to prevent duplicate mappings
 ALTER TABLE provider_storage_mappings 
@@ -136,11 +136,11 @@ CREATE TABLE volumes (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_workspace_id ON volumes(workspace_id);
-CREATE INDEX idx_provider_id ON volumes(provider_id);
-CREATE INDEX idx_status ON volumes(status);
-CREATE INDEX idx_storage_class ON volumes(storage_class);
-CREATE INDEX idx_deleted_at ON volumes(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_volumes_workspace_id ON volumes(workspace_id);
+CREATE INDEX idx_volumes_provider_id ON volumes(provider_id);
+CREATE INDEX idx_volumes_status ON volumes(status);
+CREATE INDEX idx_volumes_storage_class ON volumes(storage_class);
+CREATE INDEX idx_volumes_deleted_at ON volumes(deleted_at) WHERE deleted_at IS NULL;
 
 -- Composite indexes for common query patterns
 CREATE INDEX idx_volumes_workspace_storage ON volumes(workspace_id, storage_class) WHERE deleted_at IS NULL;
@@ -187,7 +187,7 @@ CREATE TABLE volume_attachments (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_volume_id ON volume_attachments(volume_id);
+CREATE INDEX idx_va_volume_id ON volume_attachments(volume_id);
 CREATE INDEX idx_resource ON volume_attachments(resource_type, resource_id);
 CREATE INDEX idx_attachments_resource_active ON volume_attachments(resource_type, resource_id) 
 WHERE detached_at IS NULL;
@@ -249,17 +249,16 @@ CREATE TABLE snapshots (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_volume_id ON snapshots(volume_id);
-CREATE INDEX idx_status ON snapshots(status);
-CREATE INDEX idx_immutable ON snapshots(immutable);
-CREATE INDEX idx_retention_until ON snapshots(retention_until) WHERE retention_until IS NOT NULL;
-CREATE INDEX idx_deleted_at ON snapshots(deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX idx_created_at ON snapshots(created_at);
+CREATE INDEX idx_snapshots_volume_id ON snapshots(volume_id);
+CREATE INDEX idx_snapshots_status ON snapshots(status);
+CREATE INDEX idx_snapshots_immutable ON snapshots(immutable);
+CREATE INDEX idx_snapshots_retention_until ON snapshots(retention_until) WHERE retention_until IS NOT NULL;
+CREATE INDEX idx_snapshots_deleted_at ON snapshots(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_snapshots_created_at ON snapshots(created_at);
 
 -- Composite index for common query patterns
 CREATE INDEX idx_snapshots_volume_status ON snapshots(volume_id, status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_snapshots_workspace_created ON snapshots(created_at) 
-USING btree (created_at DESC) 
+CREATE INDEX idx_snapshots_workspace_created ON snapshots USING btree (created_at DESC)
 WHERE deleted_at IS NULL;
 
 -- Add foreign key constraint to volumes
@@ -310,9 +309,9 @@ CREATE TABLE buckets (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_workspace_id ON buckets(workspace_id);
-CREATE INDEX idx_storage_class ON buckets(storage_class);
-CREATE INDEX idx_deleted_at ON buckets(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_buckets_workspace_id ON buckets(workspace_id);
+CREATE INDEX idx_buckets_storage_class ON buckets(storage_class);
+CREATE INDEX idx_buckets_deleted_at ON buckets(deleted_at) WHERE deleted_at IS NULL;
 
 -- Add unique constraint for bucket names within workspace
 ALTER TABLE buckets 

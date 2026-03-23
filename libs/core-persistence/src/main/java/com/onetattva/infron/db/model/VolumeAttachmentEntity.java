@@ -19,7 +19,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "volume_attachments", 
     indexes = {
-        @Index(name = "idx_volume_id", columnList = "volume_id"),
+        @Index(name = "idx_va_volume_id", columnList = "volume_id"),
         @Index(name = "idx_resource", columnList = "resource_type,resource_id")
     },
     uniqueConstraints = {

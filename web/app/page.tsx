@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUserManager } from '@lib/oidc';
+import { fetchOidcConfigIfNeeded, getUserManager, OIDC_NOT_CONFIGURED_MESSAGE } from '@lib/oidc';
 
 type LoginType = 'tenant' | 'system';
 
@@ -12,23 +12,40 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [loginType, setLoginType] = useState<LoginType>('tenant');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [oidcError, setOidcError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    const um = getUserManager();
-    if (!um) return; // SSR or not in browser yet
-    um.getUser().then(u => {
+    (async () => {
+      await fetchOidcConfigIfNeeded();
+      const um = getUserManager();
+      if (!um) return;
+      const u = await um.getUser();
       setName(u?.profile?.email || u?.profile?.preferred_username || null);
-    });
+    })();
   }, []);
 
-  const onLogin = (type: LoginType) => {
-    // Store login type in session storage for use after redirect
+  const onLogin = async (type: LoginType) => {
+    const ok = await fetchOidcConfigIfNeeded();
+    if (!ok) {
+      setOidcError(OIDC_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
+    const um = getUserManager();
+    if (!um) {
+      setOidcError(OIDC_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
+    setOidcError(null);
     sessionStorage.setItem('loginType', type);
-    getUserManager()?.signinRedirect();
+    setShowLoginModal(false);
+    um.signinRedirect();
   };
 
-  const onLogout = () => getUserManager()?.signoutRedirect();
+  const onLogout = async () => {
+    await fetchOidcConfigIfNeeded();
+    await getUserManager()?.signoutRedirect();
+  };
 
   if (!mounted) {
     return null;
@@ -80,7 +97,10 @@ export default function Home() {
               </>
             ) : (
               <button
-                onClick={() => setShowLoginModal(true)}
+                onClick={() => {
+                  setOidcError(null);
+                  setShowLoginModal(true);
+                }}
                 className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
               >
                 Login
@@ -109,7 +129,10 @@ export default function Home() {
               </div>
             ) : (
               <button
-                onClick={() => setShowLoginModal(true)}
+                onClick={() => {
+                  setOidcError(null);
+                  setShowLoginModal(true);
+                }}
                 className="px-8 py-4 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold text-lg transition-all"
               >
                 Get Started
@@ -124,6 +147,11 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Login to Infron</h2>
+            {oidcError && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                {oidcError}
+              </div>
+            )}
             <div className="space-y-4">
               <button
                 onClick={() => {
@@ -136,10 +164,7 @@ export default function Home() {
                 <div className="text-sm text-gray-500">Access your tenant dashboard</div>
               </button>
               <button
-                onClick={() => {
-                  onLogin('system');
-                  setShowLoginModal(false);
-                }}
+                onClick={() => onLogin('system')}
                 className="w-full px-6 py-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
               >
                 <div className="font-semibold text-gray-900">System Login</div>

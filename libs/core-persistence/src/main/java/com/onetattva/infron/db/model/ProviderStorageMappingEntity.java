@@ -26,8 +26,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "provider_storage_mappings",
     indexes = {
-        @Index(name = "idx_storage_class", columnList = "storage_class"),
-        @Index(name = "idx_provider_id", columnList = "provider_id")
+        @Index(name = "idx_psm_storage_class", columnList = "storage_class"),
+        @Index(name = "idx_psm_provider_id", columnList = "provider_id")
     },
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_storage_class_provider", 

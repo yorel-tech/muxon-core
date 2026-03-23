@@ -3,6 +3,7 @@ package com.onetattva.infron.db.repository;
 import com.onetattva.infron.db.model.StorageClassEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,10 @@ public interface StorageClassRepository extends JpaRepository<StorageClassEntity
 
     List<StorageClassEntity> findByTier(String tier);
 
-    @Query("SELECT sc FROM StorageClassEntity sc WHERE :providerId MEMBER OF sc.allowedProviders")
-    List<StorageClassEntity> findByAllowedProvider(String providerId);
+    @Query(
+            value =
+                    "SELECT * FROM storage_classes sc WHERE sc.allowed_providers IS NOT NULL "
+                            + "AND sc.allowed_providers @> jsonb_build_array(CAST(:providerId AS text))",
+            nativeQuery = true)
+    List<StorageClassEntity> findByAllowedProvider(@Param("providerId") String providerId);
 }

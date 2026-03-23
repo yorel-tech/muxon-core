@@ -5,6 +5,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,7 +45,7 @@ public class StorageClassEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "allowed_providers", columnDefinition = "jsonb")
-    private String[] allowedProviders;
+    private List<String> allowedProviders;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -109,11 +110,11 @@ public class StorageClassEntity {
         this.qos = qos;
     }
 
-    public String[] getAllowedProviders() {
+    public List<String> getAllowedProviders() {
         return allowedProviders;
     }
 
-    public void setAllowedProviders(String[] allowedProviders) {
+    public void setAllowedProviders(List<String> allowedProviders) {
         this.allowedProviders = allowedProviders;
     }
 

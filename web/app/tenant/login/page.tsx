@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUserManager } from '@lib/oidc';
+import { fetchOidcConfigIfNeeded, getUserManager, OIDC_NOT_CONFIGURED_MESSAGE } from '@lib/oidc';
 import { Input } from '@/components/ui/atoms/input';
 import { Button } from '@/components/ui/atoms/button';
 
@@ -18,6 +18,7 @@ export default function TenantLoginPage() {
     // If already authenticated, send the user to the tenant dashboard
     const checkExistingSession = async () => {
       try {
+        await fetchOidcConfigIfNeeded();
         const um = getUserManager();
         const user = await um?.getUser();
         if (user) {
@@ -50,13 +51,24 @@ export default function TenantLoginPage() {
     setIsSubmitting(true);
 
     try {
+      const configOk = await fetchOidcConfigIfNeeded();
+      if (!configOk) {
+        setError(OIDC_NOT_CONFIGURED_MESSAGE);
+        setIsSubmitting(false);
+        return;
+      }
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('loginType', 'tenant');
         sessionStorage.setItem('selectedTenantSlug', value.toLowerCase());
       }
 
       const um = getUserManager();
-      await um?.signinRedirect();
+      if (!um) {
+        setError(OIDC_NOT_CONFIGURED_MESSAGE);
+        setIsSubmitting(false);
+        return;
+      }
+      await um.signinRedirect();
     } catch (err) {
       console.error('Failed to start tenant login', err);
       setError('Failed to start login. Please try again.');

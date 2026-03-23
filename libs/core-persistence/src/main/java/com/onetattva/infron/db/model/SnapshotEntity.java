@@ -21,9 +21,9 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "snapshots", indexes = {
-    @Index(name = "idx_volume_id", columnList = "volume_id"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_immutable", columnList = "immutable")
+    @Index(name = "idx_snapshots_volume_id", columnList = "volume_id"),
+    @Index(name = "idx_snapshots_status", columnList = "status"),
+    @Index(name = "idx_snapshots_immutable", columnList = "immutable")
 })
 public class SnapshotEntity {
 

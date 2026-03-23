@@ -23,8 +23,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "buckets",
     indexes = {
-        @Index(name = "idx_workspace_id", columnList = "workspace_id"),
-        @Index(name = "idx_storage_class", columnList = "storage_class")
+        @Index(name = "idx_buckets_workspace_id", columnList = "workspace_id"),
+        @Index(name = "idx_buckets_storage_class", columnList = "storage_class")
     },
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_name_workspace", 
