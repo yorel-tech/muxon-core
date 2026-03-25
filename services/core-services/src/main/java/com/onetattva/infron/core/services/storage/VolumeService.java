@@ -1,18 +1,24 @@
 package com.onetattva.infron.core.services.storage;
 
+import com.onetattva.infron.db.model.ProviderStorageEntity;
 import com.onetattva.infron.db.model.VolumeEntity;
 import com.onetattva.infron.db.model.VolumeAttachmentEntity;
+import com.onetattva.infron.db.repository.ProviderStorageMappingRepository;
 import com.onetattva.infron.db.repository.VolumeRepository;
 import com.onetattva.infron.db.repository.VolumeAttachmentRepository;
+import com.onetattva.infron.core.services.storage.scheduler.StorageSchedulerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +41,12 @@ public class VolumeService {
     private final VolumeRepository volumeRepository;
     private final VolumeAttachmentRepository volumeAttachmentRepository;
     private final StorageClassResolutionService storageClassResolutionService;
+    
+    @Autowired(required = false)
+    private StorageSchedulerService storageSchedulerService;
+    
+    @Autowired(required = false)
+    private ProviderStorageMappingRepository providerStorageMappingRepository;
 
     public VolumeService(
             VolumeRepository volumeRepository,
@@ -48,27 +60,69 @@ public class VolumeService {
     /**
      * Create a new volume.
      * <p>
-     * Validates that the storage class is supported by the provider before
-     * creating the volume. The volume is initially set to "creating" status
-     * and should be transitioned to "available" by the provider once ready.
+     * Uses the capability-based storage scheduler to select the best storage
+     * for the volume. Falls back to legacy provider storage mappings if the
+     * scheduler is not available. The volume is initially set to "creating" 
+     * status and should be transitioned to "available" by the provider once ready.
      * </p>
      *
      * @param volume volume entity with name, storage class, size, and provider
      * @return created volume entity
-     * @throws IllegalArgumentException if storage class is not supported by provider
+     * @throws IllegalArgumentException if storage class is not supported or no storage available
      */
     @Transactional
     public VolumeEntity createVolume(VolumeEntity volume) {
-        log.info("Creating volume: name={}, storageClass={}, size={}", 
-            volume.getName(), volume.getStorageClass(), volume.getSizeBytes());
+        log.info("Creating volume: name={}, storageClass={}, size={}GB", 
+            volume.getName(), volume.getStorageClass(), volume.getSizeBytes() / (1024L * 1024L * 1024L));
 
+        // Try capability-based scheduler first
+        if (storageSchedulerService != null) {
+            try {
+                StorageSchedulerService.SchedulingResult result = storageSchedulerService.scheduleStorage(
+                    volume.getStorageClass(),
+                    volume.getProviderId(),
+                    volume.getSizeBytes()
+                );
+
+                if (result.isSuccess()) {
+                    ProviderStorageEntity selectedStorage = result.getSelectedStorage();
+                    
+                    // Store scheduler decision
+                    volume.setSelectedStorageId(selectedStorage.getId());
+                    volume.setSchedulerMetadata(result.getMetadata());
+                    
+                    log.info("Scheduler selected storage: name={}, type={}, score={}", 
+                        selectedStorage.getName(), 
+                        selectedStorage.getStorageType(),
+                        result.getMetadata().get("score"));
+                    
+                    volume.setStatus("creating");
+                    return volumeRepository.save(volume);
+                } else {
+                    log.warn("Scheduler failed to select storage: {}", result.getErrorMessage());
+                    // Fall through to legacy check
+                }
+            } catch (Exception e) {
+                log.warn("Error using storage scheduler, falling back to legacy: {}", e.getMessage());
+                // Fall through to legacy check
+            }
+        }
+
+        // Fallback: Check legacy provider storage mappings
         if (!storageClassResolutionService.isStorageClassSupported(
                 volume.getStorageClass(), volume.getProviderId())) {
             throw new IllegalArgumentException(
                 "Storage class " + volume.getStorageClass() + 
-                " not supported by provider " + volume.getProviderId());
+                " not supported by provider " + volume.getProviderId() +
+                " (no scheduler match and no legacy mapping found)");
         }
 
+        log.info("Using legacy storage mapping for volume creation");
+        Map<String, Object> legacyMetadata = new HashMap<>();
+        legacyMetadata.put("method", "legacy_mapping");
+        legacyMetadata.put("storage_class", volume.getStorageClass());
+        volume.setSchedulerMetadata(legacyMetadata);
+        
         volume.setStatus("creating");
         return volumeRepository.save(volume);
     }

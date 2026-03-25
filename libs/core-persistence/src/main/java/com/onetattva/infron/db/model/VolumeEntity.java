@@ -70,6 +70,13 @@ public class VolumeEntity {
     @Column(name = "tags", columnDefinition = "jsonb")
     private Map<String, String> tags;
 
+    @Column(name = "selected_storage_id")
+    private UUID selectedStorageId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "scheduler_metadata", columnDefinition = "jsonb")
+    private Map<String, Object> schedulerMetadata;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -230,5 +237,21 @@ public class VolumeEntity {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public UUID getSelectedStorageId() {
+        return selectedStorageId;
+    }
+
+    public void setSelectedStorageId(UUID selectedStorageId) {
+        this.selectedStorageId = selectedStorageId;
+    }
+
+    public Map<String, Object> getSchedulerMetadata() {
+        return schedulerMetadata;
+    }
+
+    public void setSchedulerMetadata(Map<String, Object> schedulerMetadata) {
+        this.schedulerMetadata = schedulerMetadata;
     }
 }

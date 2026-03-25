@@ -48,6 +48,9 @@ public class ProvidersService {
     @Autowired
     private CommandQueue commandQueue;
 
+    @Autowired(required = false)
+    private com.onetattva.infron.core.services.storage.ProviderStorageDiscoveryService storageDiscoveryService;
+
     private static final String PROVIDER_CONNECTION_TEST_COMMAND = "PROVIDER_CONNECTION_TEST_COMMAND";
     private static final String PROVIDER_CAPABILITIES_DISCOVERY_COMMAND = "PROVIDER_CAPABILITIES_DISCOVERY_COMMAND";
     private static final String META_CORRELATION_ID = "connectionTestCorrelationId";
@@ -95,6 +98,18 @@ public class ProvidersService {
         UUID providerId = savedEntity.getId();
         if (savedEntity.getType() == ProviderType.PROXMOX) {
             enqueueCapabilitiesDiscovery(providerId);
+        }
+
+        // Auto-discover storage for the provider
+        if (storageDiscoveryService != null) {
+            try {
+                logger.info("Auto-discovering storage for provider: {}", providerId);
+                int storageCount = storageDiscoveryService.discoverAndSyncStorage(providerId);
+                logger.info("Discovered {} storage entries for provider {}", storageCount, providerId);
+            } catch (Exception e) {
+                logger.warn("Failed to auto-discover storage for provider {}: {}", providerId, e.getMessage());
+                // Don't fail provider creation if storage discovery fails
+            }
         }
 
         savedEntity = providerRepository.findById(providerId)
