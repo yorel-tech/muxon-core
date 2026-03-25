@@ -4,7 +4,8 @@ import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.ProviderStorageRepository;
-import com.onetattva.infron.core.services.storage.discovery.StorageDiscoveryAdapter;
+import com.onetattva.infron.core.providers.storage.StorageDiscoveryProvider;
+import com.onetattva.infron.core.providers.storage.StorageDiscoveryProviderRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,12 +13,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service for discovering and synchronizing provider storage.
  * <p>
  * This service orchestrates the discovery of storage pools/classes from
  * infrastructure providers and normalizes them into the common capability model.
+ * Uses the StorageDiscoveryProviderRegistry to delegate to provider-specific
+ * implementations without direct SDK dependencies.
  * </p>
  */
 @Service
@@ -27,23 +31,18 @@ public class ProviderStorageDiscoveryService {
 
     private final ProviderRepository providerRepository;
     private final ProviderStorageRepository providerStorageRepository;
-    private final Map<String, StorageDiscoveryAdapter> discoveryAdapters;
+    private final StorageDiscoveryProviderRegistry discoveryRegistry;
 
     public ProviderStorageDiscoveryService(
             ProviderRepository providerRepository,
             ProviderStorageRepository providerStorageRepository,
-            List<StorageDiscoveryAdapter> adapters) {
+            StorageDiscoveryProviderRegistry discoveryRegistry) {
         this.providerRepository = providerRepository;
         this.providerStorageRepository = providerStorageRepository;
+        this.discoveryRegistry = discoveryRegistry;
         
-        // Build adapter map by provider type
-        this.discoveryAdapters = new HashMap<>();
-        for (StorageDiscoveryAdapter adapter : adapters) {
-            discoveryAdapters.put(adapter.getProviderType(), adapter);
-        }
-        
-        log.info("Initialized storage discovery with {} adapters: {}", 
-            adapters.size(), discoveryAdapters.keySet());
+        log.info("Initialized storage discovery service with registry containing: {}", 
+            discoveryRegistry.getAllProviders().keySet());
     }
 
     /**
@@ -74,9 +73,9 @@ public class ProviderStorageDiscoveryService {
         ProviderEntity provider = providerOpt.get();
         String providerType = provider.getType().toString().toLowerCase();
         
-        StorageDiscoveryAdapter adapter = discoveryAdapters.get(providerType);
-        if (adapter == null) {
-            log.warn("No storage discovery adapter found for provider type {}", providerType);
+        Optional<StorageDiscoveryProvider> discoveryProvider = discoveryRegistry.getProvider(providerType);
+        if (discoveryProvider.isEmpty()) {
+            log.warn("No storage discovery provider found for provider type {}", providerType);
             return 0;
         }
         
@@ -90,9 +89,17 @@ public class ProviderStorageDiscoveryService {
             connectionInfo.put("uri", provider.getEndpoint());
         }
         
-        // Discover storage
-        List<StorageDiscoveryAdapter.DiscoveredStorage> discoveredStorage = 
-            adapter.discoverStorage(providerId, connectionInfo);
+        // Discover storage asynchronously
+        CompletableFuture<List<StorageDiscoveryProvider.DiscoveredStorage>> discoveryFuture = 
+            discoveryProvider.get().discoverStorage(providerId, connectionInfo);
+        
+        List<StorageDiscoveryProvider.DiscoveredStorage> discoveredStorage;
+        try {
+            discoveredStorage = discoveryFuture.join();
+        } catch (Exception e) {
+            log.error("Failed to discover storage for provider {}: {}", providerId, e.getMessage(), e);
+            return 0;
+        }
         
         log.info("Discovered {} storage entries from provider {}", 
             discoveredStorage.size(), providerId);
@@ -102,23 +109,23 @@ public class ProviderStorageDiscoveryService {
         
         // Create new storage entries
         Instant syncTime = Instant.now();
-        for (StorageDiscoveryAdapter.DiscoveredStorage discovered : discoveredStorage) {
+        for (StorageDiscoveryProvider.DiscoveredStorage discovered : discoveredStorage) {
             ProviderStorageEntity entity = new ProviderStorageEntity();
             entity.setProviderId(providerId);
             entity.setProviderType(providerType);
-            entity.setExternalId(discovered.getExternalId());
-            entity.setName(discovered.getName());
-            entity.setStorageType(discovered.getStorageType());
-            entity.setCapabilities(discovered.getCapabilities());
-            entity.setMetrics(discovered.getMetrics());
-            entity.setNodeId(discovered.getNodeId());
+            entity.setExternalId(discovered.externalId());
+            entity.setName(discovered.name());
+            entity.setStorageType(discovered.storageType());
+            entity.setCapabilities(discovered.capabilities());
+            entity.setMetrics(discovered.metrics());
+            entity.setNodeId(discovered.nodeId());
             entity.setEnabled(true);
             entity.setSyncedAt(syncTime);
             
             providerStorageRepository.save(entity);
             
             log.debug("Saved provider storage: name={}, type={}, capabilities={}", 
-                discovered.getName(), discovered.getStorageType(), discovered.getCapabilities());
+                discovered.name(), discovered.storageType(), discovered.capabilities());
         }
         
         log.info("Successfully synced {} storage entries for provider {}", 
@@ -184,13 +191,13 @@ public class ProviderStorageDiscoveryService {
     }
 
     /**
-     * Get storage discovery adapter for a provider type.
+     * Get storage discovery provider for a provider type.
      *
      * @param providerType provider type
-     * @return storage discovery adapter or null if not found
+     * @return storage discovery provider or empty if not found
      */
-    public StorageDiscoveryAdapter getAdapter(String providerType) {
-        return discoveryAdapters.get(providerType);
+    public Optional<StorageDiscoveryProvider> getDiscoveryProvider(String providerType) {
+        return discoveryRegistry.getProvider(providerType);
     }
 
     /**
@@ -200,6 +207,28 @@ public class ProviderStorageDiscoveryService {
      * @return true if supported
      */
     public boolean isDiscoverySupported(String providerType) {
-        return discoveryAdapters.containsKey(providerType);
+        return discoveryRegistry.isSupported(providerType);
+    }
+
+    /**
+     * Test connection to a provider for storage discovery.
+     *
+     * @param providerType provider type
+     * @param connectionInfo connection information
+     * @return future with test result
+     */
+    public CompletableFuture<StorageDiscoveryProvider.StorageDiscoveryTestResult> testConnection(
+            String providerType, Map<String, Object> connectionInfo) {
+        
+        Optional<StorageDiscoveryProvider> provider = discoveryRegistry.getProvider(providerType);
+        if (provider.isEmpty()) {
+            return CompletableFuture.completedFuture(
+                StorageDiscoveryProvider.StorageDiscoveryTestResult.failure(
+                    "No storage discovery provider found for type: " + providerType
+                )
+            );
+        }
+        
+        return provider.get().testConnection(connectionInfo);
     }
 }
