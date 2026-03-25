@@ -6,7 +6,7 @@ import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import com.onetattva.infron.core.services.storage.ProviderStorageDiscoveryService;
 import com.onetattva.infron.core.services.storage.CapabilityMappingService;
-import com.onetattva.infron.api.enums.ProviderType;
+import com.onetattva.infron.api.model.ProviderType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package com.onetattva.infron.db.queue;
 
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.EventPublisher;
@@ -31,7 +31,7 @@ public class DbEventPublisher implements EventPublisher {
     public void publishEvent(EntityType entityType, UUID entityId, String eventType, Map<String, Object> payload) {
         QueueEntryEntity entry = new QueueEntryEntity();
         entry.setQueueType(eventType);
-        entry.setEntityType(entityType);
+        entry.setEntityType(com.onetattva.infron.api.enums.EntityType.valueOf(entityType.name()));
         entry.setEntityId(entityId);
         entry.setQueueCategory(QueueCategory.STATUS);
         entry.setStatus(QueueStatus.PENDING);
@@ -42,5 +42,9 @@ public class DbEventPublisher implements EventPublisher {
         entry.setUpdatedAt(Instant.now());
         entry.setVersion(DEFAULT_VERSION);
         repository.save(entry);
+    }
+
+    private com.onetattva.infron.api.enums.EntityType convertToEntityTypeEnum(EntityType modelType) {
+        return com.onetattva.infron.api.enums.EntityType.valueOf(modelType.name());
     }
 }

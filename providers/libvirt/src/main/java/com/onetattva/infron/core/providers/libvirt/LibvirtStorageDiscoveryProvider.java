@@ -82,7 +82,9 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                 return discoveredStorage;
             }
 
-            try (Connect conn = new Connect(connectionUri, true)) {
+            Connect conn = null;
+            try {
+                conn = new Connect(connectionUri, true);
                 String[] poolNames = conn.listStoragePools();
                 String[] inactivePoolNames = conn.listDefinedStoragePools();
                 
@@ -107,6 +109,14 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                 
             } catch (LibvirtException e) {
                 log.error("Failed to connect to Libvirt provider {}: {}", providerId, e.getMessage(), e);
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.close();
+                    } catch (LibvirtException e) {
+                        log.warn("Failed to close Libvirt connection: {}", e.getMessage());
+                    }
+                }
             }
             
             return discoveredStorage;
@@ -121,7 +131,9 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                 return StorageDiscoveryTestResult.failure("No connection URI provided");
             }
 
-            try (Connect conn = new Connect(connectionUri, true)) {
+            Connect conn = null;
+            try {
+                conn = new Connect(connectionUri, true);
                 String hostname = conn.getHostName();
                 long version = conn.getVersion();
                 
@@ -144,6 +156,14 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                 return StorageDiscoveryTestResult.failure(
                     "Failed to connect: " + e.getMessage()
                 );
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.close();
+                    } catch (LibvirtException e) {
+                        log.warn("Failed to close Libvirt connection: {}", e.getMessage());
+                    }
+                }
             }
         });
     }

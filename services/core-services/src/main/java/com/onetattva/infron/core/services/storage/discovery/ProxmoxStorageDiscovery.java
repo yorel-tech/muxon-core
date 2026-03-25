@@ -168,20 +168,27 @@ public class ProxmoxStorageDiscovery implements StorageDiscoveryAdapter {
         URI uri = URI.create(endpoint);
         String host = uri.getHost();
         int port = uri.getPort() != -1 ? uri.getPort() : 8006;
-        
         String username = credentials.get("username");
         String password = credentials.get("password");
         String realm = credentials.getOrDefault("realm", "pam");
         
+        if (username == null || password == null) {
+            throw new IllegalArgumentException("Missing username or password");
+        }
+        
         // Handle username@realm format
-        if (username != null && username.contains("@")) {
-            int atIndex = username.indexOf('@');
+        int atIndex = username.indexOf('@');
+        if (atIndex != -1) {
             realm = username.substring(atIndex + 1);
             username = username.substring(0, atIndex);
         }
         
-        return Proxmox.createWithPassword(host, port, username, password, realm, 
-            SecurityConfig.insecure());
+        try {
+            return Proxmox.createWithPassword(host, port, username, password, realm, 
+                SecurityConfig.insecure());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Proxmox client", e);
+        }
     }
 
     private long bytesToGb(long bytes) {

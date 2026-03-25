@@ -1,5 +1,6 @@
 package com.onetattva.infron.db.queue;
 
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
@@ -25,7 +26,7 @@ public final class QueueEntryMapper {
         return CommandMessage.builder()
             .id(entry.getId())
             .queueType(entry.getQueueType())
-            .entityType(entry.getEntityType())
+            .entityType(convertToModelEntityType(entry.getEntityType()))
             .entityId(entry.getEntityId())
             .payload(entry.getPayload() != null ? entry.getPayload() : Map.of())
             .metadata(entry.getMetadata() != null ? entry.getMetadata() : Map.of())
@@ -48,7 +49,7 @@ public final class QueueEntryMapper {
             entry.setId(msg.id());
         }
         entry.setQueueType(msg.queueType());
-        entry.setEntityType(msg.entityType());
+        entry.setEntityType(convertToEntityTypeEnum(msg.entityType()));
         entry.setEntityId(msg.entityId());
         entry.setQueueCategory(QueueCategory.COMMAND);
         entry.setStatus(QueueStatus.PENDING);
@@ -65,5 +66,13 @@ public final class QueueEntryMapper {
         entry.setCorrelationId(msg.correlationId());
         entry.setVersion(DEFAULT_VERSION);
         return entry;
+    }
+
+    private static EntityType convertToModelEntityType(com.onetattva.infron.api.enums.EntityType enumType) {
+        return EntityType.valueOf(enumType.name());
+    }
+
+    private static com.onetattva.infron.api.enums.EntityType convertToEntityTypeEnum(EntityType modelType) {
+        return com.onetattva.infron.api.enums.EntityType.valueOf(modelType.name());
     }
 }

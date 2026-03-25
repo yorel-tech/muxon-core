@@ -5,7 +5,7 @@ import com.onetattva.infron.db.model.StorageCapabilityMappingEntity;
 import com.onetattva.infron.db.model.StorageClassEntity;
 import com.onetattva.infron.db.model.StorageOverrideEntity;
 import com.onetattva.infron.db.repository.ProviderStorageRepository;
-import com.onetattava.infron.db.repository.StorageCapabilityMappingRepository;
+import com.onetattva.infron.db.repository.StorageCapabilityMappingRepository;
 import com.onetattva.infron.db.repository.StorageClassRepository;
 import com.onetattva.infron.db.repository.StorageOverrideRepository;
 import com.onetattva.infron.core.services.storage.scheduler.StorageSchedulerService;

@@ -8,7 +8,7 @@ import com.onetattva.infron.core.providers.TenantAwareVmProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.EventPublisher;
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.VmPowerState;
 import com.onetattva.infron.api.enums.VmStatus;
 import com.onetattva.infron.db.model.VmEntity;

@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.providers;
 
-import com.onetattva.infron.api.enums.VmPowerState;
-import com.onetattva.infron.api.enums.VmStatus;
+import com.onetattva.infron.api.model.VmPowerState;
+import com.onetattva.infron.api.model.VmStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

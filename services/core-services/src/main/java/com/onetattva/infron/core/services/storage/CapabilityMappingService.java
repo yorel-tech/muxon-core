@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.services.storage;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.db.model.StorageCapabilityMappingEntity;
 import com.onetattva.infron.db.repository.StorageCapabilityMappingRepository;
 import org.slf4j.Logger;

@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.spi.queue;
 
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 
 import java.util.List;
 import java.util.UUID;

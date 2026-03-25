@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;

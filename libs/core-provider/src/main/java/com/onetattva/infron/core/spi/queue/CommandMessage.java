@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.spi.queue;
 
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 
 import java.time.Instant;
 import java.util.Map;

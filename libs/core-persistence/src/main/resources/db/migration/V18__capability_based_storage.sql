@@ -8,9 +8,9 @@
 -- ============================================================================
 
 ALTER TABLE storage_classes 
-  ADD COLUMN capabilities JSONB,
-  ADD COLUMN constraints JSONB,
-  ADD COLUMN description TEXT;
+  ADD COLUMN IF NOT EXISTS capabilities JSONB,
+  ADD COLUMN IF NOT EXISTS constraints JSONB,
+  ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- Migrate existing data from features/qos to capabilities/constraints
 UPDATE storage_classes SET
@@ -54,7 +54,7 @@ COMMENT ON COLUMN storage_classes.constraints IS 'Storage constraints (min_iops,
 -- STEP 2: Create provider_storage table
 -- ============================================================================
 
-CREATE TABLE provider_storage (
+CREATE TABLE IF NOT EXISTS provider_storage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   provider_id UUID NOT NULL,
   provider_type VARCHAR(32) NOT NULL,
@@ -74,13 +74,14 @@ CREATE TABLE provider_storage (
   CONSTRAINT uk_provider_external_id UNIQUE (provider_id, external_id)
 );
 
-CREATE INDEX idx_provider_storage_provider ON provider_storage(provider_id);
-CREATE INDEX idx_provider_storage_type ON provider_storage(provider_type);
-CREATE INDEX idx_provider_storage_datacenter ON provider_storage(datacenter_id);
-CREATE INDEX idx_provider_storage_enabled ON provider_storage(enabled);
-CREATE INDEX idx_provider_storage_capabilities ON provider_storage USING GIN (capabilities);
-CREATE INDEX idx_provider_storage_name ON provider_storage(name);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_provider ON provider_storage(provider_id);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_type ON provider_storage(provider_type);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_datacenter ON provider_storage(datacenter_id);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_enabled ON provider_storage(enabled);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_capabilities ON provider_storage USING GIN (capabilities);
+CREATE INDEX IF NOT EXISTS idx_provider_storage_name ON provider_storage(name);
 
+DROP TRIGGER IF EXISTS trg_provider_storage_updated ON provider_storage;
 CREATE TRIGGER trg_provider_storage_updated
 BEFORE UPDATE ON provider_storage
 FOR EACH ROW
@@ -96,7 +97,7 @@ COMMENT ON COLUMN provider_storage.metrics IS 'Current storage metrics (free_gb,
 -- STEP 3: Create storage_capability_mappings table
 -- ============================================================================
 
-CREATE TABLE storage_capability_mappings (
+CREATE TABLE IF NOT EXISTS storage_capability_mappings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   infron_capability VARCHAR(64) NOT NULL,
   provider_type VARCHAR(32) NOT NULL,
@@ -107,8 +108,8 @@ CREATE TABLE storage_capability_mappings (
   CONSTRAINT uk_capability_provider UNIQUE (infron_capability, provider_type, provider_capability)
 );
 
-CREATE INDEX idx_scm_infron_capability ON storage_capability_mappings(infron_capability);
-CREATE INDEX idx_scm_provider_type ON storage_capability_mappings(provider_type);
+CREATE INDEX IF NOT EXISTS idx_scm_infron_capability ON storage_capability_mappings(infron_capability);
+CREATE INDEX IF NOT EXISTS idx_scm_provider_type ON storage_capability_mappings(provider_type);
 
 COMMENT ON TABLE storage_capability_mappings IS 'Maps Infron generic capabilities to provider-specific equivalents';
 COMMENT ON COLUMN storage_capability_mappings.infron_capability IS 'Generic Infron capability name';
@@ -116,7 +117,8 @@ COMMENT ON COLUMN storage_capability_mappings.provider_capability IS 'Provider-s
 COMMENT ON COLUMN storage_capability_mappings.value_mapping IS 'Value translation map (e.g., high -> [rbd, nvme])';
 
 -- Insert default capability mappings for Libvirt and Proxmox
-INSERT INTO storage_capability_mappings (infron_capability, provider_type, provider_capability, value_mapping) VALUES
+INSERT INTO storage_capability_mappings (infron_capability, provider_type, provider_capability, value_mapping) 
+VALUES
 -- Performance mappings
 ('performance', 'libvirt', 'pool_type', '{"high": ["rbd", "nvme"], "medium": ["lvm-thin", "zfs"], "low": ["dir", "nfs"]}'),
 ('performance', 'proxmox', 'storage_type', '{"high": ["rbd", "zfspool"], "medium": ["lvmthin"], "low": ["dir", "nfs"]}'),
@@ -128,13 +130,14 @@ INSERT INTO storage_capability_mappings (infron_capability, provider_type, provi
 ('shared', 'proxmox', 'storage_type', '{"true": ["rbd", "nfs", "cifs"], "false": ["lvmthin", "zfspool", "dir"]}'),
 -- Redundancy mappings
 ('redundancy', 'libvirt', 'pool_type', '{"replicated": ["rbd"], "none": ["lvm", "zfs", "dir", "nfs"]}'),
-('redundancy', 'proxmox', 'storage_type', '{"replicated": ["rbd"], "none": ["lvmthin", "zfspool", "dir", "nfs"]}');
+('redundancy', 'proxmox', 'storage_type', '{"replicated": ["rbd"], "none": ["lvmthin", "zfspool", "dir", "nfs"]}')
+ON CONFLICT (infron_capability, provider_type, provider_capability) DO NOTHING;
 
 -- ============================================================================
 -- STEP 4: Create storage_overrides table
 -- ============================================================================
 
-CREATE TABLE storage_overrides (
+CREATE TABLE IF NOT EXISTS storage_overrides (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   storage_class_name VARCHAR(64) NOT NULL,
   provider_type VARCHAR(32) NOT NULL,
@@ -146,12 +149,13 @@ CREATE TABLE storage_overrides (
   
   CONSTRAINT fk_storage_class FOREIGN KEY (storage_class_name) 
     REFERENCES storage_classes(name) ON DELETE CASCADE,
-  CONSTRAINT uk_storage_class_provider UNIQUE (storage_class_name, provider_type)
+  CONSTRAINT uk_storage_overrides_class_provider UNIQUE (storage_class_name, provider_type)
 );
 
-CREATE INDEX idx_storage_overrides_class ON storage_overrides(storage_class_name);
-CREATE INDEX idx_storage_overrides_provider ON storage_overrides(provider_type);
+CREATE INDEX IF NOT EXISTS idx_storage_overrides_class ON storage_overrides(storage_class_name);
+CREATE INDEX IF NOT EXISTS idx_storage_overrides_provider ON storage_overrides(provider_type);
 
+DROP TRIGGER IF EXISTS trg_storage_overrides_updated ON storage_overrides;
 CREATE TRIGGER trg_storage_overrides_updated
 BEFORE UPDATE ON storage_overrides
 FOR EACH ROW
@@ -165,15 +169,22 @@ COMMENT ON COLUMN storage_overrides.provider_storage_names IS 'Array of provider
 -- ============================================================================
 
 ALTER TABLE volumes 
-  ADD COLUMN selected_storage_id UUID,
-  ADD COLUMN scheduler_metadata JSONB;
+  ADD COLUMN IF NOT EXISTS selected_storage_id UUID,
+  ADD COLUMN IF NOT EXISTS scheduler_metadata JSONB;
 
-ALTER TABLE volumes
-  ADD CONSTRAINT fk_selected_storage 
-  FOREIGN KEY (selected_storage_id) 
-  REFERENCES provider_storage(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_selected_storage'
+  ) THEN
+    ALTER TABLE volumes
+      ADD CONSTRAINT fk_selected_storage 
+      FOREIGN KEY (selected_storage_id) 
+      REFERENCES provider_storage(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
-CREATE INDEX idx_volumes_selected_storage ON volumes(selected_storage_id);
+CREATE INDEX IF NOT EXISTS idx_volumes_selected_storage ON volumes(selected_storage_id);
 
 COMMENT ON COLUMN volumes.selected_storage_id IS 'The provider_storage entry selected by scheduler';
 COMMENT ON COLUMN volumes.scheduler_metadata IS 'Scheduler decision metadata (score, filters applied, etc.)';
@@ -182,7 +193,15 @@ COMMENT ON COLUMN volumes.scheduler_metadata IS 'Scheduler decision metadata (sc
 -- STEP 6: Deprecate provider_storage_mappings table
 -- ============================================================================
 
-ALTER TABLE provider_storage_mappings RENAME TO provider_storage_mappings_deprecated;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_name = 'provider_storage_mappings'
+  ) THEN
+    ALTER TABLE provider_storage_mappings RENAME TO provider_storage_mappings_deprecated;
+  END IF;
+END $$;
 
 COMMENT ON TABLE provider_storage_mappings_deprecated IS 'DEPRECATED: Replaced by capability-based model. Will be removed in future version.';
 

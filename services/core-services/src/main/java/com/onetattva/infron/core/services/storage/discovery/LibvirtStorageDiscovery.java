@@ -44,7 +44,9 @@ public class LibvirtStorageDiscovery implements StorageDiscoveryAdapter {
             return discoveredStorage;
         }
 
-        try (Connect conn = new Connect(connectionUri, true)) {
+        Connect conn = null;
+        try {
+            conn = new Connect(connectionUri, true);
             String[] poolNames = conn.listStoragePools();
             String[] inactivePoolNames = conn.listDefinedStoragePools();
             
@@ -69,6 +71,14 @@ public class LibvirtStorageDiscovery implements StorageDiscoveryAdapter {
             
         } catch (LibvirtException e) {
             log.error("Failed to connect to Libvirt provider {}: {}", providerId, e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (LibvirtException e) {
+                    log.warn("Failed to close Libvirt connection: {}", e.getMessage());
+                }
+            }
         }
         
         return discoveredStorage;

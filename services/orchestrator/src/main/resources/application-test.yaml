@@ -1,0 +1,55 @@
+---
+server:
+  port: 8081
+
+spring:
+  application:
+    name: "orchestrator"
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/infron"
+    username: "infron"
+    password: "Infr0n@1234"
+    driver-class-name: "org.postgresql.Driver"
+  jpa:
+    hibernate:
+      ddl-auto: "none"
+    properties:
+      hibernate:
+        dialect: "org.hibernate.dialect.PostgreSQLDialect"
+
+logging:
+  level:
+    root: "INFO"
+    org.springframework: "INFO"
+    com.onetattva.infron: "DEBUG"
+  file:
+    name: "logs/infron-orchestrator.log"
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+infron:
+  instanceName: "local"
+  instanceId: 19
+  system: null
+  tenants: null
+  queue:
+    backend: "db"
+
+# gRPC configuration
+grpc:
+  server:
+    port: 9081
+
+# OpenTelemetry configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0

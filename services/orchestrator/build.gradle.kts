@@ -28,8 +28,17 @@ dependencies {
     
     // Development tools
     developmentOnly(libs.spring.boot.devtools)
+    
+    // Test dependencies
+    testImplementation("org.springframework.boot:spring-boot-starter-test:4.0.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.14.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.register("runDev") {
     dependsOn("bootRun")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

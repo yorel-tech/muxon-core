@@ -8,6 +8,8 @@ repositories {
 
 dependencies {
     testImplementation(project(":libs:core-api"))
+    testImplementation(project(":libs:core-persistence"))
+    testImplementation(project(":services:core-services"))
     testCompileOnly(libs.swagger.annotations)
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
     testImplementation("org.junit.jupiter:junit-jupiter:5.14.1")
@@ -18,6 +20,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
     testImplementation("io.rest-assured:rest-assured:6.0.0")
+    testImplementation("org.springframework.boot:spring-boot-starter-test:4.0.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

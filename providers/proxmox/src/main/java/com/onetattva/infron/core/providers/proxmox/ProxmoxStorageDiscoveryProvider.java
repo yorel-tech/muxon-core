@@ -279,8 +279,12 @@ public class ProxmoxStorageDiscoveryProvider implements StorageDiscoveryProvider
             username = username.substring(0, atIndex);
         }
         
-        return Proxmox.createWithPassword(host, port, username, password, realm, 
-            SecurityConfig.insecure());
+        try {
+            return Proxmox.createWithPassword(host, port, username, password, realm, 
+                SecurityConfig.insecure());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Proxmox client", e);
+        }
     }
 
     private long bytesToGb(long bytes) {

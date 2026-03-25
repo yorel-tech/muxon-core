@@ -1,6 +1,6 @@
 package com.onetattva.infron.db.queue;
 
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
@@ -37,7 +37,7 @@ public class DbCommandQueue implements CommandQueue {
     @Transactional
     public List<CommandMessage> pollCommands(EntityType entityType, int limit) {
         List<QueueEntryEntity> entries = repository.findPendingByEntityTypeForUpdate(
-            entityType,
+            com.onetattva.infron.api.enums.EntityType.valueOf(entityType.name()),
             QueueStatus.PENDING,
             PageRequest.of(0, limit)
         );
@@ -90,5 +90,9 @@ public class DbCommandQueue implements CommandQueue {
             repository.saveAll(stalled);
         }
         return stalled.size();
+    }
+
+    private com.onetattva.infron.api.enums.EntityType convertToEntityTypeEnum(EntityType modelType) {
+        return com.onetattva.infron.api.enums.EntityType.valueOf(modelType.name());
     }
 }

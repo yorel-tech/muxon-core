@@ -1,6 +1,6 @@
 package com.onetattva.infron.core.orch;
 
-import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.model.ProviderStatus;
 import com.onetattva.infron.core.providers.*;
 import com.onetattva.infron.core.providers.libvirt.LibvirtProviderSdk;
