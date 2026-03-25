@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -43,6 +44,12 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
      */
     @Query("SELECT q FROM QueueEntryEntity q WHERE q.correlationId = :correlationId ORDER BY q.createdAt ASC")
     List<QueueEntryEntity> findByCorrelationId(@Param("correlationId") String correlationId);
+
+    /**
+     * Minimal status/error projection for timeout diagnostics.
+     */
+    @Query("SELECT q.status AS status, q.errorMessage AS errorMessage FROM QueueEntryEntity q WHERE q.id = :id")
+    Optional<QueueStatusErrorProjection> findStatusAndErrorById(@Param("id") UUID id);
 
     /**
      * Find entries by entity ID
@@ -126,4 +133,9 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
         @Param("id") UUID id,
         @Param("processedAt") Instant processedAt
     );
+
+    interface QueueStatusErrorProjection {
+        QueueStatus getStatus();
+        String getErrorMessage();
+    }
 }

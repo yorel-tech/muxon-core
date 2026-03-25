@@ -2,8 +2,10 @@ package com.onetattva.infron.core.services;
 
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;
+import com.onetattva.infron.db.repository.QueueEntryRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,9 @@ public class ProvidersService {
 
     @Autowired
     private VmRepository vmRepository;
+
+    @Autowired
+    private QueueEntryRepository queueEntryRepository;
 
     @Autowired
     private CommandQueue commandQueue;
@@ -336,14 +342,28 @@ public class ProvidersService {
                 .correlationId(correlationId)
                 .build();
 
-        commandQueue.sendCommand(command);
+        UUID commandId = commandQueue.sendCommand(command);
+        logger.info("Enqueued provider connection test command: providerId={}, commandId={}, correlationId={}",
+                providerId, commandId, correlationId);
 
         long deadline = System.currentTimeMillis() + 30_000L;
         while (System.currentTimeMillis() < deadline) {
-            ProviderEntity current = providerRepository.findById(providerId)
-                    .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
+            QueueEntryRepository.QueueStatusErrorProjection queueState = queueEntryRepository
+                    .findStatusAndErrorById(commandId)
+                    .orElse(null);
+            QueueStatus queueStatus = queueState != null ? queueState.getStatus() : null;
 
-            String currentCorrelationId = current.getMetadata().get(META_CORRELATION_ID);
+            ProviderRepository.ProviderConnectionStateProjection current = providerRepository
+                    .findConnectionStateById(providerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
+            Map<String, String> currentMetadata = current.getMetadata() != null ? current.getMetadata() : Map.of();
+            String currentCorrelationId = currentMetadata.get(META_CORRELATION_ID);
+            if (queueStatus == QueueStatus.COMPLETED || queueStatus == QueueStatus.FAILED) {
+                ProviderStatus status = ProviderStatus.valueOf(current.getStatus());
+                if (status != ProviderStatus.CONNECTING) {
+                    return mapConnectionTestResult(current, status);
+                }
+            }
             if (correlationId.equals(currentCorrelationId)) {
                 ProviderStatus status = ProviderStatus.valueOf(current.getStatus());
                 if (status != ProviderStatus.CONNECTING) {
@@ -364,7 +384,10 @@ public class ProvidersService {
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerId));
 
         timedOut.setStatus(ProviderStatus.ERROR.name());
-        timedOut.getMetadata().put(META_MESSAGE, "Connection test timed out");
+        String timeoutMessage = buildConnectionTimeoutMessage(providerId, commandId);
+        logger.error("Provider connection test timed out: providerId={}, commandId={}, correlationId={}",
+                providerId, commandId, correlationId);
+        timedOut.getMetadata().put(META_MESSAGE, timeoutMessage);
         timedOut.getMetadata().put(META_LATENCY_MS, "0");
         timedOut.setUpdatedAt(Instant.now());
         providerRepository.save(timedOut);
@@ -372,10 +395,33 @@ public class ProvidersService {
         ProviderConnectionTestResult result = new ProviderConnectionTestResult();
         result.setSuccess(false);
         result.setStatus(ProviderStatus.ERROR);
-        result.setMessage("Connection test timed out");
+        result.setMessage(timeoutMessage);
         result.setCapabilities(null);
         result.setLatencyMs(null);
         return result;
+    }
+
+    private String buildConnectionTimeoutMessage(UUID providerId, UUID commandId) {
+        QueueEntryRepository.QueueStatusErrorProjection queueState = queueEntryRepository
+                .findStatusAndErrorById(commandId)
+                .orElse(null);
+        QueueStatus status = queueState != null ? queueState.getStatus() : null;
+        String errorMessage = queueState != null ? queueState.getErrorMessage() : null;
+
+        StringBuilder message = new StringBuilder("Connection test timed out for provider ")
+                .append(providerId)
+                .append(" (commandId: ")
+                .append(commandId)
+                .append(")");
+        if (status != null) {
+            message.append(" (queue status: ").append(status).append(")");
+        } else {
+            message.append(" (queue entry not found)");
+        }
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            message.append(" - queue error: ").append(errorMessage);
+        }
+        return message.toString();
     }
 
     private void enqueueCapabilitiesDiscovery(UUID providerId) {
@@ -395,16 +441,17 @@ public class ProvidersService {
         commandQueue.sendCommand(command);
     }
 
-    private ProviderConnectionTestResult mapConnectionTestResult(ProviderEntity entity, ProviderStatus status) {
+    private ProviderConnectionTestResult mapConnectionTestResult(ProviderRepository.ProviderConnectionStateProjection entity, ProviderStatus status) {
         ProviderConnectionTestResult result = new ProviderConnectionTestResult();
         boolean success = status == ProviderStatus.ACTIVE;
         result.setSuccess(success);
         result.setStatus(status);
 
-        String message = entity.getMetadata().get(META_MESSAGE);
+        Map<String, String> metadata = entity.getMetadata() != null ? entity.getMetadata() : Map.of();
+        String message = metadata.get(META_MESSAGE);
         result.setMessage(message != null ? message : (success ? "Successfully connected to provider" : "Connection failed"));
 
-        String latencyStr = entity.getMetadata().get(META_LATENCY_MS);
+        String latencyStr = metadata.get(META_LATENCY_MS);
         if (latencyStr != null) {
             try {
                 result.setLatencyMs(Integer.parseInt(latencyStr));
@@ -525,26 +572,58 @@ public class ProvidersService {
      * Map entity capabilities to API model
      */
     private ProviderCapabilities mapEntityCapabilitiesToApi(Map<String, String> entityCapabilities) {
-        // Parse JSONB capabilities into typed object
-        // This is a simplified implementation
-        // Real implementation would properly deserialize the JSONB structure
+        if (entityCapabilities == null) {
+            entityCapabilities = Map.of();
+        }
+
+        Integer maxMemoryGb = parseInteger(entityCapabilities.get("maxMemoryGb"));
+        if (maxMemoryGb == null) {
+            Integer maxMemoryMb = parseInteger(entityCapabilities.get("maxMemoryMb"));
+            if (maxMemoryMb != null) {
+                maxMemoryGb = maxMemoryMb / 1024;
+            }
+        }
+
         return ProviderCapabilities.builder()
-                .supportedCpuTypes(List.of("kvm64", "host"))
-                .supportedStorageClasses(List.of("local", "nfs"))
-                .supportedNetworkTypes(List.of("bridge", "ovs"))
-                .supportedOsTypes(List.of("linux", "windows"))
+                .supportedCpuTypes(parseCsvList(entityCapabilities.get("supportedCpuTypes")))
+                .supportedStorageClasses(parseCsvList(entityCapabilities.get("supportedStorageClasses")))
+                .supportedNetworkTypes(parseCsvList(entityCapabilities.get("supportedNetworkTypes")))
+                .supportedOsTypes(parseCsvList(entityCapabilities.get("supportedOsTypes")))
                 .resourceLimits(ResourceLimits.builder()
-                        .maxCpus(entityCapabilities != null && entityCapabilities.containsKey("maxCpus")
-                                ? Integer.parseInt(entityCapabilities.get("maxCpus")) : 1000)
-                        .maxMemoryGb(entityCapabilities != null && entityCapabilities.containsKey("maxMemoryGb")
-                                ? Integer.parseInt(entityCapabilities.get("maxMemoryGb")) : 409600)
-                        .maxStorageGb(entityCapabilities != null && entityCapabilities.containsKey("maxStorageGb")
-                                ? Integer.parseInt(entityCapabilities.get("maxStorageGb")) : 20000)
-                        .maxVms(entityCapabilities != null && entityCapabilities.containsKey("maxVms")
-                                ? Integer.parseInt(entityCapabilities.get("maxVms")) : 500)
+                        .maxCpus(parseInteger(entityCapabilities.get("maxCpus")))
+                        .maxMemoryGb(maxMemoryGb)
+                        .maxStorageGb(parseInteger(entityCapabilities.get("maxStorageGb")))
+                        .maxVms(parseInteger(entityCapabilities.get("maxVms")))
                         .build())
-                .features(entityCapabilities != null ? new java.util.HashMap<>(entityCapabilities) : Map.of())
+                .features(new java.util.HashMap<>(entityCapabilities))
                 .build();
+    }
+
+    private List<String> parseCsvList(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return List.of();
+        }
+
+        String[] splitValues = rawValue.split(",");
+        List<String> parsed = new ArrayList<>(splitValues.length);
+        for (String value : splitValues) {
+            String trimmed = value.trim();
+            if (!trimmed.isEmpty()) {
+                parsed.add(trimmed);
+            }
+        }
+        return parsed;
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
 }

@@ -52,6 +52,9 @@ public class ProviderConnectionOrchestrator {
     public void pollProviderQueue() {
         try {
             List<CommandMessage> entries = commandQueue.pollCommands(EntityType.PROVIDER, POLL_BATCH_SIZE);
+            if (!entries.isEmpty()) {
+                logger.info("Provider queue poll claimed {} command(s)", entries.size());
+            }
             for (CommandMessage entry : entries) {
                 processQueueEntry(entry);
             }
@@ -62,6 +65,8 @@ public class ProviderConnectionOrchestrator {
 
     private void processQueueEntry(CommandMessage entry) {
         String queueType = entry.queueType();
+        logger.info("Processing provider queue command: id={}, queueType={}, providerId={}, correlationId={}",
+                entry.id(), queueType, entry.entityId(), entry.correlationId());
         if (Objects.equals(queueType, PROVIDER_CONNECTION_TEST_COMMAND)) {
             processConnectionTest(entry);
             return;
@@ -110,6 +115,8 @@ public class ProviderConnectionOrchestrator {
             entity.setStatus(testResult.success() ? ProviderStatus.ACTIVE.name() : ProviderStatus.ERROR.name());
             entity.setUpdatedAt(Instant.now());
             providerRepository.save(entity);
+            logger.info("Provider connection test completed: providerId={}, success={}, status={}, message={}",
+                    providerId, testResult.success(), entity.getStatus(), testResult.message());
 
             if (testResult.success()) {
                 commandQueue.markCompleted(entry.id());
@@ -158,6 +165,8 @@ public class ProviderConnectionOrchestrator {
             entity.getMetadata().put("capabilitiesLastDiscoveredAt", Instant.now().toString());
             entity.setUpdatedAt(Instant.now());
             providerRepository.save(entity);
+            logger.info("Provider capabilities discovery completed: providerId={}, capabilitiesKeys={}",
+                    providerId, capabilities != null ? capabilities.keySet() : java.util.Set.of());
             commandQueue.markCompleted(entry.id());
         } catch (Exception e) {
             logger.warn("Capabilities discovery failed for provider {}: {}", providerId, e.getMessage());

@@ -47,6 +47,17 @@ public class StorageClassEntity {
     @Column(name = "allowed_providers", columnDefinition = "jsonb")
     private List<String> allowedProviders;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "capabilities", columnDefinition = "jsonb")
+    private Map<String, Object> capabilities;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "constraints", columnDefinition = "jsonb")
+    private Map<String, Object> constraints;
+
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -140,5 +151,29 @@ public class StorageClassEntity {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public Map<String, Object> getCapabilities() {
+        return capabilities;
+    }
+
+    public void setCapabilities(Map<String, Object> capabilities) {
+        this.capabilities = capabilities;
+    }
+
+    public Map<String, Object> getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(Map<String, Object> constraints) {
+        this.constraints = constraints;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
