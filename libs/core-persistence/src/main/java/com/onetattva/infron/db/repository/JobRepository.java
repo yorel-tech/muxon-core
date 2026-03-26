@@ -28,6 +28,12 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             EntityType entityType, UUID entityId, Pageable pageable);
 
     /**
+     * Find jobs by target entity and status
+     */
+    Page<JobEntity> findByTargetEntityTypeAndTargetEntityIdAndStatus(
+            EntityType entityType, UUID entityId, JobStatus status, Pageable pageable);
+
+    /**
      * Find jobs by status
      */
     Page<JobEntity> findByStatus(JobStatus status, Pageable pageable);

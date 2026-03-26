@@ -11,7 +11,7 @@ dependencies {
     testImplementation(project(":libs:core-persistence"))
     testImplementation(project(":services:core-services"))
     testCompileOnly(libs.swagger.annotations)
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+    testImplementation(libs.jackson.databind)
     testImplementation("org.junit.jupiter:junit-jupiter:5.14.1")
     testImplementation("org.junit.platform:junit-platform-suite:1.10.0")
     testImplementation("org.junit.platform:junit-platform-suite-api")

@@ -129,6 +129,54 @@ public class JobEntity {
     @Column(name = "request_id")
     private String requestId;
 
+    /**
+     * Current step description
+     */
+    @Column(name = "current_step")
+    private String currentStep;
+
+    /**
+     * Total number of steps
+     */
+    @Column(name = "total_steps")
+    private Integer totalSteps;
+
+    /**
+     * Progress percentage (0-100)
+     */
+    @Column(name = "progress_percentage")
+    private Integer progressPercentage = 0;
+
+    /**
+     * When the job should timeout
+     */
+    @Column(name = "timeout_at")
+    private Instant timeoutAt;
+
+    /**
+     * Last heartbeat timestamp
+     */
+    @Column(name = "last_heartbeat_at")
+    private Instant lastHeartbeatAt;
+
+    /**
+     * Cancellation requested flag
+     */
+    @Column(name = "cancellation_requested")
+    private Boolean cancellationRequested = false;
+
+    /**
+     * Cancellation reason
+     */
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
+    /**
+     * Additional metadata (JSONB)
+     */
+    @Column(name = "metadata", columnDefinition = "JSONB")
+    private String metadata;
+
     // Getters and Setters
 
     public UUID getId() {
@@ -273,5 +321,69 @@ public class JobEntity {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public String getCurrentStep() {
+        return currentStep;
+    }
+
+    public void setCurrentStep(String currentStep) {
+        this.currentStep = currentStep;
+    }
+
+    public Integer getTotalSteps() {
+        return totalSteps;
+    }
+
+    public void setTotalSteps(Integer totalSteps) {
+        this.totalSteps = totalSteps;
+    }
+
+    public Integer getProgressPercentage() {
+        return progressPercentage;
+    }
+
+    public void setProgressPercentage(Integer progressPercentage) {
+        this.progressPercentage = progressPercentage;
+    }
+
+    public Instant getTimeoutAt() {
+        return timeoutAt;
+    }
+
+    public void setTimeoutAt(Instant timeoutAt) {
+        this.timeoutAt = timeoutAt;
+    }
+
+    public Instant getLastHeartbeatAt() {
+        return lastHeartbeatAt;
+    }
+
+    public void setLastHeartbeatAt(Instant lastHeartbeatAt) {
+        this.lastHeartbeatAt = lastHeartbeatAt;
+    }
+
+    public Boolean getCancellationRequested() {
+        return cancellationRequested;
+    }
+
+    public void setCancellationRequested(Boolean cancellationRequested) {
+        this.cancellationRequested = cancellationRequested;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
+    }
+
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
     }
 }

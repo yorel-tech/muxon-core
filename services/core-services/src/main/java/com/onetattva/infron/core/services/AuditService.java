@@ -1,6 +1,5 @@
 package com.onetattva.infron.core.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.db.model.AuditLogEntity;

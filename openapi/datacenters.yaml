@@ -154,8 +154,8 @@ components:
       type: object
       required:
         - id
-        - tenantId
-        - datacenterId
+        - tenant
+        - datacenter
       properties:
         id:
           type: string

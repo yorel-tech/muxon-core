@@ -1,0 +1,28 @@
+# Task Tracking Configuration Example
+# Copy relevant sections to your application.yaml
+
+infron:
+  tasks:
+    # Default timeout for tasks in seconds (1 hour)
+    default-timeout: 3600
+    
+    # Heartbeat interval - how often running tasks should send heartbeats (30 seconds)
+    heartbeat-interval: 30
+    
+    # Stale threshold - tasks without heartbeat for this duration are considered stale (5 minutes)
+    stale-threshold: 300
+    
+    # Cleanup - keep completed tasks for this many days before deletion (30 days)
+    cleanup-after-days: 30
+    
+    # Maximum log entries per task to prevent unbounded growth
+    max-logs-per-task: 1000
+    
+    # Batch size for polling tasks
+    polling-batch-size: 50
+
+# Enable scheduling for task monitoring
+spring:
+  task:
+    scheduling:
+      enabled: true
