@@ -47,6 +47,10 @@ tags:
   description: VM lifecycle management operations
 - name: Users
   description: User management operations
+- name: StorageClasses
+  description: Capability-based storage class management
+- name: ProviderStorage
+  description: Discovered provider storage inventory and sync operations
 
 components:
   schemas:
@@ -252,6 +256,22 @@ paths:
     $ref: './providers.yaml#/paths/~1providers~1{providerId}~1capabilities'
   /api/v1/providers/{providerId}/metadata:
     $ref: './providers.yaml#/paths/~1providers~1{providerId}~1metadata'
+  /api/v1/providers/{providerId}/storage:
+    $ref: './storage.yaml#/paths/~1providers~1{providerId}~1storage'
+  /api/v1/providers/{providerId}/sync-storage:
+    $ref: './storage.yaml#/paths/~1providers~1{providerId}~1sync-storage'
+
+  # Storage classes (capability-based)
+  /api/v1/storage-classes:
+    $ref: './storage.yaml#/paths/~1storage-classes'
+  /api/v1/storage-classes/{name}:
+    $ref: './storage.yaml#/paths/~1storage-classes~1{name}'
+  /api/v1/storage-classes/{name}/storage-overrides:
+    $ref: './storage.yaml#/paths/~1storage-classes~1{name}~1storage-overrides'
+  /api/v1/provider-storage:
+    $ref: './storage.yaml#/paths/~1provider-storage'
+  /api/v1/provider-storage/{id}:
+    $ref: './storage.yaml#/paths/~1provider-storage~1{id}'
 
   # Users
   /api/v1/system-users:
