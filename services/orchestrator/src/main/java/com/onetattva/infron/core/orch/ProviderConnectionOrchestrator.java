@@ -5,10 +5,15 @@ import com.onetattva.infron.api.model.ProviderStatus;
 import com.onetattva.infron.core.providers.*;
 import com.onetattva.infron.core.providers.libvirt.LibvirtProviderSdk;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxProviderSdk;
+import com.onetattva.infron.core.providers.storage.StorageDiscoveryProvider;
+import com.onetattva.infron.core.providers.storage.StorageDiscoveryProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import com.onetattva.infron.db.model.ProviderEntity;
+import com.onetattva.infron.db.model.ProviderStorageEntity;
 import com.onetattva.infron.db.repository.ProviderRepository;
+import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -33,8 +39,6 @@ public class ProviderConnectionOrchestrator {
 
     private static final Logger logger = LoggerFactory.getLogger(ProviderConnectionOrchestrator.class);
 
-    private static final String PROVIDER_CONNECTION_TEST_COMMAND = "PROVIDER_CONNECTION_TEST_COMMAND";
-    private static final String PROVIDER_CAPABILITIES_DISCOVERY_COMMAND = "PROVIDER_CAPABILITIES_DISCOVERY_COMMAND";
     private static final int POLL_BATCH_SIZE = 10;
 
     private static final String META_CORRELATION_ID = "connectionTestCorrelationId";
@@ -46,6 +50,12 @@ public class ProviderConnectionOrchestrator {
 
     @Autowired
     private ProviderRepository providerRepository;
+
+    @Autowired
+    private ProviderStorageRepository providerStorageRepository;
+
+    @Autowired
+    private StorageDiscoveryProviderRegistry storageDiscoveryProviderRegistry;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
@@ -67,12 +77,16 @@ public class ProviderConnectionOrchestrator {
         String queueType = entry.queueType();
         logger.info("Processing provider queue command: id={}, queueType={}, providerId={}, correlationId={}",
                 entry.id(), queueType, entry.entityId(), entry.correlationId());
-        if (Objects.equals(queueType, PROVIDER_CONNECTION_TEST_COMMAND)) {
+        if (Objects.equals(queueType, ProviderQueueCommands.CONNECTION_TEST)) {
             processConnectionTest(entry);
             return;
         }
-        if (Objects.equals(queueType, PROVIDER_CAPABILITIES_DISCOVERY_COMMAND)) {
+        if (Objects.equals(queueType, ProviderQueueCommands.CAPABILITIES_DISCOVERY)) {
             processCapabilitiesDiscovery(entry);
+            return;
+        }
+        if (Objects.equals(queueType, ProviderQueueCommands.STORAGE_DISCOVERY)) {
+            processStorageDiscovery(entry);
             return;
         }
         // Unknown queue type for this worker; consider it handled.
@@ -136,6 +150,57 @@ public class ProviderConnectionOrchestrator {
             providerRepository.save(entity);
 
             commandQueue.markFailed(entry.id(), e.getMessage());
+        }
+    }
+
+    private void processStorageDiscovery(CommandMessage entry) {
+        UUID providerId = entry.entityId();
+        ProviderEntity entity = providerRepository.findById(providerId).orElse(null);
+        if (entity == null) {
+            commandQueue.markFailed(entry.id(), "Provider not found: " + providerId);
+            return;
+        }
+
+        String providerType = entity.getType().toString().toLowerCase();
+        Optional<StorageDiscoveryProvider> discoveryProvider = storageDiscoveryProviderRegistry.getProvider(providerType);
+        if (discoveryProvider.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "No storage discovery provider for type: " + providerType);
+            return;
+        }
+
+        Map<String, Object> connectionInfo = new HashMap<>();
+        connectionInfo.put("endpoint", entity.getEndpoint());
+        connectionInfo.put("credentials", entity.getCredentials());
+        if ("libvirt".equals(providerType)) {
+            connectionInfo.put("uri", entity.getEndpoint());
+        }
+
+        try {
+            List<StorageDiscoveryProvider.DiscoveredStorage> discoveredStorage =
+                discoveryProvider.get().discoverStorage(providerId, connectionInfo).join();
+
+            providerStorageRepository.deleteByProviderId(providerId);
+            Instant syncTime = Instant.now();
+            for (StorageDiscoveryProvider.DiscoveredStorage discovered : discoveredStorage) {
+                ProviderStorageEntity storageEntity = new ProviderStorageEntity();
+                storageEntity.setProviderId(providerId);
+                storageEntity.setProviderType(providerType);
+                storageEntity.setExternalId(discovered.externalId());
+                storageEntity.setName(discovered.name());
+                storageEntity.setStorageType(discovered.storageType());
+                storageEntity.setCapabilities(discovered.capabilities());
+                storageEntity.setMetrics(discovered.metrics());
+                storageEntity.setNodeId(discovered.nodeId());
+                storageEntity.setEnabled(true);
+                storageEntity.setSyncedAt(syncTime);
+                providerStorageRepository.save(storageEntity);
+            }
+
+            logger.info("Storage discovery completed: providerId={}, entries={}", providerId, discoveredStorage.size());
+            commandQueue.markCompleted(entry.id());
+        } catch (Exception e) {
+            logger.error("Storage discovery failed for provider {}: {}", providerId, e.getMessage(), e);
+            commandQueue.markFailed(entry.id(), e.getMessage() != null ? e.getMessage() : "Storage discovery failed");
         }
     }
 

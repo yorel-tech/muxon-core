@@ -9,6 +9,7 @@ import com.onetattva.infron.db.repository.QueueEntryRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,11 +49,8 @@ public class ProvidersService {
     @Autowired
     private CommandQueue commandQueue;
 
-    @Autowired(required = false)
+    @Autowired
     private com.onetattva.infron.core.services.storage.ProviderStorageDiscoveryService storageDiscoveryService;
-
-    private static final String PROVIDER_CONNECTION_TEST_COMMAND = "PROVIDER_CONNECTION_TEST_COMMAND";
-    private static final String PROVIDER_CAPABILITIES_DISCOVERY_COMMAND = "PROVIDER_CAPABILITIES_DISCOVERY_COMMAND";
     private static final String META_CORRELATION_ID = "connectionTestCorrelationId";
     private static final String META_MESSAGE = "connectionTestMessage";
     private static final String META_LATENCY_MS = "connectionTestLatencyMs";
@@ -101,15 +99,13 @@ public class ProvidersService {
         }
 
         // Auto-discover storage for the provider
-        if (storageDiscoveryService != null) {
-            try {
-                logger.info("Auto-discovering storage for provider: {}", providerId);
-                int storageCount = storageDiscoveryService.discoverAndSyncStorage(providerId);
-                logger.info("Discovered {} storage entries for provider {}", storageCount, providerId);
-            } catch (Exception e) {
-                logger.warn("Failed to auto-discover storage for provider {}: {}", providerId, e.getMessage());
-                // Don't fail provider creation if storage discovery fails
-            }
+        try {
+            logger.info("Auto-discovering storage for provider: {}", providerId);
+            int storageCount = storageDiscoveryService.discoverAndSyncStorage(providerId);
+            logger.info("Discovered {} storage entries for provider {}", storageCount, providerId);
+        } catch (Exception e) {
+            logger.warn("Failed to auto-discover storage for provider {}: {}", providerId, e.getMessage());
+            // Don't fail provider creation if storage discovery fails
         }
 
         savedEntity = providerRepository.findById(providerId)
@@ -345,7 +341,7 @@ public class ProvidersService {
 
         // Enqueue provider connection test command for the orchestrator.
         CommandMessage command = CommandMessage.builder()
-                .queueType(PROVIDER_CONNECTION_TEST_COMMAND)
+                .queueType(ProviderQueueCommands.CONNECTION_TEST)
                 .entityType(EntityType.PROVIDER)
                 .entityId(providerId)
                 .payload(Map.of())
@@ -441,7 +437,7 @@ public class ProvidersService {
 
     private void enqueueCapabilitiesDiscovery(UUID providerId) {
         CommandMessage command = CommandMessage.builder()
-                .queueType(PROVIDER_CAPABILITIES_DISCOVERY_COMMAND)
+                .queueType(ProviderQueueCommands.CAPABILITIES_DISCOVERY)
                 .entityType(EntityType.PROVIDER)
                 .entityId(providerId)
                 .payload(Map.of())

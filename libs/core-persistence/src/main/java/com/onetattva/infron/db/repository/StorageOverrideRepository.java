@@ -31,4 +31,6 @@ public interface StorageOverrideRepository extends JpaRepository<StorageOverride
      * @return true if override exists
      */
     boolean existsByStorageClassNameAndProviderType(String storageClassName, String providerType);
+
+    void deleteByStorageClassName(String storageClassName);
 }

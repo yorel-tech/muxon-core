@@ -1,0 +1,565 @@
+openapi: 3.0.3
+info:
+  title: Infron Storage Classes API
+  version: 2026-03-27
+  description: Capability-based storage class and provider storage discovery APIs. This contract is additive and compatible with existing string-based storageClass references in VM and datacenter APIs.
+
+components:
+  parameters:
+    storageClassName:
+      name: name
+      in: path
+      required: true
+      description: Storage class unique name
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+    providerStorageId:
+      name: id
+      in: path
+      required: true
+      description: Provider storage UUID
+      schema:
+        type: string
+        format: uuid
+    providerId:
+      name: providerId
+      in: path
+      required: true
+      description: Provider UUID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    StorageCapabilities:
+      type: object
+      description: Intent-oriented capability profile for a storage class.
+      properties:
+        performance:
+          type: string
+          enum: [high, medium, low]
+          description: Performance tier intent.
+        media:
+          type: string
+          enum: [ssd, hdd, nvme, any]
+          description: Preferred media type.
+        shared:
+          type: boolean
+          description: Whether shared storage is required.
+        redundancy:
+          type: string
+          enum: [replicated, none]
+          description: Data redundancy intent.
+      additionalProperties: false
+
+    StorageConstraints:
+      type: object
+      description: Hard constraints applied during storage selection.
+      properties:
+        minIops:
+          type: integer
+          minimum: 0
+          description: Minimum required IOPS.
+        maxLatencyMs:
+          type: integer
+          minimum: 0
+          description: Maximum allowed latency in milliseconds.
+      additionalProperties: false
+
+    StorageClass:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [name, capabilities]
+          properties:
+            description:
+              type: string
+              maxLength: 1000
+            capabilities:
+              $ref: '#/components/schemas/StorageCapabilities'
+            constraints:
+              $ref: '#/components/schemas/StorageConstraints'
+            metadata:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+
+    StorageClassCreate:
+      type: object
+      required: [name, capabilities]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description:
+          type: string
+          maxLength: 1000
+        capabilities:
+          $ref: '#/components/schemas/StorageCapabilities'
+        constraints:
+          $ref: '#/components/schemas/StorageConstraints'
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    StorageClassUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 1000
+        capabilities:
+          $ref: '#/components/schemas/StorageCapabilities'
+        constraints:
+          $ref: '#/components/schemas/StorageConstraints'
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    StorageClassList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageClass'
+
+    ProviderStorageCapabilities:
+      type: object
+      properties:
+        performance:
+          type: string
+          enum: [high, medium, low]
+        media:
+          type: string
+          enum: [ssd, hdd, nvme, any]
+        shared:
+          type: boolean
+        redundancy:
+          type: string
+          enum: [replicated, none]
+      additionalProperties: true
+
+    ProviderStorageMetrics:
+      type: object
+      properties:
+        totalGb:
+          type: integer
+          minimum: 0
+        freeGb:
+          type: integer
+          minimum: 0
+        usedGb:
+          type: integer
+          minimum: 0
+        estimatedIops:
+          type: integer
+          minimum: 0
+        latencyMs:
+          type: number
+          format: double
+          minimum: 0
+      additionalProperties: true
+
+    MappedStorageClassInfo:
+      type: object
+      properties:
+        storageClassName:
+          type: string
+        mappingSource:
+          type: string
+          enum: [override, scheduler]
+          description: Indicates whether mapping is from explicit override or inferred by scheduler compatibility.
+      required: [storageClassName, mappingSource]
+      additionalProperties: false
+
+    ProviderStorage:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [id, providerId, providerType, externalId, storageType, capabilities, metrics]
+          properties:
+            id:
+              type: string
+              format: uuid
+            providerId:
+              type: string
+              format: uuid
+            providerType:
+              $ref: './providers.yaml#/components/schemas/ProviderType'
+            externalId:
+              type: string
+              description: Provider-side storage identifier.
+            storageType:
+              type: string
+              description: Provider-specific storage backend type.
+            datacenterId:
+              type: string
+              format: uuid
+              nullable: true
+            nodeId:
+              type: string
+              nullable: true
+            enabled:
+              type: boolean
+              default: true
+            syncedAt:
+              type: string
+              format: date-time
+              nullable: true
+            capabilities:
+              $ref: '#/components/schemas/ProviderStorageCapabilities'
+            metrics:
+              $ref: '#/components/schemas/ProviderStorageMetrics'
+            mappedStorageClasses:
+              type: array
+              description: Visibility field for admin UX on provider details and global inventory pages.
+              items:
+                $ref: '#/components/schemas/MappedStorageClassInfo'
+
+    ProviderStorageList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderStorage'
+
+    StorageClassOverride:
+      type: object
+      required: [providerType, providerStorageNames]
+      properties:
+        providerType:
+          $ref: './providers.yaml#/components/schemas/ProviderType'
+        datacenterId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional scoping for environments with multiple datacenters.
+        providerStorageNames:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: Ordered list of preferred provider storage names/IDs.
+        priority:
+          type: integer
+          default: 100
+      additionalProperties: false
+
+    StorageClassOverrides:
+      type: object
+      required: [storageClassName, overrides]
+      properties:
+        storageClassName:
+          type: string
+        overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageClassOverride'
+      additionalProperties: false
+
+    StorageSyncResponse:
+      type: object
+      properties:
+        providerId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, completed, failed]
+        discoveredCount:
+          type: integer
+          minimum: 0
+        message:
+          type: string
+
+paths:
+  /storage-classes:
+    get:
+      tags: [StorageClasses]
+      summary: List storage classes
+      description: Returns class objects while existing APIs that expose storage classes as string names remain supported for backward compatibility.
+      operationId: listStorageClasses
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated storage classes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClassList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [StorageClasses]
+      summary: Create storage class
+      operationId: createStorageClass
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageClassCreate'
+      responses:
+        '201':
+          description: Created storage class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClass'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /storage-classes/{name}:
+    parameters:
+      - $ref: '#/components/parameters/storageClassName'
+    get:
+      tags: [StorageClasses]
+      summary: Get storage class
+      operationId: getStorageClass
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Storage class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClass'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [StorageClasses]
+      summary: Replace storage class
+      operationId: replaceStorageClass
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageClassUpdate'
+      responses:
+        '200':
+          description: Updated storage class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClass'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    patch:
+      tags: [StorageClasses]
+      summary: Partially update storage class
+      operationId: updateStorageClass
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageClassUpdate'
+      responses:
+        '200':
+          description: Updated storage class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClass'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [StorageClasses]
+      summary: Delete storage class
+      operationId: deleteStorageClass
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /storage-classes/{name}/storage-overrides:
+    parameters:
+      - $ref: '#/components/parameters/storageClassName'
+    get:
+      tags: [StorageClasses]
+      summary: Get storage overrides for class
+      operationId: getStorageClassOverrides
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Storage class scoped overrides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClassOverrides'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [StorageClasses]
+      summary: Replace storage overrides for class
+      description: Replaces override rules for this class. When feature flag `storage.capability_based.enabled=false`, overrides may be accepted but not used for scheduling.
+      operationId: replaceStorageClassOverrides
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageClassOverrides'
+      responses:
+        '200':
+          description: Updated overrides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageClassOverrides'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /provider-storage:
+    get:
+      tags: [ProviderStorage]
+      summary: List provider storage inventory
+      description: Global admin inventory view across providers, including current mapped storage class visibility. Legacy provider-storage mappings are deprecated in favor of this normalized model.
+      operationId: listProviderStorage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: datacenterId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paginated provider storage inventory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStorageList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /provider-storage/{id}:
+    parameters:
+      - $ref: '#/components/parameters/providerStorageId'
+    get:
+      tags: [ProviderStorage]
+      summary: Get provider storage
+      operationId: getProviderStorage
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provider storage details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStorage'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /providers/{providerId}/storage:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    get:
+      tags: [ProviderStorage]
+      summary: List storage discovered for a provider
+      description: Provider details page endpoint; includes mapped storage class visibility.
+      operationId: listProviderStorageByProvider
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated provider storage list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStorageList'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /providers/{providerId}/sync-storage:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    post:
+      tags: [ProviderStorage]
+      summary: Trigger provider storage discovery sync
+      description: Refreshes normalized provider storage inventory for capability-based scheduling. Runtime usage is controlled by feature flag `storage.capability_based.enabled`.
+      operationId: syncProviderStorage
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageSyncResponse'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

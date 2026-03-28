@@ -30,30 +30,6 @@ public class ProviderStorageController {
     }
 
     /**
-     * Get all provider storage entries.
-     *
-     * @return list of all provider storage
-     */
-    @GetMapping
-    public ResponseEntity<List<ProviderStorageEntity>> getAllProviderStorage() {
-        log.debug("Getting all provider storage");
-        // This would typically use a repository method to get all
-        return ResponseEntity.ok(List.of());
-    }
-
-    /**
-     * Get provider storage by ID.
-     *
-     * @param id provider storage ID
-     * @return provider storage entity
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<ProviderStorageEntity> getProviderStorage(@PathVariable UUID id) {
-        log.debug("Getting provider storage {}", id);
-        return ResponseEntity.notFound().build();
-    }
-
-    /**
      * Get all storage for a specific provider.
      *
      * @param providerId provider ID

@@ -2,6 +2,12 @@ plugins {
     alias(libs.plugins.spring.boot)
 }
 
+import org.gradle.api.tasks.compile.JavaCompile
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-parameters")
+}
+
 dependencies {
     implementation(libs.bundles.spring.boot.starter)
     implementation(libs.bundles.spring.boot.jdbc)
@@ -13,9 +19,6 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     implementation(libs.jackson.annotations)
-implementation(libs.libvirt)
-    implementation(libs.jna)
-    implementation(libs.pve4j)
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))

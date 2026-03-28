@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(classes = {
-    com.onetattva.infron.core.config.StorageDiscoveryConfiguration.class,
+    TestStorageDiscoveryRegistryConfig.class,
     LibvirtProviderConfiguration.class
 })
 @ActiveProfiles("test")
@@ -27,6 +27,6 @@ public class LibvirtProviderConfigurationTest {
         assertNotNull(provider, "LibvirtStorageDiscoveryProvider should be injected");
         
         // Verify the provider is registered
-        assertNotNull(registry.getProvider("LIBVIRT"), "Libvirt provider should be registered");
+        assertNotNull(registry.getProvider("libvirt"), "Libvirt provider should be registered");
     }
 }
