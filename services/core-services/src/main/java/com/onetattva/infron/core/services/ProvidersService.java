@@ -100,11 +100,10 @@ public class ProvidersService {
 
         // Auto-discover storage for the provider
         try {
-            logger.info("Auto-discovering storage for provider: {}", providerId);
-            int storageCount = storageDiscoveryService.discoverAndSyncStorage(providerId);
-            logger.info("Discovered {} storage entries for provider {}", storageCount, providerId);
+            UUID storageTaskId = storageDiscoveryService.enqueueStorageDiscovery(providerId);
+            logger.info("Auto-enqueued storage discovery for provider {}: taskId={}", providerId, storageTaskId);
         } catch (Exception e) {
-            logger.warn("Failed to auto-discover storage for provider {}: {}", providerId, e.getMessage());
+            logger.warn("Failed to enqueue storage discovery for provider {}: {}", providerId, e.getMessage());
             // Don't fail provider creation if storage discovery fails
         }
 

@@ -17,7 +17,6 @@ public class InfraDeployer {
 
         // Test that infrastructure is deployed
         assert env.isPostgresRunning();
-        assert env.isRedisRunning();
         assert env.isKeycloakRunning();
         assert env.isCoreServicesRunning();
     }

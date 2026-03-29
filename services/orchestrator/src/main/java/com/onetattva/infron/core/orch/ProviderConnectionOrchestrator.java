@@ -7,27 +7,36 @@ import com.onetattva.infron.core.providers.libvirt.LibvirtProviderSdk;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxProviderSdk;
 import com.onetattva.infron.core.providers.storage.StorageDiscoveryProvider;
 import com.onetattva.infron.core.providers.storage.StorageDiscoveryProviderRegistry;
+import com.onetattva.infron.api.enums.JobStatus;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
+import com.onetattva.infron.core.spi.queue.ProviderQueueMetadataKeys;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
+import com.onetattva.infron.db.repository.JobRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Orchestrator worker that executes provider connection tests.
@@ -57,11 +66,18 @@ public class ProviderConnectionOrchestrator {
     @Autowired
     private StorageDiscoveryProviderRegistry storageDiscoveryProviderRegistry;
 
+    @Autowired
+    private JobRepository jobRepository;
+
+    @Value("${infron.provider.storage-discovery-execution-timeout-seconds:300}")
+    private int defaultStorageDiscoveryExecutionTimeoutSeconds;
+
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void pollProviderQueue() {
         try {
             List<CommandMessage> entries = commandQueue.pollCommands(EntityType.PROVIDER, POLL_BATCH_SIZE);
+            logger.debug("Provider queue poll finished: claimed {} PROVIDER command(s)", entries.size());
             if (!entries.isEmpty()) {
                 logger.info("Provider queue poll claimed {} command(s)", entries.size());
             }
@@ -155,16 +171,28 @@ public class ProviderConnectionOrchestrator {
 
     private void processStorageDiscovery(CommandMessage entry) {
         UUID providerId = entry.entityId();
+        UUID jobId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.JOB_ID));
+        int execTimeoutSec = parseExecutionTimeoutSeconds(entry.metadata().get(ProviderQueueMetadataKeys.EXECUTION_TIMEOUT_SECONDS));
+
+        logger.info(
+                "Storage discovery command claimed: commandId={}, providerId={}, jobId={}, executionTimeoutSeconds={}",
+                entry.id(), providerId, jobId, execTimeoutSec);
+
         ProviderEntity entity = providerRepository.findById(providerId).orElse(null);
         if (entity == null) {
-            commandQueue.markFailed(entry.id(), "Provider not found: " + providerId);
+            String msg = "Provider not found: " + providerId;
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
             return;
         }
 
         String providerType = entity.getType().toString().toLowerCase();
         Optional<StorageDiscoveryProvider> discoveryProvider = storageDiscoveryProviderRegistry.getProvider(providerType);
         if (discoveryProvider.isEmpty()) {
-            commandQueue.markFailed(entry.id(), "No storage discovery provider for type: " + providerType);
+            String msg = "No storage discovery provider for type: " + providerType;
+            logger.warn("Storage discovery aborted: providerId={}, {}", providerId, msg);
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
             return;
         }
 
@@ -175,17 +203,42 @@ public class ProviderConnectionOrchestrator {
             connectionInfo.put("uri", entity.getEndpoint());
         }
 
-        try {
-            List<StorageDiscoveryProvider.DiscoveredStorage> discoveredStorage =
-                discoveryProvider.get().discoverStorage(providerId, connectionInfo).join();
+        markStorageDiscoveryJobRunning(jobId);
 
-            providerStorageRepository.deleteByProviderId(providerId);
+        try {
+            logger.info(
+                    "Storage discovery invoking provider adapter: providerId={}, providerType={}, jobId={}, timeoutSeconds={}",
+                    providerId, providerType, jobId, execTimeoutSec);
+
+            List<StorageDiscoveryProvider.DiscoveredStorage> discoveredStorage = discoveryProvider.get()
+                    .discoverStorage(providerId, connectionInfo)
+                    .get(execTimeoutSec, TimeUnit.SECONDS);
+
+            logger.info(
+                    "Storage discovery adapter returned {} entries: providerId={}, jobId={}",
+                    discoveredStorage.size(), providerId, jobId);
+
+            // Upsert by (provider_id, external_id): discovery may return the same external_id
+            // more than once (e.g. per-node pools named alike), and re-sync must be idempotent.
             Instant syncTime = Instant.now();
+            Set<String> discoveredExternalIds = new HashSet<>();
             for (StorageDiscoveryProvider.DiscoveredStorage discovered : discoveredStorage) {
-                ProviderStorageEntity storageEntity = new ProviderStorageEntity();
-                storageEntity.setProviderId(providerId);
+                String externalId = discovered.externalId();
+                if (externalId == null || externalId.isBlank()) {
+                    logger.warn("Skipping discovered storage with blank external_id: providerId={}, jobId={}",
+                            providerId, jobId);
+                    continue;
+                }
+                discoveredExternalIds.add(externalId);
+                ProviderStorageEntity storageEntity = providerStorageRepository
+                        .findByProviderIdAndExternalId(providerId, externalId)
+                        .orElseGet(() -> {
+                            ProviderStorageEntity e = new ProviderStorageEntity();
+                            e.setProviderId(providerId);
+                            return e;
+                        });
                 storageEntity.setProviderType(providerType);
-                storageEntity.setExternalId(discovered.externalId());
+                storageEntity.setExternalId(externalId);
                 storageEntity.setName(discovered.name());
                 storageEntity.setStorageType(discovered.storageType());
                 storageEntity.setCapabilities(discovered.capabilities());
@@ -196,12 +249,112 @@ public class ProviderConnectionOrchestrator {
                 providerStorageRepository.save(storageEntity);
             }
 
-            logger.info("Storage discovery completed: providerId={}, entries={}", providerId, discoveredStorage.size());
+            List<ProviderStorageEntity> toRemove = providerStorageRepository.findByProviderId(providerId).stream()
+                    .filter(row -> !discoveredExternalIds.contains(row.getExternalId()))
+                    .toList();
+            if (!toRemove.isEmpty()) {
+                providerStorageRepository.deleteAll(toRemove);
+            }
+
+            completeStorageDiscoveryJob(jobId, providerId, discoveredStorage.size());
+            providerStorageRepository.flush();
+            logger.info(
+                    "Storage discovery persisted and job completed: commandId={}, providerId={}, entries={}, jobId={}",
+                    entry.id(), providerId, discoveredStorage.size(), jobId);
             commandQueue.markCompleted(entry.id());
+        } catch (TimeoutException e) {
+            String msg = "Storage discovery timed out after " + execTimeoutSec + "s";
+            logger.error("Storage discovery timed out: providerId={}, jobId={}, timeoutSeconds={}",
+                    providerId, jobId, execTimeoutSec, e);
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            String msg = cause.getMessage() != null ? cause.getMessage() : "Storage discovery failed";
+            logger.error("Storage discovery failed: providerId={}, jobId={}, error={}", providerId, jobId, msg, cause);
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            String msg = "Storage discovery interrupted";
+            logger.error("Storage discovery interrupted: providerId={}, jobId={}", providerId, jobId, e);
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
         } catch (Exception e) {
-            logger.error("Storage discovery failed for provider {}: {}", providerId, e.getMessage(), e);
-            commandQueue.markFailed(entry.id(), e.getMessage() != null ? e.getMessage() : "Storage discovery failed");
+            String msg = e.getMessage() != null ? e.getMessage() : "Storage discovery failed";
+            logger.error("Storage discovery failed: providerId={}, jobId={}", providerId, jobId, e);
+            failStorageDiscoveryJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
         }
+    }
+
+    private int parseExecutionTimeoutSeconds(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return defaultStorageDiscoveryExecutionTimeoutSeconds;
+        }
+        try {
+            int v = Integer.parseInt(raw.trim());
+            return v > 0 ? v : defaultStorageDiscoveryExecutionTimeoutSeconds;
+        } catch (NumberFormatException e) {
+            return defaultStorageDiscoveryExecutionTimeoutSeconds;
+        }
+    }
+
+    private static UUID parseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private void markStorageDiscoveryJobRunning(UUID jobId) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            if (job.getStatus() != JobStatus.PENDING) {
+                logger.warn("Storage discovery job {} not in PENDING (was {}); still marking RUNNING", jobId, job.getStatus());
+            }
+            job.setStatus(JobStatus.RUNNING);
+            job.setStartedAt(Instant.now());
+            job.setLastHeartbeatAt(Instant.now());
+            job.setCurrentStep("Discovering storage from provider");
+            jobRepository.save(job);
+            logger.info("Storage discovery job marked RUNNING: jobId={}", jobId);
+        });
+    }
+
+    private void completeStorageDiscoveryJob(UUID jobId, UUID providerId, int discoveredCount) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.setStatus(JobStatus.COMPLETED);
+            job.setCompletedAt(Instant.now());
+            job.setProgressPercentage(100);
+            job.setCurrentStep(null);
+            job.setResult("{\"discoveredCount\":" + discoveredCount + ",\"providerId\":\"" + providerId + "\"}");
+            jobRepository.save(job);
+            logger.info("Storage discovery job COMPLETED: jobId={}, discoveredCount={}", jobId, discoveredCount);
+        });
+    }
+
+    private void failStorageDiscoveryJob(UUID jobId, String message) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.setStatus(JobStatus.FAILED);
+            job.setCompletedAt(Instant.now());
+            job.setErrorMessage(message);
+            job.setCurrentStep(null);
+            jobRepository.save(job);
+            logger.info("Storage discovery job FAILED: jobId={}, message={}", jobId, message);
+        });
     }
 
     private void processCapabilitiesDiscovery(CommandMessage entry) {

@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,69 +60,59 @@ public class ProviderStorageController {
     }
 
     /**
-     * Trigger storage discovery and sync for a provider.
-     *
-     * @param providerId provider ID
-     * @return sync result with count of discovered storage
+     * Trigger storage discovery and sync for a provider (async; returns task id).
      */
     @PostMapping("/provider/{providerId}/sync")
     public ResponseEntity<Map<String, Object>> syncProviderStorage(@PathVariable UUID providerId) {
         log.info("Triggering storage sync for provider {}", providerId);
-        
+
         try {
-            int count = discoveryService.discoverAndSyncStorage(providerId);
-            
-            Map<String, Object> result = Map.of(
-                "success", true,
-                "providerId", providerId,
-                "storageCount", count,
-                "message", "Successfully synced " + count + " storage entries"
-            );
-            
-            return ResponseEntity.ok(result);
+            UUID taskId = discoveryService.enqueueStorageDiscovery(providerId);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("providerId", providerId);
+            result.put("taskId", taskId);
+            result.put("message", "Poll GET /api/v1/tasks/" + taskId);
+            return ResponseEntity.status(202).body(result);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("providerId", providerId);
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
         } catch (Exception e) {
-            log.error("Failed to sync storage for provider {}: {}", providerId, e.getMessage(), e);
-            
-            Map<String, Object> result = Map.of(
-                "success", false,
-                "providerId", providerId,
-                "error", e.getMessage()
-            );
-            
+            log.error("Failed to enqueue storage sync for provider {}: {}", providerId, e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("providerId", providerId);
+            result.put("error", e.getMessage());
             return ResponseEntity.status(500).body(result);
         }
     }
 
     /**
-     * Trigger storage discovery for all providers.
-     *
-     * @return sync results for all providers
+     * Trigger storage discovery for all supported providers (async; one task per provider).
      */
     @PostMapping("/sync-all")
     public ResponseEntity<Map<String, Object>> syncAllProviders() {
         log.info("Triggering storage sync for all providers");
-        
+
         try {
-            Map<UUID, Integer> results = discoveryService.discoverAllProviders();
-            
-            int totalCount = results.values().stream().mapToInt(Integer::intValue).sum();
-            
-            Map<String, Object> result = Map.of(
-                "success", true,
-                "providerCount", results.size(),
-                "totalStorageCount", totalCount,
-                "results", results
-            );
-            
-            return ResponseEntity.ok(result);
+            Map<UUID, UUID> tasks = discoveryService.enqueueStorageDiscoveryForAllProviders();
+            Map<String, Object> serializable = new LinkedHashMap<>();
+            tasks.forEach((pid, tid) -> serializable.put(pid.toString(), tid != null ? tid.toString() : null));
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("providerCount", tasks.size());
+            result.put("tasksByProviderId", serializable);
+            result.put("message", "Poll each task via GET /api/v1/tasks/{taskId}");
+            return ResponseEntity.status(202).body(result);
         } catch (Exception e) {
-            log.error("Failed to sync all providers: {}", e.getMessage(), e);
-            
-            Map<String, Object> result = Map.of(
-                "success", false,
-                "error", e.getMessage()
-            );
-            
+            log.error("Failed to enqueue sync for all providers: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", e.getMessage());
             return ResponseEntity.status(500).body(result);
         }
     }

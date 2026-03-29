@@ -75,23 +75,29 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
         
         return CompletableFuture.supplyAsync(() -> {
             List<DiscoveredStorage> discoveredStorage = new ArrayList<>();
-            
+
+            log.info("[libvirt-storage] discoverStorage async task started: providerId={}", providerId);
+
             String connectionUri = (String) connectionInfo.get("uri");
             if (connectionUri == null || connectionUri.isEmpty()) {
-                log.warn("No connection URI provided for Libvirt provider {}", providerId);
+                log.warn("[libvirt-storage] no connection URI in connectionInfo: providerId={}", providerId);
                 return discoveredStorage;
             }
 
             Connect conn = null;
             try {
+                log.info("[libvirt-storage] connecting (uri length={}): providerId={}",
+                        connectionUri.length(), providerId);
                 conn = new Connect(connectionUri, true);
                 String[] poolNames = conn.listStoragePools();
                 String[] inactivePoolNames = conn.listDefinedStoragePools();
-                
+                log.info("[libvirt-storage] connected; activePools={}, inactiveDefinedPools={}: providerId={}",
+                        poolNames.length, inactivePoolNames.length, providerId);
+
                 List<String> allPoolNames = new ArrayList<>();
                 allPoolNames.addAll(Arrays.asList(poolNames));
                 allPoolNames.addAll(Arrays.asList(inactivePoolNames));
-                
+
                 for (String poolName : allPoolNames) {
                     try {
                         StoragePool pool = conn.storagePoolLookupByName(poolName);
@@ -104,11 +110,11 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                     }
                 }
                 
-                log.info("Discovered {} storage pools from Libvirt provider {}", 
+                log.info("[libvirt-storage] discovered {} storage pool(s): providerId={}",
                     discoveredStorage.size(), providerId);
-                
+
             } catch (LibvirtException e) {
-                log.error("Failed to connect to Libvirt provider {}: {}", providerId, e.getMessage(), e);
+                log.error("[libvirt-storage] libvirt error for provider {}: {}", providerId, e.getMessage(), e);
             } finally {
                 if (conn != null) {
                     try {

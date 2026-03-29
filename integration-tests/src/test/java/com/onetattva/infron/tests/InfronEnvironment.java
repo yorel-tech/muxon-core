@@ -34,12 +34,10 @@ public class InfronEnvironment {
     // Docker and container constants
     private static final String PODMAN_SOCKET_PATH = "unix:///run/user/1000/podman/podman.sock";
     private static final String POSTGRES_IMAGE = "postgres:18";
-    private static final String REDIS_IMAGE = "redis:8";
     private static final String KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.4.0";
 
     // Network aliases
     private static final String POSTGRES_ALIAS = "postgres";
-    private static final String REDIS_ALIAS = "redis";
     private static final String KEYCLOAK_ALIAS = "keycloak";
     private static final String CORE_SERVICES_ALIAS = "core-services";
 
@@ -72,7 +70,6 @@ public class InfronEnvironment {
     // Containers (private for encapsulation)
     private Network network;
     private PostgreSQLContainer<?> postgres;
-    private GenericContainer<?> redis;
     private GenericContainer<?> keycloak;
     private GenericContainer<?> coreServices;
 
@@ -120,7 +117,6 @@ public class InfronEnvironment {
         network = Network.newNetwork();
 
         startPostgres();
-        startRedis();
         startKeycloak();
         startCoreServices();
     }
@@ -141,24 +137,6 @@ public class InfronEnvironment {
         } catch (Exception e) {
             System.out.println("Failed to start infron-its-postgres. Logs:");
             System.out.println(postgres.getLogs());
-            throw e;
-        }
-    }
-
-    private void startRedis() {
-        System.out.println("Starting infron-its-redis...");
-        redis = new GenericContainer<>(DockerImageName.parse(REDIS_IMAGE))
-                .withExposedPorts(6379)
-                .withNetwork(network)
-                .withNetworkAliases(REDIS_ALIAS)
-                .withCreateContainerCmdModifier(cmd -> cmd.withName("infron-its-redis"))
-                .waitingFor(Wait.forLogMessage(".*Ready to accept connections.*", 1));
-        try {
-            redis.start();
-            System.out.println("infron-its-redis started.");
-        } catch (Exception e) {
-            System.out.println("Failed to start infron-its-redis. Logs:");
-            System.out.println(redis.getLogs());
             throw e;
         }
     }
@@ -213,8 +191,7 @@ public class InfronEnvironment {
             .withNetworkAliases(CORE_SERVICES_ALIAS)
             .withCreateContainerCmdModifier(cmd -> cmd.withName("infron-its-core-services"))
             .withEnv(Map.of(
-                "SPRING_CONFIG_LOCATION", SPRING_CONFIG_LOCATION,
-                "REDIS_HOST", REDIS_ALIAS
+                "SPRING_CONFIG_LOCATION", SPRING_CONFIG_LOCATION
             ))
             .withFileSystemBind(INITIAL_CONFIG_PATH, CONTAINER_CONFIG_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
             .withFileSystemBind(passphraseFile.toString(), PASSPHRASE_FILE_PATH, org.testcontainers.containers.BindMode.READ_ONLY)
@@ -276,11 +253,6 @@ public class InfronEnvironment {
         return postgres != null && postgres.isRunning();
     }
 
-    public boolean isRedisRunning() {
-        waitForInitialization();
-        return redis != null && redis.isRunning();
-    }
-
     public boolean isKeycloakRunning() {
         waitForInitialization();
         return keycloak != null && keycloak.isRunning();
@@ -324,9 +296,6 @@ public class InfronEnvironment {
         }
         if (keycloak != null) {
             keycloak.stop();
-        }
-        if (redis != null) {
-            redis.stop();
         }
         if (postgres != null) {
             postgres.stop();

@@ -54,12 +54,14 @@ public class JobEntity {
     /**
      * Job parameters (JSONB)
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "parameters", columnDefinition = "JSONB")
     private String parameters;
 
     /**
      * Job result (JSONB)
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "result", columnDefinition = "JSONB")
     private String result;
 
@@ -102,6 +104,7 @@ public class JobEntity {
     /**
      * Error details (JSONB)
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "error_details", columnDefinition = "JSONB")
     private String errorDetails;
 
@@ -174,6 +177,7 @@ public class JobEntity {
     /**
      * Additional metadata (JSONB)
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "JSONB")
     private String metadata;
 

@@ -72,6 +72,9 @@ public class EntityStateMachineImpl implements EntityStateMachine {
 
     @Override
     public void validateStateForTask(UUID entityId, JobEntity task) {
+        if (task.getTargetEntityType() == EntityType.PROVIDER) {
+            return;
+        }
         if (task.getTargetEntityType() == EntityType.VM) {
             VmEntity vm = vmRepository.findById(entityId).orElse(null);
             if (vm == null) {
@@ -99,6 +102,9 @@ public class EntityStateMachineImpl implements EntityStateMachine {
 
     @Override
     public void updateStateForTaskStatus(UUID entityId, JobEntity task, JobStatus newStatus) {
+        if (task.getTargetEntityType() == EntityType.PROVIDER) {
+            return;
+        }
         if (task.getTargetEntityType() == EntityType.VM) {
             VmEntity vm = vmRepository.findById(entityId).orElse(null);
             if (vm == null) {

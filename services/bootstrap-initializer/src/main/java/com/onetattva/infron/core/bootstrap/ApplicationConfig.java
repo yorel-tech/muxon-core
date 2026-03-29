@@ -132,7 +132,6 @@ public class ApplicationConfig {
         private JpaConfig jpa;
         private SecurityConfig security;
         private FlywayConfig flyway;
-        private DataConfig data;
 
         public SpringApplicationConfig getApplication() {
             return application;
@@ -172,14 +171,6 @@ public class ApplicationConfig {
 
         public void setFlyway(FlywayConfig flyway) {
             this.flyway = flyway;
-        }
-
-        public DataConfig getData() {
-            return data;
-        }
-
-        public void setData(DataConfig data) {
-            this.data = data;
         }
 
         public static class SpringApplicationConfig {
@@ -354,38 +345,6 @@ public class ApplicationConfig {
             }
         }
 
-        public static class DataConfig {
-            private RedisConfig redis;
-
-            public RedisConfig getRedis() {
-                return redis;
-            }
-
-            public void setRedis(RedisConfig redis) {
-                this.redis = redis;
-            }
-
-            public static class RedisConfig {
-                private String host;
-                private String port;
-
-                public String getHost() {
-                    return host;
-                }
-
-                public void setHost(String host) {
-                    this.host = host;
-                }
-
-                public String getPort() {
-                    return port;
-                }
-
-                public void setPort(String port) {
-                    this.port = port;
-                }
-            }
-        }
     }
 
     public static class SpringDocConfig {

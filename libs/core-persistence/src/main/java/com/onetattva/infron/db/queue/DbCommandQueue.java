@@ -7,6 +7,7 @@ import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -16,6 +17,11 @@ import java.util.UUID;
 /**
  * Database-backed implementation of CommandQueue.
  * Uses the queue_entry table and centralizes PENDING → PROCESSING → COMPLETED/FAILED transitions.
+ * <p>
+ * {@link #pollCommands}, {@link #markCompleted}, and {@link #markFailed} use {@link Propagation#REQUIRES_NEW}
+ * so the claim and terminal updates commit in isolated transactions. That avoids leaving claimed
+ * queue rows managed in the caller's persistence context (which would flush stale {@code PROCESSING}
+ * on outer commit and can roll back unrelated work such as {@code provider_storage} inserts).
  */
 public class DbCommandQueue implements CommandQueue {
 
@@ -34,7 +40,7 @@ public class DbCommandQueue implements CommandQueue {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<CommandMessage> pollCommands(EntityType entityType, int limit) {
         List<QueueEntryEntity> entries = repository.findPendingByEntityTypeForUpdate(
             com.onetattva.infron.api.enums.EntityType.valueOf(entityType.name()),
@@ -56,13 +62,13 @@ public class DbCommandQueue implements CommandQueue {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompleted(UUID commandId) {
         repository.markCompleted(commandId, Instant.now());
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(UUID commandId, String errorMessage) {
         repository.markFailed(commandId, errorMessage, Instant.now());
     }

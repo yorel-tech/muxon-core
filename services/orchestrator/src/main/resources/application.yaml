@@ -5,6 +5,12 @@ server:
 spring:
   application:
     name: "orchestrator"
+  # Default scheduler uses one thread; @Scheduled tasks then run strictly one after another.
+  # Long work in one poller (e.g. storage discovery up to 300s, VM provider calls) would starve the other.
+  task:
+    scheduling:
+      pool:
+        size: 8
   datasource:
     url: "jdbc:postgresql://localhost:5432/infron"
     username: "infron"
@@ -34,6 +40,9 @@ infron:
   tenants: null
   queue:
     backend: "db"
+  provider:
+    # Default when queue metadata omits executionTimeoutSeconds (must match core-services).
+    storage-discovery-execution-timeout-seconds: 300
 
 # gRPC configuration
 grpc:

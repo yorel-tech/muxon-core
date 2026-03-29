@@ -1,6 +1,7 @@
 package com.onetattva.infron.core.services.storage.scheduler;
 
 import com.onetattva.infron.db.model.ProviderStorageEntity;
+import com.onetattva.infron.db.model.StorageClassEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -44,6 +45,19 @@ public class CapabilityFilter {
             candidates.size(), filtered.size());
         
         return filtered;
+    }
+
+    /**
+     * Constraint checks for admin mapping / listing (no minimum volume size; free space not enforced when size is 0).
+     */
+    public boolean meetsConstraintsForListing(ProviderStorageEntity storage, StorageClassEntity storageClass) {
+        SchedulerContext ctx = SchedulerContext.builder()
+                .storageClassName(storageClass.getName())
+                .capabilities(storageClass.getCapabilities())
+                .constraints(storageClass.getConstraints())
+                .sizeBytes(0L)
+                .build();
+        return meetsConstraints(storage, ctx);
     }
 
     /**

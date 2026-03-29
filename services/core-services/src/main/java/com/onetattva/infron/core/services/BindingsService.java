@@ -16,19 +16,20 @@ import com.onetattva.infron.db.model.RoleEntity;
 import com.onetattva.infron.db.repository.RoleBindingRepository;
 import com.onetattva.infron.db.repository.RoleRepository;
 import com.onetattva.infron.db.repository.TenantRepository;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,14 +45,14 @@ public class BindingsService {
     private TenantRepository tenantRepository;
 
     @Autowired
-    private StringRedisTemplate redis;
-
-    @Autowired
     private AuthorizationService authorizationService;
 
-    // Rate limiting: max 10 role binding changes per minute per user
+    // Rate limiting: max 10 role binding changes per minute per user (per JVM instance)
     private static final int MAX_CHANGES_PER_MINUTE = 10;
-    private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(1);
+    private final Cache<String, Integer> rateLimitCache = Caffeine.newBuilder()
+        .expireAfterWrite(1, TimeUnit.MINUTES)
+        .maximumSize(10_000)
+        .build();
 
 
     private UserPrincipal getCurrentUser() {
@@ -64,15 +65,14 @@ public class BindingsService {
 
     private void checkRateLimit(String userId) {
         String key = "rate_limit:role_binding:" + userId;
-        String count = redis.opsForValue().get(key);
-        int currentCount = count != null ? Integer.parseInt(count) : 0;
+        Integer count = rateLimitCache.getIfPresent(key);
+        int currentCount = count != null ? count : 0;
 
         if (currentCount >= MAX_CHANGES_PER_MINUTE) {
             throw new RuntimeException("Rate limit exceeded: maximum " + MAX_CHANGES_PER_MINUTE + " role binding changes per minute");
         }
 
-        redis.opsForValue().increment(key);
-        redis.expire(key, RATE_LIMIT_WINDOW);
+        rateLimitCache.put(key, currentCount + 1);
     }
 
     private void validateRoleBindingCreateItem(RoleBindingCreateItem item) {

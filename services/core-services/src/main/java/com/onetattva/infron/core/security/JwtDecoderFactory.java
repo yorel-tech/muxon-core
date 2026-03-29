@@ -14,7 +14,7 @@ import java.util.concurrent.*;
 @Component
 public class JwtDecoderFactory {
 
-    // simple cache; you can replace with Caffeine or Redis-backed cache
+    // In-memory cache per JVM; decoders are refreshed on a fixed sweep interval.
     private final ConcurrentMap<String, JwtDecoder> cache = new ConcurrentHashMap<>();
     private final ScheduledExecutorService sweeper = Executors.newScheduledThreadPool(1);
 

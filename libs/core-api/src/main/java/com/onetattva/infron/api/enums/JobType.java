@@ -17,5 +17,7 @@ public enum JobType {
     VM_RESIZE,
     NODE_PROVISION,
     NODE_DECOMMISSION,
-    PROVIDER_SYNC
+    PROVIDER_SYNC,
+    /** Provider storage inventory sync (orchestrator + storage discovery providers). */
+    PROVIDER_STORAGE_SYNC
 }

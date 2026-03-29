@@ -81,38 +81,47 @@ public class ProxmoxStorageDiscoveryProvider implements StorageDiscoveryProvider
         
         return CompletableFuture.supplyAsync(() -> {
             List<DiscoveredStorage> discoveredStorage = new ArrayList<>();
-            
+
+            log.info("[proxmox-storage] discoverStorage async task started: providerId={}", providerId);
+
             try {
                 Proxmox proxmox = createProxmoxClient(connectionInfo);
-                
+                log.info("[proxmox-storage] API client created: providerId={}", providerId);
+
                 // Get all nodes
                 Object nodesApi = invokeMethod(proxmox, "getNodes");
                 Object nodesIndexApi = invokeMethod(nodesApi, "getIndex");
                 Object nodesResult = invokeMethod(nodesIndexApi, "execute");
-                
+
                 if (!(nodesResult instanceof List<?> nodes)) {
-                    log.warn("Failed to get nodes from Proxmox provider {}", providerId);
+                    log.warn("[proxmox-storage] nodes index did not return a list (got {}): providerId={}",
+                            nodesResult != null ? nodesResult.getClass().getName() : "null", providerId);
                     return discoveredStorage;
                 }
-                
+
+                log.info("[proxmox-storage] cluster reports {} node(s): providerId={}", nodes.size(), providerId);
+
                 Set<String> processedStorage = new HashSet<>();
-                
+
                 for (Object nodeObj : nodes) {
                     String nodeName = readString(nodeObj, "getNode");
                     if (nodeName == null || nodeName.isEmpty()) {
+                        log.debug("[proxmox-storage] skipping node entry with empty name: providerId={}", providerId);
                         continue;
                     }
-                    
+
                     // Get storage for this node
                     Object nodeApi = invokeMethodWithArg(nodesApi, "get", nodeName);
                     Object storageApi = tryInvokeMethod(nodeApi, "getStorage");
-                    
+
                     if (storageApi != null) {
                         Object storageIndexApi = tryInvokeMethod(storageApi, "getIndex");
-                        Object storageResult = storageIndexApi != null ? 
+                        Object storageResult = storageIndexApi != null ?
                             tryInvokeMethod(storageIndexApi, "execute") : null;
-                        
+
                         if (storageResult instanceof List<?> storageList) {
+                            log.info("[proxmox-storage] node {} returned {} raw storage row(s): providerId={}",
+                                    nodeName, storageList.size(), providerId);
                             for (Object storageObj : storageList) {
                                 DiscoveredStorage storage = discoverStorageEntry(
                                     storageObj, nodeName, providerId, processedStorage);
@@ -120,15 +129,20 @@ public class ProxmoxStorageDiscoveryProvider implements StorageDiscoveryProvider
                                     discoveredStorage.add(storage);
                                 }
                             }
+                        } else {
+                            log.warn("[proxmox-storage] node {} storage index was not a list (got {}): providerId={}",
+                                    nodeName, storageResult != null ? storageResult.getClass().getName() : "null", providerId);
                         }
+                    } else {
+                        log.warn("[proxmox-storage] node {} has no getStorage API: providerId={}", nodeName, providerId);
                     }
                 }
-                
-                log.info("Discovered {} storage entries from Proxmox provider {}", 
+
+                log.info("[proxmox-storage] discovered {} unique storage entries: providerId={}",
                     discoveredStorage.size(), providerId);
                 
             } catch (Exception e) {
-                log.error("Failed to discover storage from Proxmox provider {}: {}", 
+                log.error("[proxmox-storage] discovery failed for provider {}: {}",
                     providerId, e.getMessage(), e);
             }
             

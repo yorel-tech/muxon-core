@@ -27,11 +27,8 @@ spring:
   flyway:
     enabled: true
 
-# Redis config
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+  cache:
+    type: caffeine
 
 # API docs for service
 springdoc:

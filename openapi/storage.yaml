@@ -176,7 +176,10 @@ components:
         mappingSource:
           type: string
           enum: [override, scheduler]
-          description: Indicates whether mapping is from explicit override or inferred by scheduler compatibility.
+          description: |
+            `override` — listed in storage overrides for this class. `scheduler` — capability match: class and
+            provider advertise the same capability keys, values match (with class `any`/`*` wildcard), constraints
+            pass, and the provider does not declare capability keys absent from the class.
       required: [storageClassName, mappingSource]
       additionalProperties: false
 
@@ -274,16 +277,27 @@ components:
 
     StorageSyncResponse:
       type: object
+      required: [providerId, status]
       properties:
         providerId:
           type: string
           format: uuid
+        taskId:
+          type: string
+          format: uuid
+          description: |
+            Async job id. Poll `GET /api/v1/tasks/{taskId}` until status is COMPLETED or FAILED.
+            Result JSON includes `discoveredCount` when successful.
         status:
           type: string
           enum: [accepted, completed, failed]
+          description: |
+            `accepted` — discovery was enqueued for the orchestrator (use taskId to poll).
+            `completed` / `failed` reserved for synchronous responses (legacy).
         discoveredCount:
           type: integer
           minimum: 0
+          description: Populated for synchronous flows; when status is accepted, use the task result instead.
         message:
           type: string
 
@@ -463,6 +477,33 @@ paths:
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
 
+  /storage-classes/{name}/provider-storage:
+    parameters:
+      - $ref: '#/components/parameters/storageClassName'
+    get:
+      tags: [StorageClasses]
+      summary: List provider storage mapped to a storage class
+      description: |
+        Returns the same shape as `GET /api/v1/provider-storage`. Rows are those mapped by capability
+        compatibility (subset rule) and/or explicit storage overrides for this class name.
+      operationId: listProviderStorageForStorageClass
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated provider storage inventory for this class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStorageList'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
   /provider-storage:
     get:
       tags: [ProviderStorage]
@@ -486,6 +527,14 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: storageClass
+          in: query
+          required: false
+          description: When set, only provider storage rows mapped to this storage class (capabilities and/or overrides) are returned.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
       responses:
         '200':
           description: Paginated provider storage inventory
@@ -493,6 +542,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProviderStorageList'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
 
@@ -530,6 +581,14 @@ paths:
       parameters:
         - $ref: './commons.yaml#/components/parameters/page'
         - $ref: './commons.yaml#/components/parameters/perPage'
+        - name: storageClass
+          in: query
+          required: false
+          description: When set, only rows mapped to this storage class (capabilities and/or overrides) are returned.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
       responses:
         '200':
           description: Paginated provider storage list

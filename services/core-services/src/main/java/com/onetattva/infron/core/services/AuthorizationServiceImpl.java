@@ -7,13 +7,11 @@ import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
 import com.onetattva.infron.db.repository.PermissionRepository;
 import com.onetattva.infron.db.repository.RolePermissionRepository;
 import com.onetattva.infron.db.repository.UserRoleBindingViewRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -26,55 +24,32 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     private final UserRoleBindingViewRepository userRoleRepo;
     private final RolePermissionRepository rolePermissionRepo;
-    private final StringRedisTemplate redis;
-    private final Duration cacheTtl;
+    private final Cache<String, List<String>> tenantCache;
 
 
     public AuthorizationServiceImpl(PermissionRepository permissionRepository,
                             UserRoleBindingViewRepository tenantUserRepository,
                             RolePermissionRepository rolePermissionRepo,
-                            StringRedisTemplate redis,
-                            @Value("${authz.cache.ttl-seconds:300}") long ttlSeconds) {
+                            Cache<String, List<String>> tenantCache) {
         this.permissionRepository = permissionRepository;
         this.userRoleRepo = tenantUserRepository;
         this.rolePermissionRepo = rolePermissionRepo;
-        this.redis = redis;
-        this.cacheTtl = Duration.ofSeconds(ttlSeconds);
-    }
-
-    private String cacheKey(String externalId) {
-        return "perm:tenants:" + externalId;
+        this.tenantCache = tenantCache;
     }
 
     @Override
     public List<String> getTenantsForExternalId(String externalId) {
-        String key = cacheKey(externalId);
-        String cached = redis.opsForValue().get(key);
-        if (cached != null && !cached.isEmpty()) {
-            // cached as CSV
-            return Arrays.stream(cached.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .collect(Collectors.toList());
-        }
+        return tenantCache.get(externalId, this::loadTenantsForExternalId);
+    }
 
+    private List<String> loadTenantsForExternalId(String externalId) {
         List<UserRoleBindingViewEntity> rows = userRoleRepo.findByExternalId(externalId);
-        List<String> tenantIds = rows.stream()
+        return rows.stream()
                 .map(UserRoleBindingViewEntity::getScopeId)
                 .filter(Objects::nonNull)
                 .map(UUID::toString)
                 .distinct()
                 .collect(Collectors.toList());
-
-        String csv = String.join(",", tenantIds);
-        if (!csv.isEmpty()) {
-            redis.opsForValue().set(key, csv, cacheTtl);
-        } else {
-            // negative cache to avoid DB spam; short TTL
-            redis.opsForValue().set(key, "", Duration.ofSeconds(Math.min(cacheTtl.getSeconds(), 60)));
-        }
-
-        return tenantIds;
     }
 
     @Override
@@ -85,7 +60,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public void evictCacheForExternalId(String externalId) {
-        redis.delete(cacheKey(externalId));
+        tenantCache.invalidate(externalId);
     }
 
     // cache user permissions via Spring Cache with TTL

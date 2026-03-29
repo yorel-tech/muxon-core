@@ -57,6 +57,7 @@ public class VmOrchestrator {
     public void pollVmQueue() {
         try {
             List<CommandMessage> entries = commandQueue.pollCommands(EntityType.VM, POLL_BATCH_SIZE);
+            logger.debug("VM queue poll finished: claimed {} VM command(s)", entries.size());
 
             if (entries.isEmpty()) {
                 return;

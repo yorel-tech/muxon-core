@@ -112,6 +112,18 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
     List<QueueEntryEntity> findStaleProcessingEntries(@Param("cutoff") Instant cutoff);
 
     /**
+     * Fail all pending queue rows for a given entity and command type (e.g. supersede stale work).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("UPDATE QueueEntryEntity q SET q.status = 'FAILED', q.errorMessage = :errorMessage, q.processedAt = :now, q.updatedAt = :now WHERE q.entityId = :entityId AND q.queueType = :queueType AND q.status = 'PENDING'")
+    int failPendingByEntityIdAndQueueType(
+            @Param("entityId") UUID entityId,
+            @Param("queueType") String queueType,
+            @Param("errorMessage") String errorMessage,
+            @Param("now") Instant now);
+
+    /**
      * Mark an entry as failed with error message
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
