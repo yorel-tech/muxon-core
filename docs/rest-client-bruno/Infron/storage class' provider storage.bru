@@ -1,0 +1,16 @@
+meta {
+  name: storage class' provider storage
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{url}}/storage-classes/medium-ssd/provider-storage
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

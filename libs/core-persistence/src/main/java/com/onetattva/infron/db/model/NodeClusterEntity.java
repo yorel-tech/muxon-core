@@ -23,6 +23,9 @@ public class NodeClusterEntity extends BaseEntity {
     @JoinColumn(name = "provider_id", nullable = false)
     private ProviderEntity provider;
 
+    @Column(name = "external_id")
+    private String externalId;
+
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "status", nullable = false)
@@ -50,6 +53,14 @@ public class NodeClusterEntity extends BaseEntity {
 
     public void setProvider(ProviderEntity provider) {
         this.provider = provider;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public NodeCluster.StatusEnum getStatus() {

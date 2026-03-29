@@ -260,6 +260,8 @@ paths:
     $ref: './storage.yaml#/paths/~1providers~1{providerId}~1storage'
   /api/v1/providers/{providerId}/sync-storage:
     $ref: './storage.yaml#/paths/~1providers~1{providerId}~1sync-storage'
+  /api/v1/providers/{providerId}/sync:
+    $ref: './providers.yaml#/paths/~1providers~1{providerId}~1sync'
 
   # Storage classes (capability-based)
   /api/v1/storage-classes:

@@ -391,3 +391,32 @@ paths:
           $ref: './commons.yaml#/components/responses/NotFound'
         '403':
           $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /providers/{providerId}/sync:
+    parameters:
+      - $ref: '#/components/parameters/providerId'
+    post:
+      tags: [Providers]
+      summary: Trigger full provider inventory sync
+      description: >
+        Asynchronously refreshes provider inventory: for **Proxmox**, provider capabilities,
+        a managed node cluster and nodes (from the cluster API), and provider storage.
+        For **Libvirt**, skips remote provider capability collection; refreshes existing node
+        capacity from each node's libvirt connection and runs storage discovery from the provider endpoint.
+        Poll `GET /api/v1/tasks/{taskId}` using the returned `taskId` until the job completes or fails.
+      operationId: syncProvider
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: './storage.yaml#/components/schemas/StorageSyncResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

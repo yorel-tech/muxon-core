@@ -16,4 +16,7 @@ public final class ProviderQueueCommands {
     public static final String CAPABILITIES_DISCOVERY = "PROVIDER_CAPABILITIES_DISCOVERY_COMMAND";
 
     public static final String STORAGE_DISCOVERY = "PROVIDER_STORAGE_DISCOVERY_COMMAND";
+
+    /** Full inventory sync: capabilities (where applicable), node cluster + nodes, storage. */
+    public static final String INVENTORY_SYNC = "PROVIDER_INVENTORY_SYNC_COMMAND";
 }

@@ -5,6 +5,7 @@ import com.onetattva.infron.api.ProvidersApi;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.ResourceAction;
+import com.onetattva.infron.core.services.ProviderInventorySyncService;
 import com.onetattva.infron.core.services.ProvidersService;
 import com.onetattva.infron.core.services.storage.ProviderStorageApiConverter;
 import com.onetattva.infron.core.services.storage.ProviderStorageDiscoveryService;
@@ -36,6 +37,7 @@ public class ProvidersController implements ProvidersApi, ProviderStorageApi {
     private final ProviderStorageDiscoveryService providerStorageDiscoveryService;
     private final ProviderStorageMappingService providerStorageMappingService;
     private final ProviderStorageApiConverter providerStorageApiConverter;
+    private final ProviderInventorySyncService providerInventorySyncService;
     private final ObjectMapper objectMapper;
 
     public ProvidersController(
@@ -44,12 +46,14 @@ public class ProvidersController implements ProvidersApi, ProviderStorageApi {
             final ProviderStorageDiscoveryService providerStorageDiscoveryService,
             final ProviderStorageMappingService providerStorageMappingService,
             final ProviderStorageApiConverter providerStorageApiConverter,
+            final ProviderInventorySyncService providerInventorySyncService,
             final ObjectMapper objectMapper) {
         this.providersService = providersService;
         this.providerStorageRepository = providerStorageRepository;
         this.providerStorageDiscoveryService = providerStorageDiscoveryService;
         this.providerStorageMappingService = providerStorageMappingService;
         this.providerStorageApiConverter = providerStorageApiConverter;
+        this.providerInventorySyncService = providerInventorySyncService;
         this.objectMapper = objectMapper;
     }
 
@@ -202,6 +206,24 @@ public class ProvidersController implements ProvidersApi, ProviderStorageApi {
                     .taskId(taskId)
                     .status(StorageSyncResponse.StatusEnum.ACCEPTED)
                     .message("Storage discovery enqueued; poll GET /api/v1/tasks/" + taskId)
+                    .build();
+            return ResponseEntity.status(202).body(body);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    @ResourceAction(rel = "sync", title = "Sync provider inventory", method = RequestMethod.POST, resourceType = Provider.class, idParam = "providerId", permission = Permission.PROVIDER_EDIT)
+    public ResponseEntity<StorageSyncResponse> syncProvider(UUID providerId) {
+        providersService.getProvider(providerId);
+        try {
+            UUID taskId = providerInventorySyncService.enqueueInventorySync(providerId);
+            StorageSyncResponse body = StorageSyncResponse.builder()
+                    .providerId(providerId)
+                    .taskId(taskId)
+                    .status(StorageSyncResponse.StatusEnum.ACCEPTED)
+                    .message("Provider inventory sync enqueued; poll GET /api/v1/tasks/" + taskId)
                     .build();
             return ResponseEntity.status(202).body(body);
         } catch (IllegalArgumentException e) {
