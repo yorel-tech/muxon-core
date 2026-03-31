@@ -16,7 +16,6 @@ import java.lang.reflect.Method;
 public class PermissionInterceptor implements HandlerInterceptor {
 
     private static final String PATTERN_V1 = "/api/v1/tenants/{tenantId}/**";
-    private static final String PATTERN_LEGACY = "/api/tenant/{tenantId}/**";
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
@@ -112,13 +111,6 @@ public class PermissionInterceptor implements HandlerInterceptor {
                 return null;
             }
             return parts.length >= 5 ? parts[4] : null;
-        }
-        if (pathMatcher.match(PATTERN_LEGACY, path)) {
-            String[] parts = path.split("/");
-            if (parts.length == 4) {
-                return null;
-            }
-            return parts.length >= 4 ? parts[3] : null;
         }
         return null;
     }

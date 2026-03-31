@@ -190,6 +190,27 @@ paths:
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
 
+  /tenants/mine:
+    get:
+      tags:
+        - Tenants
+      summary: List tenants accessible to the current user
+      description: |
+        Returns the list of tenants available to the authenticated user based on
+        effective role bindings and scope.
+      operationId: getMyTenants
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenants accessible to the current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
   /tenants/current:
     get:
       tags:

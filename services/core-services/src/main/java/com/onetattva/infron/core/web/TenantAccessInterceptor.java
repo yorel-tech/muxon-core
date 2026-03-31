@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.util.AntPathMatcher;
 
+import java.nio.charset.StandardCharsets;
+
 @Component
 public class TenantAccessInterceptor implements HandlerInterceptor {
 
@@ -23,7 +25,6 @@ public class TenantAccessInterceptor implements HandlerInterceptor {
     }
 
     private static final String PATTERN_V1 = "/api/v1/tenants/{tenantId}/**";
-    private static final String PATTERN_LEGACY = "/api/tenant/{tenantId}/**";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -35,35 +36,22 @@ public class TenantAccessInterceptor implements HandlerInterceptor {
         }
 
         boolean v1Match = pathMatcher.match(PATTERN_V1, path);
-        boolean legacyMatch = pathMatcher.match(PATTERN_LEGACY, path);
-        if (!v1Match && !legacyMatch) {
+        if (!v1Match) {
             return true; // not a tenant-scoped endpoint
         }
 
         String[] parts = path.split("/");
         String tenantId;
-        if (v1Match) {
-            // expected: ["", "api", "v1", "tenants", "{tenantId}", ...]
-            if (parts.length < 5) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
-                return false;
-            }
-            // /api/v1/tenants/{id} only: system tenant APIs; membership check is for sub-resources.
-            if (parts.length == 5) {
-                return true;
-            }
-            tenantId = parts[4];
-        } else {
-            // expected: ["", "api", "tenant", "{tenantId}", ...]
-            if (parts.length < 4) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
-                return false;
-            }
-            if (parts.length == 4) {
-                return true;
-            }
-            tenantId = parts[3];
+        // expected: ["", "api", "v1", "tenants", "{tenantId}", ...]
+        if (parts.length < 5) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
+            return false;
         }
+        // /api/v1/tenants/{id} only: system tenant APIs; membership check is for sub-resources.
+        if (parts.length == 5) {
+            return true;
+        }
+        tenantId = parts[4];
 
         // Extract external user id from security context (UserPrincipal or Jwt)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -84,7 +72,11 @@ public class TenantAccessInterceptor implements HandlerInterceptor {
 
         boolean allowed = authzService.hasAccessToTenant(externalId, tenantId);
         if (!allowed) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access to tenant denied");
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType("application/json");
+            response.getWriter().write("{\"code\":\"INVALID_TENANT_CONTEXT\"}");
+            response.getWriter().flush();
             return false;
         }
         // permitted

@@ -99,6 +99,21 @@ public class TenantsService {
         throw new EntityNotFoundException("Multiple tenants: provide slug query param");
     }
 
+    public TenantList getTenantsForCurrentUser(String externalId) {
+        List<String> allowedTenantIds = authorizationService.getTenantsForExternalId(externalId);
+        List<Tenant> tenants = (allowedTenantIds == null ? List.<String>of() : allowedTenantIds).stream()
+                .map(UUID::fromString)
+                .map(this::getTenant)
+                .toList();
+
+        TenantList tenantList = new TenantList();
+        tenantList.setTotal(tenants.size());
+        tenantList.setPage(1);
+        tenantList.setPerPage(tenants.size());
+        tenantList.setItems(tenants);
+        return tenantList;
+    }
+
     public TenantList listTenants(Integer page, Integer perPage, String sort, String name, String status) {
         // TODO: Implement full filters (name, status) and sorting
         List<TenantEntity> allNonSystem = tenantRepository.findAll().stream()

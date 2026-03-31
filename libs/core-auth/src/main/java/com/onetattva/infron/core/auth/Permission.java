@@ -23,6 +23,7 @@ public enum Permission {
     USER_MANAGE("user:manage", "Manage user", Scope.TENANT),
 
     TENANT_READ("tenant:read", "Read tenant", Scope.TENANT),
+    TENANT_READ_SETTINGS("tenant:read-settings", "Read tenant settings", Scope.SYSTEM),
     TENANT_EDIT("tenant:edit", "Edit tenant", Scope.SYSTEM),
     TENANT_MANAGE("tenant:manage", "Manage tenant", Scope.SYSTEM),
 

@@ -23,8 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
         // apply permission check to all API routes
         registry.addInterceptor(permissionInterceptor)
                 .addPathPatterns("/api/**");
-        // apply to tenant-scoped routes (v1 and legacy)
+        // apply to tenant-scoped routes
         registry.addInterceptor(tenantAccessInterceptor)
-                .addPathPatterns("/api/v1/tenants/*/**", "/api/tenant/**");
+                .addPathPatterns("/api/v1/tenants/*/**");
     }
 }

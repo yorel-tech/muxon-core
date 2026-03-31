@@ -116,6 +116,8 @@ paths:
   # Tenants
   /api/v1/tenants:
     $ref: './tenants.yaml#/paths/~1tenants'
+  /api/v1/tenants/mine:
+    $ref: './tenants.yaml#/paths/~1tenants~1mine'
   /api/v1/tenants/current:
     $ref: './tenants.yaml#/paths/~1tenants~1current'
   /api/v1/tenants/{tenantId}:

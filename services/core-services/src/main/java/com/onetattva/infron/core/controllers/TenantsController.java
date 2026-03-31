@@ -50,6 +50,16 @@ public class TenantsController implements TenantsApi {
     }
 
     @Override
+    public ResponseEntity<TenantList> getMyTenants() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal user)) {
+            return ResponseEntity.status(401).build();
+        }
+        TenantList tenants = tenantsService.getTenantsForCurrentUser(user.id());
+        return ResponseEntity.ok(tenants);
+    }
+
+    @Override
     @RequiresPermission(Permission.TENANT_READ)
     public ResponseEntity<Tenant> getTenant(@NotNull @PathVariable("tenantId") UUID tenantId) {
         Tenant tenant = tenantsService.getTenant(tenantId);
@@ -83,21 +93,21 @@ public class TenantsController implements TenantsApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_SETTINGS)
+    @RequiresPermission(Permission.TENANT_READ_SETTINGS)
     public ResponseEntity<TenantSettings> getTenantSettings(@NotNull @PathVariable("tenantId") UUID tenantId) {
         TenantSettings settings = tenantsService.getTenantSettings(tenantId);
         return ResponseEntity.ok(settings);
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_SETTINGS)
+    @RequiresPermission(Permission.TENANT_MANAGE)
     public ResponseEntity<TenantSettings> replaceTenantSettings(@NotNull @PathVariable("tenantId") UUID tenantId, @Valid @RequestBody TenantSettings tenantSettings) {
         TenantSettings settings = tenantsService.replaceTenantSettings(tenantId, tenantSettings);
         return ResponseEntity.ok(settings);
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_SETTINGS)
+    @RequiresPermission(Permission.TENANT_MANAGE)
     public ResponseEntity<TenantSettings> updateTenantSettings(@NotNull @PathVariable("tenantId") UUID tenantId, @Valid @RequestBody TenantSettings tenantSettings) {
         TenantSettings settings = tenantsService.updateTenantSettings(tenantId, tenantSettings);
         return ResponseEntity.ok(settings);
