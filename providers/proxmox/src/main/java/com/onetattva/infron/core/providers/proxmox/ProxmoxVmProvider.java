@@ -80,9 +80,7 @@ public class ProxmoxVmProvider implements VmProvider {
                 PveQemuCreateOptions createOptions = buildQemuCreateOptions(request.spec(), context);
                 
                 // Create VM on the target node
-                String nodeName = context.getTargetResource()
-                    .map(ref -> ref.name())
-                    .orElse("pve-node-01");
+                String nodeName = resolveTargetNodeName(client, context);
                 
                 logger.info("Creating VM {} with VMID {} on node {}", request.vmId(), nextVmId, nodeName);
                 
@@ -517,6 +515,7 @@ public class ProxmoxVmProvider implements VmProvider {
         // TODO: Parse JSON spec and convert to Proxmox VM config
         Object storage = context.getMetadata().get("storagePool");
         String storagePool = storage != null ? storage.toString() : "local-lvm";
+        String diskConfig = buildDiskConfig(storagePool);
         return PveQemuCreateOptions.builder()
                 .name("vm-" + UUID.randomUUID().toString().substring(0, 8))
                 .memory(2048)
@@ -524,9 +523,48 @@ public class ProxmoxVmProvider implements VmProvider {
                 .ostype("l26")
                 .onboot(true)
                 .boot("order=scsi0;net0")
-                .scsi(0, storagePool + ":8,format=qcow2")
+                .scsi(0, diskConfig)
                 .net(0, "virtio,bridge=vmbr0")
                 .build();
+    }
+
+    private String buildDiskConfig(String storagePool) {
+        String normalizedPool = storagePool != null ? storagePool.toLowerCase(Locale.ROOT) : "";
+        // Proxmox LVM/LVM-thin backends only support raw volumes (not qcow2).
+        if (normalizedPool.contains("lvm")) {
+            return storagePool + ":8,format=raw";
+        }
+        return storagePool + ":8,format=qcow2";
+    }
+
+    private String resolveTargetNodeName(Proxmox client, ProxmoxProviderContext context) {
+        Optional<Reference> targetResource = context.getTargetResource();
+        if (targetResource.isPresent()) {
+            Reference ref = targetResource.get();
+            // For Proxmox, API operations should use externalId (node identifier) when available.
+            if (ref.externalId() != null && !ref.externalId().isBlank()) {
+                return ref.externalId();
+            }
+            if (ref.name() != null && !ref.name().isBlank()) {
+                return ref.name();
+            }
+        }
+
+        try {
+            List<PveNodesIndex> nodes = client.getNodes().getIndex().execute();
+            if (nodes != null && !nodes.isEmpty()) {
+                String discoveredNode = nodes.get(0).getNode();
+                if (discoveredNode != null && !discoveredNode.isBlank()) {
+                    logger.warn("No target node in provider context; using discovered Proxmox node {}", discoveredNode);
+                    return discoveredNode;
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to discover fallback Proxmox node: {}", e.getMessage());
+        }
+
+        throw new IllegalStateException(
+                "No target Proxmox node available. Run provider inventory sync and ensure at least one node is discovered.");
     }
     
     private String findVmNode(Proxmox client, String vmId) {

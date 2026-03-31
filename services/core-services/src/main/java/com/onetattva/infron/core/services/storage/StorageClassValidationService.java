@@ -89,16 +89,18 @@ public class StorageClassValidationService {
             return Collections.emptyMap();
         }
 
-        Map<String, Integer> limitsGb = grant.getLimits().getStorageClassLimitsGb();
-        if (limitsGb == null) {
+        Object limitsGbObj = grant.getLimits().get("storageClassLimitsGb");
+        if (!(limitsGbObj instanceof Map<?, ?> limitsGb)) {
             return Collections.emptyMap();
         }
 
-        return limitsGb.entrySet().stream()
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                e -> e.getValue().longValue()
-            ));
+        Map<String, Long> result = new HashMap<>();
+        limitsGb.forEach((key, value) -> {
+            if (key instanceof String keyString && value instanceof Number numberValue) {
+                result.put(keyString, numberValue.longValue());
+            }
+        });
+        return result;
     }
 
     public StorageClassValidationResult validateStorageClasses(List<String> storageClasses) {

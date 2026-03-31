@@ -1,5 +1,6 @@
 package com.onetattva.infron.core.services;
 
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.db.model.DatacenterEntity;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,6 +41,9 @@ public class TenantDatacenterGrantService {
 
     @Autowired
     private com.onetattva.infron.core.services.storage.StorageClassValidationService storageClassValidationService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     public TenantDatacenterGrant createTenantDatacenterGrant(UUID tenantId, TenantDatacenterGrantCreate create) {
         TenantEntity tenant = tenantRepository.findById(tenantId)
@@ -105,7 +110,7 @@ public class TenantDatacenterGrantService {
         TenantDatacenterGrantEntity entity = grantRepository.findByTenant_IdAndDatacenter_Id(tenantId, datacenterId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found for tenant " + tenantId + " and datacenter " + datacenterId));
         if (grant.getAccess() != null) entity.setAccess(grant.getAccess());
-        if (grant.getLimits() != null) entity.setLimits(grant.getLimits());
+        if (grant.getLimits() != null) entity.setLimits(toMap(grant.getLimits()));
         if (grant.getEnabledFeatures() != null) entity.setEnabledFeatures(stringsFromFeatures(grant.getEnabledFeatures()));
         if (grant.getOverrideSettings() != null) entity.setOverrideSettings(grant.getOverrideSettings());
         entity.setUpdatedAt(Instant.now());
@@ -141,14 +146,14 @@ public class TenantDatacenterGrantService {
 
     private void applyCreateToEntity(TenantDatacenterGrantCreate create, TenantDatacenterGrantEntity entity) {
         entity.setAccess(create.getAccess() != null ? create.getAccess() : true);
-        entity.setLimits(create.getLimits());
+        entity.setLimits(toMap(create.getLimits()));
         entity.setEnabledFeatures(create.getEnabledFeatures() != null ? stringsFromFeatures(create.getEnabledFeatures()) : null);
         entity.setOverrideSettings(create.getOverrideSettings());
     }
 
     private void applyGrantToEntity(TenantDatacenterGrant grant, TenantDatacenterGrantEntity entity) {
         entity.setAccess(grant.getAccess() != null ? grant.getAccess() : true);
-        entity.setLimits(grant.getLimits());
+        entity.setLimits(toMap(grant.getLimits()));
         entity.setEnabledFeatures(grant.getEnabledFeatures() != null ? stringsFromFeatures(grant.getEnabledFeatures()) : null);
         entity.setOverrideSettings(grant.getOverrideSettings());
     }
@@ -187,7 +192,7 @@ public class TenantDatacenterGrantService {
         datacenterRef.setDescription(dc.getDescription());
         grant.setDatacenter(datacenterRef);
         grant.setAccess(entity.getAccess() != null ? entity.getAccess() : true);
-        grant.setLimits(entity.getLimits());
+        grant.setLimits(fromMap(entity.getLimits()));
         grant.setEnabledFeatures(featuresFromStrings(entity.getEnabledFeatures()));
         grant.setOverrideSettings(entity.getOverrideSettings());
         if (entity.getCreatedAt() != null) {
@@ -211,6 +216,25 @@ public class TenantDatacenterGrantService {
 
     public List<String> getEffectiveStorageClasses(UUID tenantId, UUID datacenterId) {
         return storageClassValidationService.getEffectiveStorageClasses(tenantId, datacenterId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> toMap(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return objectMapper.convertValue(value, Map.class);
+    }
+
+    private ResourceLimits fromMap(Map<String, Object> value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.convertValue(value, ResourceLimits.class);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Failed to deserialize tenant datacenter grant limits JSON", e);
+        }
     }
 
     public java.util.Map<String, StorageUsage> getStorageUsageByClass(UUID tenantId, UUID datacenterId) {

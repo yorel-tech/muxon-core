@@ -8,6 +8,7 @@ import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
+import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,10 @@ public class VmsService {
     private CommandQueue commandQueue;
     @Autowired
     private JobRepository jobRepository;
+    @Autowired
+    private UserRoleBindingViewRepository userRoleBindingViewRepository;
+    @Autowired
+    private IdpUserRepository idpUserRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -404,10 +409,20 @@ public class VmsService {
     private UUID getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal user) {
+            String subject = user.id();
+            List<UserRoleBindingViewEntity> bindings = userRoleBindingViewRepository.findByExternalId(subject);
+            if (!bindings.isEmpty() && bindings.get(0).getUserId() != null) {
+                return bindings.get(0).getUserId();
+            }
+
+            // Backward-compatible fallback for environments where principal id is already idp_user.id.
             try {
-                return UUID.fromString(user.id());
+                UUID candidateUserId = UUID.fromString(subject);
+                if (idpUserRepository.existsById(candidateUserId)) {
+                    return candidateUserId;
+                }
             } catch (IllegalArgumentException ignored) {
-                // If the user ID is not a valid UUID, leave actorUserId as null
+                // If the principal id is not UUID, leave actorUserId as null.
             }
         }
         return null;

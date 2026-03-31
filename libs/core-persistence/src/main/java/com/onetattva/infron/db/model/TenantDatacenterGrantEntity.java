@@ -4,7 +4,6 @@
 package com.onetattva.infron.db.model;
 
 import com.onetattva.infron.api.model.DatacenterSettings;
-import com.onetattva.infron.api.model.ResourceLimits;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -13,6 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -36,7 +36,7 @@ public class TenantDatacenterGrantEntity {
 
     @Type(value = JsonBinaryType.class)
     @Column(columnDefinition = "jsonb")
-    private ResourceLimits limits; // JSONB as String
+    private Map<String, Object> limits;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "enabled_features", columnDefinition = "text[]")
@@ -89,11 +89,11 @@ public class TenantDatacenterGrantEntity {
         this.access = access;
     }
 
-    public ResourceLimits getLimits() {
+    public Map<String, Object> getLimits() {
         return limits;
     }
 
-    public void setLimits(ResourceLimits limits) {
+    public void setLimits(Map<String, Object> limits) {
         this.limits = limits;
     }
 

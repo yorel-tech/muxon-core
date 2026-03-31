@@ -2,7 +2,9 @@ package com.onetattva.infron.core.providers;
 
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.providers.libvirt.LibvirtVmProvider;
+import com.onetattva.infron.core.providers.proxmox.ProxmoxNodeInventoryProvider;
 import com.onetattva.infron.db.model.ProviderEntity;
+import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.repository.NodeRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.VmRepository;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,7 +100,12 @@ public class TenantAwareVmProviderRegistry {
     
     private Optional<ProviderContext> createProxmoxContext(ProviderEntity providerEntity, UUID tenantDatacenterGrantId) {
         // Get target node info from tenant datacenter grant metadata or cluster selection
-        ProxmoxNodeInfo nodeInfo = selectTargetNodeForProxmox(tenantDatacenterGrantId);
+        ProxmoxNodeInfo nodeInfo = selectTargetNodeForProxmox(providerEntity, tenantDatacenterGrantId);
+        if (nodeInfo == null) {
+            logger.warn("No Proxmox node available for provider {} and tenant grant {}",
+                    providerEntity.getId(), tenantDatacenterGrantId);
+            return Optional.empty();
+        }
         String preferredStorage = getPreferredStorage(tenantDatacenterGrantId);
         
         return Optional.of(new com.onetattva.infron.core.providers.proxmox.ProxmoxProviderContext(
@@ -116,10 +124,59 @@ public class TenantAwareVmProviderRegistry {
         return nodes.isEmpty() ? null : nodes.get(0).getId();
     }
     
-    private ProxmoxNodeInfo selectTargetNodeForProxmox(UUID tenantDatacenterGrantId) {
-        // TODO: Implement Proxmox node selection logic
-        // For now, return default node info
-        return new ProxmoxNodeInfo("pve-node-01", "1");
+    private ProxmoxNodeInfo selectTargetNodeForProxmox(ProviderEntity providerEntity, UUID tenantDatacenterGrantId) {
+        // Prefer discovered provider nodes from inventory sync.
+        List<NodeEntity> nodes = nodeRepository.findByProviderId(providerEntity.getId());
+        if (!nodes.isEmpty()) {
+            NodeEntity selected = nodes.stream()
+                    .filter(NodeEntity::isActive)
+                    .findFirst()
+                    .orElse(nodes.get(0));
+
+            String nodeName = selected.getName();
+            String nodeExternalId = selected.getExternalId();
+            String proxmoxNodeId = nodeExternalId != null && !nodeExternalId.isBlank()
+                    ? nodeExternalId
+                    : nodeName;
+
+            if (proxmoxNodeId == null || proxmoxNodeId.isBlank()) {
+                logger.warn("Selected Proxmox node row {} has no usable name/externalId for tenant grant {}",
+                        selected.getId(), tenantDatacenterGrantId);
+                return null;
+            }
+
+            if (nodeName == null || nodeName.isBlank()) {
+                nodeName = proxmoxNodeId;
+            }
+
+            return new ProxmoxNodeInfo(nodeName, proxmoxNodeId);
+        }
+
+        // Fallback: discover from Proxmox API when inventory nodes are not synced yet.
+        try {
+            Map<String, Object> connectionInfo = new HashMap<>();
+            connectionInfo.put("endpoint", providerEntity.getEndpoint());
+            connectionInfo.put("credentials", providerEntity.getCredentials());
+            ProxmoxNodeInventoryProvider inventoryProvider = new ProxmoxNodeInventoryProvider();
+            List<ProxmoxNodeInventoryProvider.DiscoveredNode> discovered = inventoryProvider.discoverNodes(connectionInfo);
+            if (discovered.isEmpty()) {
+                logger.warn("No Proxmox nodes discovered live for provider {} and tenant grant {}",
+                        providerEntity.getId(), tenantDatacenterGrantId);
+                return null;
+            }
+            ProxmoxNodeInventoryProvider.DiscoveredNode selected = discovered.get(0);
+            String proxmoxNode = selected.name();
+            if (proxmoxNode == null || proxmoxNode.isBlank()) {
+                logger.warn("Discovered Proxmox node has blank name for provider {} and tenant grant {}",
+                        providerEntity.getId(), tenantDatacenterGrantId);
+                return null;
+            }
+            return new ProxmoxNodeInfo(proxmoxNode, proxmoxNode);
+        } catch (Exception e) {
+            logger.warn("Failed to discover Proxmox nodes live for provider {} and tenant grant {}: {}",
+                    providerEntity.getId(), tenantDatacenterGrantId, e.getMessage());
+            return null;
+        }
     }
     
     private String getPreferredStorage(UUID tenantDatacenterGrantId) {
