@@ -1,5 +1,5 @@
 paths:
-  /api/v1/vms:
+  /api/v1/tenants/{tenantId}/vms:
     post:
       tags:
         - VM Management
@@ -7,6 +7,8 @@ paths:
       operationId: createVm
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
       requestBody:
         required: true
         content:
@@ -37,6 +39,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: page
           in: query
           description: Page number
@@ -94,7 +97,7 @@ paths:
         '403':
           $ref: './commons.yaml#/components/responses/Forbidden'
 
-  /api/v1/vms/{vmId}:
+  /api/v1/tenants/{tenantId}/vms/{vmId}:
     get:
       tags:
         - VM Management
@@ -103,6 +106,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -132,6 +136,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -175,6 +180,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -198,7 +204,7 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /api/v1/vms/{vmId}/start:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/start:
     post:
       tags:
         - VM Management
@@ -207,6 +213,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -236,7 +243,7 @@ paths:
               schema:
                 $ref: './vms.yaml#/components/schemas/Error'
 
-  /api/v1/vms/{vmId}/stop:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/stop:
     post:
       tags:
         - VM Management
@@ -245,6 +252,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -274,7 +282,7 @@ paths:
               schema:
                 $ref: './vms.yaml#/components/schemas/Error'
 
-  /api/v1/vms/{vmId}/restart:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/restart:
     post:
       tags:
         - VM Management
@@ -283,6 +291,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -306,7 +315,7 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /api/v1/vms/{vmId}/suspend:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/suspend:
     post:
       tags:
         - VM Management
@@ -315,6 +324,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -344,7 +354,7 @@ paths:
               schema:
                 $ref: './vms.yaml#/components/schemas/Error'
 
-  /api/v1/vms/{vmId}/resume:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/resume:
     post:
       tags:
         - VM Management
@@ -353,6 +363,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -382,7 +393,7 @@ paths:
               schema:
                 $ref: './vms.yaml#/components/schemas/Error'
 
-  /api/v1/vms/{vmId}/console:
+  /api/v1/tenants/{tenantId}/vms/{vmId}/console:
     get:
       tags:
         - VM Management
@@ -391,6 +402,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
         - name: vmId
           in: path
           required: true
@@ -413,4 +425,3 @@ paths:
           $ref: './commons.yaml#/components/responses/Forbidden'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
-

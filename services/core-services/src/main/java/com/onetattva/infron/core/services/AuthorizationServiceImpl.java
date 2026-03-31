@@ -54,8 +54,30 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public boolean hasAccessToTenant(String externalId, String tenantId) {
-        List<String> tenants = getTenantsForExternalId(externalId);
-        return tenants.contains(tenantId);
+        UUID tid;
+        try {
+            tid = UUID.fromString(tenantId);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return userRoleRepo.findByExternalId(externalId).stream()
+                .anyMatch(b -> bindingAppliesToTenant(b, tid));
+    }
+
+    /**
+     * True if this role binding grants access to APIs under the given tenant:
+     * explicit tenant membership, a tenant-global template role, or a system (platform) role.
+     */
+    private static boolean bindingAppliesToTenant(UserRoleBindingViewEntity b, UUID tenantUuid) {
+        String st = b.getScopeType();
+        if (st == null) {
+            return false;
+        }
+        return switch (st.toUpperCase(Locale.ROOT)) {
+            case "SYSTEM", "TENANT_GLOBAL" -> true;
+            case "TENANT" -> tenantUuid.equals(b.getScopeId());
+            default -> false;
+        };
     }
 
     @Override
@@ -112,15 +134,15 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         if (tenantId == null || tenantId.isBlank()) {
             return isAllowed(user, action, Scope.SYSTEM, null);
         }
-        List<String> perms = getPermissionsForTenant(user, tenantId);
+        List<String> perms = getEffectivePermissionActionsForTenant(user, tenantId);
         return perms.stream().anyMatch(p -> matchesPermissionPattern(p, action));
     }
 
     /**
-     * Returns permissions for the user limited to role bindings in the given tenant.
-     * Does not use global permission cache so that tenant scope is respected.
+     * Permissions effective for requests scoped to a tenant: roles bound to that tenant,
+     * plus tenant-global template roles and system (platform) roles.
      */
-    private List<String> getPermissionsForTenant(UserPrincipal user, String tenantId) {
+    private List<String> getEffectivePermissionActionsForTenant(UserPrincipal user, String tenantId) {
         UUID tenantUuid;
         try {
             tenantUuid = UUID.fromString(tenantId);
@@ -129,7 +151,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         }
         List<UserRoleBindingViewEntity> bindings = userRoleRepo.findByExternalId(user.id());
         List<UUID> roleIds = bindings.stream()
-                .filter(b -> "TENANT".equals(b.getScopeType()) && tenantUuid.equals(b.getScopeId()))
+                .filter(b -> bindingAppliesToTenant(b, tenantUuid))
                 .map(UserRoleBindingViewEntity::getRoleId)
                 .distinct()
                 .collect(Collectors.toList());

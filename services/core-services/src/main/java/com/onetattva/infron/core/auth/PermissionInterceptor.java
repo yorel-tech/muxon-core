@@ -10,6 +10,8 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.lang.reflect.Method;
+
 @Component
 public class PermissionInterceptor implements HandlerInterceptor {
 
@@ -27,30 +29,13 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return true; // not a method handler, allow
         }
 
-        RequiresPermission annotation = handlerMethod.getMethodAnnotation(RequiresPermission.class);
-        if (annotation == null) {
-            // Check interface methods if annotation not found on implementation
-            Class<?>[] interfaces = handlerMethod.getMethod().getDeclaringClass().getInterfaces();
-            for (Class<?> interfaceClass : interfaces) {
-                try {
-                    java.lang.reflect.Method interfaceMethod = interfaceClass.getMethod(handlerMethod.getMethod().getName(), handlerMethod.getMethod().getParameterTypes());
-                    annotation = interfaceMethod.getAnnotation(RequiresPermission.class);
-                    if (annotation != null) {
-                        break;
-                    }
-                } catch (NoSuchMethodException | SecurityException e) {
-                    // Continue checking other interfaces
-                }
-            }
-        }
-        if (annotation == null) {
+        RequiresAnyPermission anyPerm = findMethodAnnotation(handlerMethod, RequiresAnyPermission.class);
+        RequiresPermission singlePerm = anyPerm == null ? findMethodAnnotation(handlerMethod, RequiresPermission.class) : null;
+
+        if (anyPerm == null && singlePerm == null) {
             return true; // no permission required
         }
 
-        Permission permission = annotation.value();
-        String action = permission.getAction();
-
-        // Get user from SecurityContext
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal user)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
@@ -61,17 +46,53 @@ public class PermissionInterceptor implements HandlerInterceptor {
         String tenantId = extractTenantIdFromPath(path);
 
         boolean allowed;
-        if (tenantId != null) {
-            allowed = authorizationService.isAllowedForTenant(user, action, tenantId);
+        if (anyPerm != null) {
+            allowed = false;
+            for (Permission p : anyPerm.value()) {
+                if (isActionAllowed(user, p.getAction(), tenantId)) {
+                    allowed = true;
+                    break;
+                }
+            }
         } else {
-            allowed = authorizationService.isAllowed(user, action, Scope.SYSTEM, null);
+            allowed = isActionAllowed(user, singlePerm.value().getAction(), tenantId);
         }
+
         if (!allowed) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Insufficient permissions");
             return false;
         }
 
         return true;
+    }
+
+    private boolean isActionAllowed(UserPrincipal user, String action, String tenantId) {
+        if (tenantId != null) {
+            return authorizationService.isAllowedForTenant(user, action, tenantId);
+        }
+        return authorizationService.isAllowed(user, action, Scope.SYSTEM, null);
+    }
+
+    private <A extends java.lang.annotation.Annotation> A findMethodAnnotation(HandlerMethod handlerMethod, Class<A> ann) {
+        A a = handlerMethod.getMethodAnnotation(ann);
+        if (a != null) {
+            return a;
+        }
+        Class<?>[] interfaces = handlerMethod.getMethod().getDeclaringClass().getInterfaces();
+        for (Class<?> interfaceClass : interfaces) {
+            try {
+                Method interfaceMethod = interfaceClass.getMethod(
+                        handlerMethod.getMethod().getName(),
+                        handlerMethod.getMethod().getParameterTypes());
+                a = interfaceMethod.getAnnotation(ann);
+                if (a != null) {
+                    return a;
+                }
+            } catch (NoSuchMethodException | SecurityException e) {
+                // continue
+            }
+        }
+        return null;
     }
 
     /**
@@ -85,10 +106,18 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
         if (pathMatcher.match(PATTERN_V1, path)) {
             String[] parts = path.split("/");
+            // Exactly /api/v1/tenants/{tenantId} (tenant CRUD) uses system-scoped permissions;
+            // do not treat as tenant-scoped path (would check only TENANT role bindings).
+            if (parts.length == 5) {
+                return null;
+            }
             return parts.length >= 5 ? parts[4] : null;
         }
         if (pathMatcher.match(PATTERN_LEGACY, path)) {
             String[] parts = path.split("/");
+            if (parts.length == 4) {
+                return null;
+            }
             return parts.length >= 4 ? parts[3] : null;
         }
         return null;

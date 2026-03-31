@@ -6,6 +6,7 @@ import com.onetattva.infron.api.model.TenantDatacenterGrant;
 import com.onetattva.infron.api.model.TenantDatacenterGrantCreate;
 import com.onetattva.infron.api.model.TenantDatacenterGrantList;
 import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresAnyPermission;
 import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.TenantDatacenterGrantService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     private TenantDatacenterGrantService tenantDatacenterGrantService;
 
     @Override
-    @RequiresPermission(Permission.TENANT_MANAGE)
+    @RequiresPermission(Permission.DATACENTER_MANAGE)
     public ResponseEntity<TenantDatacenterGrant> createTenantDatacenterGrant(
             UUID tenantId,
             TenantDatacenterGrantCreate tenantDatacenterGrantCreate,
@@ -32,14 +33,14 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_MANAGE)
+    @RequiresPermission(Permission.DATACENTER_MANAGE)
     public ResponseEntity<Void> deleteTenantDatacenterGrant(UUID tenantId, UUID datacenterId) {
         tenantDatacenterGrantService.deleteTenantDatacenterGrant(tenantId, datacenterId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_READ)
+    @RequiresAnyPermission({Permission.DATACENTER_READ, Permission.TENANT_DATACENTER_READ})
     public ResponseEntity<GetTenantDatacenterEffective200Response> getTenantDatacenterEffective(
             UUID tenantId,
             UUID datacenterId) {
@@ -48,14 +49,14 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_READ)
+    @RequiresAnyPermission({Permission.DATACENTER_READ, Permission.TENANT_DATACENTER_READ})
     public ResponseEntity<TenantDatacenterGrant> getTenantDatacenterGrant(UUID tenantId, UUID datacenterId) {
         TenantDatacenterGrant grant = tenantDatacenterGrantService.getTenantDatacenterGrant(tenantId, datacenterId);
         return ResponseEntity.ok(grant);
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_READ)
+    @RequiresAnyPermission({Permission.DATACENTER_READ, Permission.TENANT_DATACENTER_READ})
     public ResponseEntity<TenantDatacenterGrantList> listTenantDatacenters(
             UUID tenantId,
             Integer page,
@@ -65,7 +66,7 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_MANAGE)
+    @RequiresPermission(Permission.DATACENTER_MANAGE)
     public ResponseEntity<TenantDatacenterGrant> replaceTenantDatacenterGrant(
             UUID tenantId,
             UUID datacenterId,
@@ -75,7 +76,7 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_MANAGE)
+    @RequiresPermission(Permission.DATACENTER_MANAGE)
     public ResponseEntity<TenantDatacenterGrant> updateTenantDatacenterGrant(
             UUID tenantId,
             UUID datacenterId,
@@ -85,14 +86,14 @@ public class TenantDatacentersController implements TenantDatacentersApi {
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_READ)
+    @RequiresAnyPermission({Permission.DATACENTER_READ, Permission.TENANT_DATACENTER_READ})
     public ResponseEntity<java.util.List<String>> getTenantStorageClasses(UUID tenantId, UUID datacenterId) {
         java.util.List<String> storageClasses = tenantDatacenterGrantService.getEffectiveStorageClasses(tenantId, datacenterId);
         return ResponseEntity.ok(storageClasses);
     }
 
     @Override
-    @RequiresPermission(Permission.TENANT_READ)
+    @RequiresAnyPermission({Permission.DATACENTER_READ, Permission.TENANT_DATACENTER_READ})
     public ResponseEntity<java.util.Map<String, com.onetattva.infron.api.model.StorageUsage>> getTenantStorageUsage(
             UUID tenantId, 
             UUID datacenterId) {

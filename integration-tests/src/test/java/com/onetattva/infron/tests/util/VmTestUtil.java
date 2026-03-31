@@ -23,11 +23,21 @@ public class VmTestUtil {
     private static InfronEnvironment environment;
     private static String baseUrl;
     private static String accessToken;
+    private static String tenantId;
 
-    public static void setup(InfronEnvironment env, String token) {
+    public static void setup(InfronEnvironment env, String token, String tenantIdValue) {
         environment = env;
         baseUrl = env.getCoreServicesUrl();
         accessToken = token;
+        tenantId = tenantIdValue;
+    }
+
+    private static String vmsCollectionPath() {
+        return baseUrl + "/tenants/" + tenantId + "/vms";
+    }
+
+    private static String vmItemPath(String vmId) {
+        return vmsCollectionPath() + "/" + vmId;
     }
 
     /**
@@ -42,7 +52,7 @@ public class VmTestUtil {
                 .contentType("application/json")
                 .body(objectMapper.writeValueAsString(vmRequest))
                 .when()
-                .post(baseUrl + "/vms");
+                .post(vmsCollectionPath());
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize VM request", e);
         }
@@ -63,7 +73,7 @@ public class VmTestUtil {
                 .contentType("application/json")
                 .body(objectMapper.writeValueAsString(vmRequest))
                 .when()
-                .post(baseUrl + "/vms");
+                .post(vmsCollectionPath());
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize VM request", e);
         }
@@ -76,7 +86,7 @@ public class VmTestUtil {
         return given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get(baseUrl + "/vms");
+            .get(vmsCollectionPath());
     }
 
     /**
@@ -86,7 +96,7 @@ public class VmTestUtil {
         return given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get(baseUrl + "/vms/" + vmId);
+            .get(vmItemPath(vmId));
     }
 
     /**
@@ -99,7 +109,7 @@ public class VmTestUtil {
                 .contentType("application/json")
                 .body(objectMapper.writeValueAsString(updateRequest))
                 .when()
-                .put(baseUrl + "/vms/" + vmId);
+                .patch(vmItemPath(vmId));
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize VM update request", e);
         }
@@ -112,7 +122,7 @@ public class VmTestUtil {
         return given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .delete(baseUrl + "/vms/" + vmId);
+            .delete(vmItemPath(vmId));
     }
 
     /**
@@ -123,7 +133,7 @@ public class VmTestUtil {
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
             .when()
-            .post(baseUrl + "/vms/" + vmId + "/start");
+            .post(vmItemPath(vmId) + "/start");
     }
 
     /**
@@ -134,7 +144,7 @@ public class VmTestUtil {
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
             .when()
-            .post(baseUrl + "/vms/" + vmId + "/stop");
+            .post(vmItemPath(vmId) + "/stop");
     }
 
     /**
@@ -145,7 +155,7 @@ public class VmTestUtil {
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
             .when()
-            .post(baseUrl + "/vms/" + vmId + "/restart");
+            .post(vmItemPath(vmId) + "/restart");
     }
 
     /**
@@ -156,7 +166,7 @@ public class VmTestUtil {
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
             .when()
-            .post(baseUrl + "/vms/" + vmId + "/suspend");
+            .post(vmItemPath(vmId) + "/suspend");
     }
 
     /**
@@ -167,7 +177,7 @@ public class VmTestUtil {
             .header("Authorization", "Bearer " + accessToken)
             .contentType("application/json")
             .when()
-            .post(baseUrl + "/vms/" + vmId + "/resume");
+            .post(vmItemPath(vmId) + "/resume");
     }
 
     /**
@@ -177,7 +187,7 @@ public class VmTestUtil {
         return given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get(baseUrl + "/vms/" + vmId + "/console");
+            .get(vmItemPath(vmId) + "/console");
     }
 
     /**
@@ -187,7 +197,7 @@ public class VmTestUtil {
         return given()
             .header("Authorization", "Bearer " + accessToken)
             .when()
-            .get(baseUrl + "/vms/" + vmId + "/usage");
+            .get(vmItemPath(vmId) + "/usage");
     }
 
     /**

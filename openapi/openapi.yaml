@@ -44,7 +44,7 @@ tags:
 - name: Tenant Settings
   description: Tenant settings management
 - name: VM Management
-  description: VM lifecycle management operations
+  description: VM lifecycle management operations under a tenant (`/tenants/{tenantId}/vms`)
 - name: Users
   description: User management operations
 - name: StorageClasses
@@ -165,23 +165,23 @@ paths:
   /api/v1/datacenters/{datacenterId}/metadata:
     $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1metadata'
 
-  # VMs
-  /api/v1/vms:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms'
-  /api/v1/vms/{vmId}:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}'
-  /api/v1/vms/{vmId}/start:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1start'
-  /api/v1/vms/{vmId}/stop:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1stop'
-  /api/v1/vms/{vmId}/restart:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1restart'
-  /api/v1/vms/{vmId}/suspend:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1suspend'
-  /api/v1/vms/{vmId}/resume:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1resume'
-  /api/v1/vms/{vmId}/console:
-    $ref: './vms_paths.yaml#/paths/~1api~1v1~1vms~1{vmId}~1console'
+  # VMs (tenant-scoped)
+  /api/v1/tenants/{tenantId}/vms:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms'
+  /api/v1/tenants/{tenantId}/vms/{vmId}:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/start:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1start'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/stop:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1stop'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/restart:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1restart'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/suspend:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1suspend'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/resume:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1resume'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/console:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1console'
 
   # Compute Profiles
   /api/v1/compute-profiles:

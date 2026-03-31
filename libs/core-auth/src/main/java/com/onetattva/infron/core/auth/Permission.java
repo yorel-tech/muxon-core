@@ -22,13 +22,16 @@ public enum Permission {
     USER_EDIT("user:edit", "Edit user", Scope.TENANT),
     USER_MANAGE("user:manage", "Manage user", Scope.TENANT),
 
-    TENANT_READ("tenant:read", "Read tenant", Scope.SYSTEM),
+    TENANT_READ("tenant:read", "Read tenant", Scope.TENANT),
     TENANT_EDIT("tenant:edit", "Edit tenant", Scope.SYSTEM),
     TENANT_MANAGE("tenant:manage", "Manage tenant", Scope.SYSTEM),
 
     DATACENTER_READ("datacenter:read", "Read datacenter", Scope.SYSTEM),
     DATACENTER_EDIT("datacenter:edit", "Edit datacenter", Scope.SYSTEM),
     DATACENTER_MANAGE("datacenter:manage", "Manage datacenter", Scope.SYSTEM),
+
+    /** Tenant-scoped read for datacenter grants under /tenants/{tenantId}/datacenters; platform operators typically use DATACENTER_READ. */
+    TENANT_DATACENTER_READ("tenant:datacenter:read", "Read tenant datacenter grants", Scope.TENANT),
 
     // Role binding permissions
     ROLE_BINDING_READ("role_binding:read", "Read role bindings", Scope.SYSTEM),

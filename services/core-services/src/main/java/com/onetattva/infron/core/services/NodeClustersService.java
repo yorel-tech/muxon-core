@@ -4,16 +4,19 @@ import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.api.model.*;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.NodeClusterEntity;
+import com.onetattva.infron.db.repository.DatacenterRepository;
 import com.onetattva.infron.db.repository.NodeClusterRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.api.model.ProviderType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class NodeClustersService {
@@ -23,6 +26,9 @@ public class NodeClustersService {
 
     @Autowired
     private ProviderRepository providerRepository;
+
+    @Autowired
+    private DatacenterRepository datacenterRepository;
 
 
     public NodeCluster createProviderNodeCluster(UUID providerId, NodeClusterCreate nodeClusterCreate) {
@@ -59,27 +65,45 @@ public class NodeClustersService {
         return mapEntityToApi(entity);
     }
 
+    @Transactional(readOnly = true)
     public NodeClusterList listProviderNodeClusters(UUID providerId, Integer page, Integer perPage, String sort,
                                             UUID datacenterId, String name) {
-        List<NodeClusterEntity> entities;
+        final List<NodeClusterEntity> clustersForProvider = nodeClusterRepository.findByProvider_Id(providerId);
+        List<NodeClusterEntity> entities = clustersForProvider;
 
-        // TODO: Implement proper filtering with pagination
-        // For now, return all entities
-        entities = nodeClusterRepository.findAll().stream()
-                .filter(entity -> providerId != null
-                        || (entity.getProvider() != null && entity.getProvider().getId().equals(providerId)))
-                .filter(entity -> name == null || (entity.getName() != null && entity.getName().contains(name)))
-                .limit(perPage != null ? perPage : 20)
-                .toList();
+        if (datacenterId != null) {
+            entities = datacenterRepository.findById(datacenterId)
+                    .filter(dc -> dc.getNodeCluster() != null
+                            && dc.getNodeCluster().getProvider() != null
+                            && providerId.equals(dc.getNodeCluster().getProvider().getId()))
+                    .map(dc -> {
+                        final UUID clusterId = dc.getNodeCluster().getId();
+                        return clustersForProvider.stream()
+                                .filter(e -> e.getId().equals(clusterId))
+                                .toList();
+                    })
+                    .orElse(List.of());
+        }
 
-        List<NodeCluster> apiClusters = entities.stream()
+        Stream<NodeClusterEntity> stream = entities.stream();
+        if (name != null && !name.isBlank()) {
+            stream = stream.filter(e -> e.getName() != null && e.getName().contains(name));
+        }
+        List<NodeClusterEntity> filtered = stream.toList();
+
+        int per = perPage != null ? perPage : 20;
+        int p = page != null ? page : 1;
+        int from = Math.max(0, (p - 1) * per);
+        List<NodeClusterEntity> pageSlice = filtered.stream().skip(from).limit(per).toList();
+
+        List<NodeCluster> apiClusters = pageSlice.stream()
                 .map(this::mapEntityToApi)
                 .toList();
 
         NodeClusterList clusterList = new NodeClusterList();
-        clusterList.setTotal(apiClusters.size());
-        clusterList.setPage(page != null ? page : 1);
-        clusterList.setPerPage(perPage != null ? perPage : 20);
+        clusterList.setTotal(filtered.size());
+        clusterList.setPage(p);
+        clusterList.setPerPage(per);
         clusterList.setItems(apiClusters);
         return clusterList;
     }

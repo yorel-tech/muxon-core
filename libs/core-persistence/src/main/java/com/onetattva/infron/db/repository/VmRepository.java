@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -15,10 +16,18 @@ import java.util.UUID;
  */
 public interface VmRepository extends JpaRepository<VmEntity, UUID> {
 
+    @Query("SELECT v FROM VmEntity v WHERE v.tenantDatacenterGrantId IN "
+            + "(SELECT g.id FROM TenantDatacenterGrantEntity g WHERE g.tenant.id = :tenantId)")
+    Page<VmEntity> findAllByTenantId(@Param("tenantId") UUID tenantId, Pageable pageable);
+
+    @Query("SELECT v FROM VmEntity v WHERE v.id = :vmId AND v.tenantDatacenterGrantId IN "
+            + "(SELECT g.id FROM TenantDatacenterGrantEntity g WHERE g.tenant.id = :tenantId)")
+    Optional<VmEntity> findByIdAndTenantId(@Param("vmId") UUID vmId, @Param("tenantId") UUID tenantId);
+
     /**
      * Find VM by tenant datacenter grant
      */
-    @Query("SELECT v FROM VmEntity v WHERE v.tenantDatacenterGrantId = :tenantDatacenterGrantId ORDER BY v.createdAt DESC")
+    @Query("SELECT v FROM VmEntity v WHERE v.tenantDatacenterGrantId = :tenantDatacenterGrantId")
     Page<VmEntity> findByTenantDatacenterGrantId(UUID tenantDatacenterGrantId, Pageable pageable);
 
     /**

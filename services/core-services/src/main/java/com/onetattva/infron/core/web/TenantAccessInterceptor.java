@@ -48,12 +48,19 @@ public class TenantAccessInterceptor implements HandlerInterceptor {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
                 return false;
             }
+            // /api/v1/tenants/{id} only: system tenant APIs; membership check is for sub-resources.
+            if (parts.length == 5) {
+                return true;
+            }
             tenantId = parts[4];
         } else {
             // expected: ["", "api", "tenant", "{tenantId}", ...]
             if (parts.length < 4) {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Malformed tenant path");
                 return false;
+            }
+            if (parts.length == 4) {
+                return true;
             }
             tenantId = parts[3];
         }

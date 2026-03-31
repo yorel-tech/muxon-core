@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -43,9 +44,9 @@ public class VmsService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    public VmCreateResponse createVm(VmCreateRequest request) {
-        // Validate tenant datacenter grant
-        TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository.findById(request.getTenantDatacenterGrantId())
+    public VmCreateResponse createVm(UUID tenantId, VmCreateRequest request) {
+        TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
+                .findByIdAndTenant_Id(request.getTenantDatacenterGrantId(), tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found"));
 
         // Create VM entity
@@ -76,17 +77,23 @@ public class VmsService {
         return response;
     }
 
-    public VmListResponse listVms(Integer page, Integer perPage, VmStatus status,
+    public VmListResponse listVms(UUID tenantId, Integer page, Integer perPage, VmStatus status,
                                 UUID tenantDatacenterGrantId, String tags,
-                                String sort) {
-        Pageable pageable = PageRequest.of(page - 1, perPage);
-        Page<VmEntity> entityPage = vmRepository.findAll(pageable);
-
-        // Apply filters - simplified, only basic filtering
-        if (status != null) {
-            // entityPage = vmRepository.findByStatus(VmEnums.VmStatus.valueOf(status), pageable);
+                                String sort, String order) {
+        Sort sortSpec = vmListSort(sort, order);
+        Pageable pageable = PageRequest.of(page - 1, perPage, sortSpec);
+        Page<VmEntity> entityPage;
+        if (tenantDatacenterGrantId != null) {
+            tenantDatacenterGrantRepository.findByIdAndTenant_Id(tenantDatacenterGrantId, tenantId)
+                    .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found"));
+            entityPage = vmRepository.findByTenantDatacenterGrantId(tenantDatacenterGrantId, pageable);
+        } else {
+            entityPage = vmRepository.findAllByTenantId(tenantId, pageable);
         }
-        // Note: Additional filters not implemented yet
+
+        if (status != null) {
+            // entityPage = vmRepository.findByStatus(...);
+        }
 
         List<Vm> vms = entityPage.getContent().stream()
                 .map(this::mapEntityToApi)
@@ -104,16 +111,12 @@ public class VmsService {
         return response;
     }
 
-    public Vm getVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
-
-        return mapEntityToApi(vm);
+    public Vm getVm(UUID tenantId, UUID vmId) {
+        return mapEntityToApi(requireVmForTenant(tenantId, vmId));
     }
 
-    public Vm patchVm(UUID vmId, VmUpdateRequest request) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public Vm patchVm(UUID tenantId, UUID vmId, VmUpdateRequest request) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         if (request.getDescription() != null) {
             vm.setDescription(request.getDescription());
@@ -131,9 +134,8 @@ public class VmsService {
         return mapEntityToApi(saved);
     }
 
-    public VmOperationResponse startVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse startVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.STOPPED) {
@@ -145,9 +147,8 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM start initiated");
     }
 
-    public VmOperationResponse stopVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse stopVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
@@ -159,18 +160,16 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM stop initiated");
     }
 
-    public VmOperationResponse restartVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse restartVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         commandQueue.sendCommand(buildRestartCommand(vm));
 
         return buildOperationResponse(vmId, "VM restart initiated");
     }
 
-    public VmOperationResponse suspendVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse suspendVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE && vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
@@ -182,9 +181,8 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM suspend initiated");
     }
 
-    public VmOperationResponse resumeVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse resumeVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
@@ -196,9 +194,8 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM resume initiated");
     }
 
-    public VmOperationResponse deleteVm(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmOperationResponse deleteVm(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Update VM status
         vm.setStatus(com.onetattva.infron.api.enums.VmStatus.DELETING);
@@ -210,9 +207,8 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM deletion initiated");
     }
 
-    public VmConsoleResponse getVmConsole(UUID vmId) {
-        VmEntity vm = vmRepository.findById(vmId)
-                .orElseThrow(() -> new RuntimeException("VM not found"));
+    public VmConsoleResponse getVmConsole(UUID tenantId, UUID vmId) {
+        VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         // Validate VM is running
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
@@ -226,6 +222,23 @@ public class VmsService {
         response.setExpiresAt(Instant.now().plusSeconds(300).atOffset(ZoneOffset.UTC)); // 5 minutes
 
         return response;
+    }
+
+    private VmEntity requireVmForTenant(UUID tenantId, UUID vmId) {
+        return vmRepository.findByIdAndTenantId(vmId, tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("VM not found"));
+    }
+
+    private static Sort vmListSort(String sortField, String order) {
+        String f = sortField != null ? sortField : "created_at";
+        String property = switch (f) {
+            case "name" -> "name";
+            case "updated_at" -> "updatedAt";
+            case "status" -> "status";
+            default -> "createdAt";
+        };
+        Sort.Direction direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(direction, property);
     }
 
     private Vm mapEntityToApi(VmEntity entity) {
