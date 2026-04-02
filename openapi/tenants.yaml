@@ -158,16 +158,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TenantCreate'
-            examples:
-              createExample:
-                value:
-                  name: "acme-corp"
-                  displayName: "ACME Corporation"
-                  contact:
-                    email: "admin@acme.example"
-                    phone: "+1-555-123-4567"
-                  metadata:
-                    billing_account: "BA-12345"
       responses:
         '201':
           description: Tenant created
@@ -289,12 +279,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TenantUpdate'
-            examples:
-              updateExample:
-                value:
-                  displayName: "ACME Corporation (New)"
-                  metadata:
-                    region: "eu-west-2"
       responses:
         '200':
           description: Updated tenant
@@ -323,10 +307,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TenantUpdate'
-            examples:
-              patchExample:
-                value:
-                  displayName: "ACME Corporation (New)"
       responses:
         '200':
           description: Updated tenant
@@ -482,9 +462,6 @@ paths:
           application/json:
             schema:
               $ref: './commons.yaml#/components/schemas/Metadata'
-            example:
-              region: "eu-west-1"
-              billing_account: "BA-12345"
       responses:
         '200':
           description: Updated tenant metadata

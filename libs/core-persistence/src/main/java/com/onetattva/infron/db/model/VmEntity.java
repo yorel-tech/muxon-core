@@ -66,6 +66,9 @@ public class VmEntity {
     @Column(name = "external_id", nullable = true)
     private String externalId;
 
+    @Column(name = "content_item_id", nullable = true)
+    private UUID contentItemId;
+
     // Network configuration
     @Column(name = "ip_addresses", nullable = true, columnDefinition = "TEXT[]")
     private List<String> ipAddresses;
@@ -217,6 +220,14 @@ public class VmEntity {
 
     public void setExternalId(String externalId) {
         this.externalId = externalId;
+    }
+
+    public UUID getContentItemId() {
+        return contentItemId;
+    }
+
+    public void setContentItemId(UUID contentItemId) {
+        this.contentItemId = contentItemId;
     }
 
     public List<String> getIpAddresses() {

@@ -19,5 +19,9 @@ public enum JobType {
     NODE_DECOMMISSION,
     PROVIDER_SYNC,
     /** Provider storage inventory sync (orchestrator + storage discovery providers). */
-    PROVIDER_STORAGE_SYNC
+    PROVIDER_STORAGE_SYNC,
+    /** Content library catalog sync from configured source. */
+    CONTENT_LIBRARY_SYNC,
+    /** Content item fetch/materialization to provider storage. */
+    CONTENT_ITEM_FETCH
 }

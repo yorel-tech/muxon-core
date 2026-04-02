@@ -30,6 +30,10 @@ java {
 val openApiOutputDir = layout.buildDirectory.dir("generated/sources/openapi")
 val openApiInput = layout.projectDirectory.file("${rootDir}/openapi/openapi.yaml")
 val bundledOpenApi = layout.buildDirectory.file("${rootDir}/openapi/bundled.yaml")
+val openApiSpecFiles = fileTree(rootDir.resolve("openapi")) {
+    include("**/*.yaml")
+    exclude("bundled.yaml")
+}
 
 node {
     download.set(true)
@@ -62,8 +66,8 @@ tasks.register<NpmTask>("validateOpenApi") {
         "lint",
         openApiInput.asFile.absolutePath,
     ))
-    // declare inputs so Gradle can consider changes
-    inputs.file(openApiInput)
+    // declare inputs so Gradle can consider changes (entry + all $ref fragments)
+    inputs.files(openApiSpecFiles)
     // no real output file for validate: we mark it as up-to-date when input hasn't changed
     outputs.upToDateWhen { false }
 }
@@ -82,8 +86,7 @@ tasks.register<NpmTask>("bundleOpenApi") {
         "--output",
         bundledOpenApi.get().asFile.absolutePath
     )
-    // declare inputs so Gradle can consider changes
-    inputs.file(openApiInput)
+    inputs.files(openApiSpecFiles)
     outputs.file(bundledOpenApi)
 }
 

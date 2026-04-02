@@ -114,7 +114,7 @@ public class ProviderConnectionOrchestrator {
 
     private void processQueueEntry(CommandMessage entry) {
         String queueType = entry.queueType();
-        logger.info("Processing provider queue command: id={}, queueType={}, providerId={}, correlationId={}",
+        logger.info("Processing provider queue command: id={}, queueType={}, entityId={}, correlationId={}",
                 entry.id(), queueType, entry.entityId(), entry.correlationId());
         if (Objects.equals(queueType, ProviderQueueCommands.CONNECTION_TEST)) {
             processConnectionTest(entry);

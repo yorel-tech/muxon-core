@@ -180,6 +180,11 @@ components:
               description: VM hostname
             resource_usage:
               $ref: '#/components/schemas/VmResourceUsage'
+            content_item_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Content library item used as VM image/template source.
             tags:
               type: array
               items:
@@ -214,6 +219,10 @@ components:
           type: string
           format: uuid
           description: Tenant datacenter grant ID
+        content_item_id:
+          type: string
+          format: uuid
+          description: Optional content item reference to materialize before deployment.
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
         tags:
@@ -236,6 +245,10 @@ components:
           items:
             type: string
           description: VM tags
+        content_item_id:
+          type: string
+          format: uuid
+          description: Optional content item reference override.
 
     VmListResponse:
       type: object

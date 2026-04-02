@@ -333,21 +333,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NodeCreate'
-            example:
-              name: "node-01"
-              clusterId: "12345678-1234-1234-1234-123456789abc"
-              externalId: "host-12345"
-              role: "control-plane"
-              cpuTotal: 8
-              memMb: 16384
-              status: "ready"
-              credentials:
-                username: "admin"
-                password: "secret"
-              ipAddresses: ["192.168.1.100", "10.0.0.1"]
-              metadata:
-                cpu_cores: "8"
-                memory_gb: "16"
       responses:
         '201':
           description: Node created successfully
@@ -443,16 +428,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NodeUpdate'
-            example:
-              name: "node-01-updated"
-              role: "worker"
-              cpuTotal: 16
-              memMb: 32768
-              status: "ready"
-              ipAddresses: ["192.168.1.100", "10.0.0.2"]
-              metadata:
-                cpu_cores: "16"
-                memory_gb: "32"
       responses:
         '200':
           description: Node updated successfully
@@ -558,9 +533,6 @@ paths:
           application/json:
             schema:
               $ref: './commons.yaml#/components/schemas/Metadata'
-            example:
-              cpu_cores: "8"
-              memory_gb: "16"
       responses:
         '200':
           description: Updated node metadata

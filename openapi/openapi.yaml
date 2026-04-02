@@ -51,6 +51,12 @@ tags:
   description: Capability-based storage class management
 - name: ProviderStorage
   description: Discovered provider storage inventory and sync operations
+- name: PlatformContentLibraries
+  description: Platform-scoped (global) content library CRUD, sync, ensure, and items
+- name: ContentItems
+  description: Content library item CRUD and fetch operations
+- name: TenantContentLibraries
+  description: Tenant-scoped content library CRUD, sync, ensure, and items
 
 components:
   schemas:
@@ -278,6 +284,36 @@ paths:
     $ref: './storage.yaml#/paths/~1provider-storage'
   /api/v1/provider-storage/{id}:
     $ref: './storage.yaml#/paths/~1provider-storage~1{id}'
+
+  # Content libraries (platform-scoped and tenant-scoped only; no generic /content-libraries)
+  /api/v1/platform/content-libraries:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries'
+  /api/v1/platform/content-libraries/{libraryId}:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}'
+  /api/v1/platform/content-libraries/{libraryId}/sync:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1sync'
+  /api/v1/platform/content-libraries/{libraryId}/ensure:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1ensure'
+  /api/v1/platform/content-libraries/{libraryId}/items:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/fetch:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1fetch'
+  /api/v1/tenants/{tenantId}/content-libraries:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/sync:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1sync'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/ensure:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1ensure'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/fetch:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1fetch'
 
   # Users
   /api/v1/system-users:

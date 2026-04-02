@@ -170,14 +170,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NodeClusterCreate'
-            examples:
-              createExample:
-                value:
-                  name: "web-cluster"
-                  datacenterId: "12345678-1234-1234-1234-123456789abc"
-                  description: "Production web server cluster"
-                  metadata:
-                    environment: "production"
       responses:
         '201':
           description: Node cluster created
@@ -241,9 +233,6 @@ paths:
           application/json:
             schema:
               $ref: './commons.yaml#/components/schemas/Metadata'
-            example:
-              environment: "production"
-              region: "us-east-1"
       responses:
         '200':
           description: Updated node cluster metadata
@@ -310,14 +299,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NodeClusterUpdate'
-            examples:
-              updateExample:
-                value:
-                  name: "web-cluster-updated"
-                  description: "Updated production web server cluster"
-                  metadata:
-                    environment: "production"
-                    version: "2.0"
       responses:
         '200':
           description: Updated node cluster
@@ -346,10 +327,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NodeClusterUpdate'
-            examples:
-              patchExample:
-                value:
-                  description: "Updated cluster description"
       responses:
         '200':
           description: Updated node cluster

@@ -10,7 +10,9 @@ import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
 import com.onetattva.infron.db.model.VmEntity;
+import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.repository.*;
+import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +47,10 @@ public class VmsService {
     private UserRoleBindingViewRepository userRoleBindingViewRepository;
     @Autowired
     private IdpUserRepository idpUserRepository;
+    @Autowired
+    private ContentItemRepository contentItemRepository;
+    @Autowired
+    private ContentLibrarySyncService contentLibrarySyncService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -65,6 +71,15 @@ public class VmsService {
         vm.setUpdatedAt(Instant.now());
         vm.setMetadata(request.getMetadata());
         vm.setTags(request.getTags());
+        vm.setContentItemId(request.getContentItemId());
+
+        if (request.getContentItemId() != null) {
+            ContentItemEntity contentItem = contentItemRepository.findById(request.getContentItemId())
+                    .orElseThrow(() -> new EntityNotFoundException("Content item not found: " + request.getContentItemId()));
+            if (!"available".equalsIgnoreCase(contentItem.getFetchStatus())) {
+                contentLibrarySyncService.enqueueFetch(contentItem.getLibraryId(), contentItem.getId());
+            }
+        }
 
         // Save VM
         VmEntity saved = vmRepository.save(vm);
@@ -131,6 +146,9 @@ public class VmsService {
         }
         if (request.getTags() != null) {
             vm.setTags(request.getTags());
+        }
+        if (request.getContentItemId() != null) {
+            vm.setContentItemId(request.getContentItemId());
         }
 
         vm.setUpdatedAt(Instant.now());
@@ -259,6 +277,7 @@ public class VmsService {
         vm.setProviderId(entity.getProviderId());
         vm.setNodeId(entity.getNodeId());
         vm.setExternalId(entity.getExternalId());
+        vm.setContentItemId(entity.getContentItemId());
         vm.setIpAddresses(entity.getIpAddresses());
         vm.setHostname(entity.getHostname());
         // Note: resourceUsage is stored as JSON string in entity, would need proper deserialization
@@ -301,6 +320,9 @@ public class VmsService {
         }
         if (request.getTags() != null) {
             payload.put("tags", request.getTags());
+        }
+        if (request.getContentItemId() != null) {
+            payload.put("contentItemId", request.getContentItemId().toString());
         }
         return CommandMessage.builder()
             .queueType("VM_CREATE_COMMAND")

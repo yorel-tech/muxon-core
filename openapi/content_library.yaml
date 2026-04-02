@@ -1,0 +1,962 @@
+openapi: 3.0.3
+info:
+  title: Infron Content Library API
+  version: 2026-04-01
+  description: Content library, item catalog, and system/tenant views.
+
+components:
+  parameters:
+    libraryId:
+      name: libraryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    itemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    ContentLibraryType:
+      type: string
+      enum: [local, remote, subscribed]
+
+    ContentLibraryAccessMode:
+      type: string
+      enum: [read_only, read_write]
+
+    ContentSyncStatus:
+      type: string
+      enum: [never_synced, in_progress, synced, failed]
+
+    ContentItemStatus:
+      type: string
+      enum: [pending, fetching, available, failed]
+
+    ContentType:
+      type: string
+      enum: [vm_template, iso, script, container_image, helm_chart]
+
+    ContentSourceConfig:
+      type: object
+      description: Source settings for remote libraries and pull-based items.
+      properties:
+        type:
+          type: string
+          enum: [http, https, s3]
+        url:
+          type: string
+        bucket:
+          type: string
+        prefix:
+          type: string
+        credentialsRef:
+          type: string
+      additionalProperties: true
+
+    ContentLibrary:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [id, name, type, accessMode, syncStatus]
+          properties:
+            id:
+              type: string
+              format: uuid
+            type:
+              $ref: '#/components/schemas/ContentLibraryType'
+            accessMode:
+              $ref: '#/components/schemas/ContentLibraryAccessMode'
+            tenantId:
+              type: string
+              format: uuid
+              nullable: true
+              description: Null for platform-scoped libraries; set for tenant-scoped libraries.
+            sourceConfig:
+              $ref: '#/components/schemas/ContentSourceConfig'
+            storageClassName:
+              type: string
+              maxLength: 64
+            syncStatus:
+              $ref: '#/components/schemas/ContentSyncStatus'
+            lastSyncedAt:
+              type: string
+              format: date-time
+              nullable: true
+            metadata:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+
+    ContentLibraryCreate:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1000
+        type:
+          $ref: '#/components/schemas/ContentLibraryType'
+        accessMode:
+          $ref: '#/components/schemas/ContentLibraryAccessMode'
+        sourceConfig:
+          $ref: '#/components/schemas/ContentSourceConfig'
+        storageClassName:
+          type: string
+          maxLength: 64
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    ContentLibraryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1000
+        accessMode:
+          $ref: '#/components/schemas/ContentLibraryAccessMode'
+        sourceConfig:
+          $ref: '#/components/schemas/ContentSourceConfig'
+        storageClassName:
+          type: string
+          maxLength: 64
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    ContentLibraryList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentLibrary'
+
+    ContentItem:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [id, libraryId, contentType, fetchStatus]
+          properties:
+            id:
+              type: string
+              format: uuid
+            libraryId:
+              type: string
+              format: uuid
+            contentType:
+              $ref: '#/components/schemas/ContentType'
+            version:
+              type: string
+              maxLength: 128
+            sizeBytes:
+              type: integer
+              format: int64
+              minimum: 0
+            checksum:
+              type: string
+              maxLength: 256
+            checksumAlgorithm:
+              type: string
+              maxLength: 32
+            sourceUrl:
+              type: string
+            sourceItemId:
+              type: string
+              format: uuid
+              nullable: true
+            fetchStatus:
+              $ref: '#/components/schemas/ContentItemStatus'
+            lastFetchedAt:
+              type: string
+              format: date-time
+              nullable: true
+            metadata:
+              $ref: './commons.yaml#/components/schemas/Metadata'
+
+    ContentItemCreate:
+      type: object
+      required: [name, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1000
+        contentType:
+          $ref: '#/components/schemas/ContentType'
+        version:
+          type: string
+          maxLength: 128
+        checksum:
+          type: string
+          maxLength: 256
+        checksumAlgorithm:
+          type: string
+          maxLength: 32
+        sourceUrl:
+          type: string
+        sourceItemId:
+          type: string
+          format: uuid
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    ContentItemUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1000
+        version:
+          type: string
+          maxLength: 128
+        checksum:
+          type: string
+          maxLength: 256
+        checksumAlgorithm:
+          type: string
+          maxLength: 32
+        sourceUrl:
+          type: string
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+      additionalProperties: false
+
+    ContentItemList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentItem'
+
+    ContentSyncResponse:
+      type: object
+      required: [status]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, completed, failed]
+        syncedCount:
+          type: integer
+          minimum: 0
+        message:
+          type: string
+
+    ContentFetchResponse:
+      type: object
+      required: [status]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, completed, failed]
+        message:
+          type: string
+
+paths:
+  /platform/content-libraries:
+    get:
+      tags: [PlatformContentLibraries]
+      summary: List content libraries
+      operationId: listPlatformContentLibraries
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated libraries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Create content library
+      operationId: createPlatformContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /platform/content-libraries/{libraryId}:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [PlatformContentLibraries]
+      summary: Get content library
+      operationId: getPlatformContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content library
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [PlatformContentLibraries]
+      summary: Replace content library
+      operationId: replacePlatformContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    patch:
+      tags: [PlatformContentLibraries]
+      summary: Update content library
+      operationId: updatePlatformContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [PlatformContentLibraries]
+      summary: Delete content library
+      operationId: deletePlatformContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/sync:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Trigger content library sync
+      operationId: syncPlatformContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentSyncResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/items:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [ContentItems]
+      summary: List content items by library
+      operationId: listPlatformContentItemsByLibrary
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      tags: [ContentItems]
+      summary: Create content item in library
+      operationId: createPlatformContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+    get:
+      tags: [ContentItems]
+      summary: Get content item
+      operationId: getPlatformContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [ContentItems]
+      summary: Replace content item
+      operationId: replacePlatformContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    patch:
+      tags: [ContentItems]
+      summary: Update content item
+      operationId: updatePlatformContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [ContentItems]
+      summary: Delete content item
+      operationId: deletePlatformContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/items/{itemId}/fetch:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+    post:
+      tags: [ContentItems]
+      summary: Trigger content item fetch
+      operationId: fetchPlatformContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Fetch accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentFetchResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/ensure:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Ensure platform content library is materialized
+      operationId: ensurePlatformContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Ensure accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentSyncResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries:
+    get:
+      tags: [TenantContentLibraries]
+      summary: List tenant-visible content libraries
+      operationId: listTenantContentLibraries
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated libraries visible to tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      tags: [TenantContentLibraries]
+      summary: Create content library
+      operationId: createTenantContentLibrary
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [TenantContentLibraries]
+      summary: Get content library
+      operationId: getTenantContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content library
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [TenantContentLibraries]
+      summary: Replace content library
+      operationId: replaceTenantContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    patch:
+      tags: [TenantContentLibraries]
+      summary: Update content library
+      operationId: updateTenantContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentLibraryUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibrary'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [TenantContentLibraries]
+      summary: Delete content library
+      operationId: deleteTenantContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/sync:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [TenantContentLibraries]
+      summary: Trigger content library sync
+      operationId: syncTenantContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentSyncResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/items:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [ContentItems]
+      summary: List content items by library
+      operationId: listTenantContentItemsByLibrary
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      tags: [ContentItems]
+      summary: Create content item in library
+      operationId: createTenantContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+    get:
+      tags: [ContentItems]
+      summary: Get content item
+      operationId: getTenantContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [ContentItems]
+      summary: Replace content item
+      operationId: replaceTenantContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    patch:
+      tags: [ContentItems]
+      summary: Update content item
+      operationId: updateTenantContentItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItem'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [ContentItems]
+      summary: Delete content item
+      operationId: deleteTenantContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/fetch:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+    post:
+      tags: [ContentItems]
+      summary: Trigger content item fetch
+      operationId: fetchTenantContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Fetch accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentFetchResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/ensure:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [TenantContentLibraries]
+      summary: Ensure tenant content library is materialized
+      operationId: ensureTenantContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Ensure accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentSyncResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
