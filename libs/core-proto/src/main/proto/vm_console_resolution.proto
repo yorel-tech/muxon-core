@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package infron.vm.console.v1;
+
+option java_multiple_files = true;
+option java_package = "com.onetattva.infron.grpc.vmconsole.v1";
+option java_outer_classname = "VmConsoleResolutionProto";
+
+// Synchronous console endpoint resolution (hypervisor host/port/password). Implemented by orchestrator only.
+service VmConsoleResolutionService {
+  rpc ResolveVmConsole(ResolveVmConsoleRequest) returns (ResolveVmConsoleResponse);
+}
+
+message ResolveVmConsoleRequest {
+  string tenant_datacenter_grant_id = 1;
+  string vm_id = 2;
+  string external_id = 3;
+  // Empty string if the VM has no node_id (e.g. Proxmox).
+  string node_id = 4;
+}
+
+message ResolveVmConsoleResponse {
+  bool ok = 1;
+  string error_message = 2;
+  string console_type = 3;
+  string host = 4;
+  int32 port = 5;
+  string password = 6;
+  bool tls = 7;
+}

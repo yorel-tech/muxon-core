@@ -74,6 +74,9 @@ public class SystemSettingsEntity {
     @Column(name = "api_rate_limit_per_minute")
     private Integer apiRateLimitPerMinute;
 
+    @Column(name = "console_session_timeout_minutes")
+    private Integer consoleSessionTimeoutMinutes;
+
     // Notification Settings
     @Column(name = "smtp_enabled")
     private Boolean smtpEnabled;
@@ -278,6 +281,14 @@ public class SystemSettingsEntity {
 
     public void setApiRateLimitPerMinute(Integer apiRateLimitPerMinute) {
         this.apiRateLimitPerMinute = apiRateLimitPerMinute;
+    }
+
+    public Integer getConsoleSessionTimeoutMinutes() {
+        return consoleSessionTimeoutMinutes;
+    }
+
+    public void setConsoleSessionTimeoutMinutes(Integer consoleSessionTimeoutMinutes) {
+        this.consoleSessionTimeoutMinutes = consoleSessionTimeoutMinutes;
     }
 
     public Boolean getSmtpEnabled() {

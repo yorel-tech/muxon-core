@@ -17,4 +17,6 @@ public interface TenantDatacenterGrantRepository extends JpaRepository<TenantDat
     Optional<TenantDatacenterGrantEntity> findByTenant_IdAndDatacenter_Id(UUID tenantId, UUID datacenterId);
 
     Optional<TenantDatacenterGrantEntity> findByIdAndTenant_Id(UUID grantId, UUID tenantId);
+
+    long countByTenant_Id(UUID tenantId);
 }

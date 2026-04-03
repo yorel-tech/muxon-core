@@ -57,6 +57,8 @@ tags:
   description: Content library item CRUD and fetch operations
 - name: TenantContentLibraries
   description: Tenant-scoped content library CRUD, sync, ensure, and items
+- name: Overview
+  description: Dashboard aggregate counts for system and tenant scope
 
 components:
   schemas:
@@ -130,6 +132,11 @@ paths:
     $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}'
   /api/v1/tenants/{tenantId}/settings:
     $ref: './tenants.yaml#/paths/~1tenants~1{tenantId}~1settings'
+  /api/v1/tenants/{tenantId}/overview:
+    $ref: './overview.yaml#/paths/~1tenants~1{tenantId}~1overview'
+
+  /api/v1/system-overview:
+    $ref: './overview.yaml#/paths/~1system-overview'
 
   # Tenant datacenter grants
   /api/v1/tenants/{tenantId}/datacenters:

@@ -82,4 +82,8 @@ public interface VmRepository extends JpaRepository<VmEntity, UUID> {
      * Count VMs by provider
      */
     long countByProviderId(UUID providerId);
+
+    @Query("SELECT COUNT(v) FROM VmEntity v WHERE v.tenantDatacenterGrantId IN "
+            + "(SELECT g.id FROM TenantDatacenterGrantEntity g WHERE g.tenant.id = :tenantId)")
+    long countByTenantId(@Param("tenantId") UUID tenantId);
 }

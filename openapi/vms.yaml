@@ -326,7 +326,7 @@ components:
         url:
           type: string
           format: uri
-          description: Console URL
+          description: WebSocket URL for the console proxy (noVNC / SPICE client connects here)
         token:
           type: string
           description: Access token
@@ -334,6 +334,15 @@ components:
           type: string
           format: date-time
           description: Token expiration time
+        console_type:
+          type: string
+          enum: [VNC, SPICE, SERIAL]
+          description: Hypervisor console protocol
+        remote_password:
+          type: string
+          description: >
+            One-time password for RFB/SPICE authentication from the browser to the VM (short-lived).
+            Required for raw relay; transmit only over HTTPS/WSS in production.
 
     VmIsoAttachRequest:
       type: object

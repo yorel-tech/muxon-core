@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Infron Overview API
+  version: "0.1.0"
+  description: Aggregate counts for system and tenant dashboards
+
+tags:
+  - name: Overview
+    description: Dashboard aggregate counts
+
+components:
+  schemas:
+    SystemOverview:
+      type: object
+      required:
+        - datacenterCount
+        - tenantCount
+        - tenantUserCount
+        - vmCount
+      properties:
+        datacenterCount:
+          type: integer
+          format: int64
+          description: Total provider datacenters in the platform
+        tenantCount:
+          type: integer
+          format: int64
+          description: Total tenants (excluding the reserved system tenant)
+        tenantUserCount:
+          type: integer
+          format: int64
+          description: >
+            Total rows in tenant-scoped role bindings (scopeType TENANT) across all tenants;
+            one user with multiple tenant roles may be counted more than once.
+        vmCount:
+          type: integer
+          format: int64
+          description: Total VMs across all tenants
+
+    TenantOverview:
+      type: object
+      required:
+        - datacenterCount
+        - userCount
+        - vmCount
+      properties:
+        datacenterCount:
+          type: integer
+          format: int64
+          description: Number of datacenter grants for this tenant
+        userCount:
+          type: integer
+          format: int64
+          description: Tenant-scoped user bindings for this tenant (same basis as GET .../users)
+        vmCount:
+          type: integer
+          format: int64
+          description: VMs belonging to this tenant
+
+paths:
+  /system-overview:
+    get:
+      tags:
+        - Overview
+      summary: Platform-wide overview counts
+      operationId: getSystemOverview
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Aggregate counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemOverview"
+        "401":
+          $ref: "./commons.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "./commons.yaml#/components/responses/Forbidden"
+
+  /tenants/{tenantId}/overview:
+    get:
+      tags:
+        - Overview
+      summary: Overview counts for a tenant
+      operationId: getTenantOverview
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "./commons.yaml#/components/parameters/tenantId"
+      responses:
+        "200":
+          description: Aggregate counts for the tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantOverview"
+        "401":
+          $ref: "./commons.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "./commons.yaml#/components/responses/Forbidden"
+        "404":
+          $ref: "./commons.yaml#/components/responses/NotFound"

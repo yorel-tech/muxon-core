@@ -263,16 +263,17 @@ public class VmTests extends BaseIntegrationTest {
         assertStatusCode(createResponse, 202);
         String vmId = createResponse.jsonPath().getString("id");
 
+        boolean isActive = VmTestUtil.waitForVmStatus(vmId, VmStatus.ACTIVE, 60);
         Response consoleResponse = VmTestUtil.getVmConsole(vmId);
-        // Console access might not be available for all VM states
-        // Accept 200 or 404 (not available)
-        consoleResponse.then().statusCode(anyOf(equalTo(200), equalTo(404)));
-
-        if (consoleResponse.getStatusCode() == 200) {
+        if (isActive) {
+            assertStatusCode(consoleResponse, 200);
             consoleResponse.then()
                 .body("url", notNullValue())
                 .body("token", notNullValue())
-                .body("expires_at", notNullValue());
+                .body("expires_at", notNullValue())
+                .body("console_type", notNullValue());
+        } else {
+            consoleResponse.then().statusCode(anyOf(equalTo(400), equalTo(500)));
         }
 
         assertStatusCode(VmTestUtil.deleteVm(vmId), 200);

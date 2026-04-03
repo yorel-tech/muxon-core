@@ -1,0 +1,28 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: console-proxy
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/infron"
+    username: "infron"
+    password: "Oln5QcC7iHiLOtVIrfXzbQ=="
+    driver-class-name: "org.postgresql.Driver"
+  jpa:
+    hibernate:
+      ddl-auto: "none"
+  flyway:
+    enabled: false
+
+infron:
+  console:
+    allowed-origins:
+      - "http://localhost:4000"
+      - "http://127.0.0.1:4000"
+    cleanup-interval-ms: 60000
+    trust-all-hypervisor-tls: true
+
+logging:
+  level:
+    com.onetattva.infron: "INFO"

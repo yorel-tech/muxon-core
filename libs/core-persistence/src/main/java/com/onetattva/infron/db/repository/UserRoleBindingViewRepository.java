@@ -56,4 +56,12 @@ public interface UserRoleBindingViewRepository extends JpaRepository<UserRoleBin
             @Param("scopeId") UUID scopeId,
             @Param("query") String query,
             Pageable pageable);
+
+    @Query("SELECT COUNT(u) FROM UserRoleBindingViewEntity u WHERE u.scopeType = :scopeType")
+    long countByScopeType(@Param("scopeType") String scopeType);
+
+    @Query("SELECT COUNT(u) FROM UserRoleBindingViewEntity u WHERE u.scopeType = :scopeType AND u.scopeId = :scopeId")
+    long countByScopeTypeAndScopeId(
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") UUID scopeId);
 }

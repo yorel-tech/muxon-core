@@ -7,8 +7,19 @@ import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.core.auth.AuthorizationService;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.UserPrincipal;
+import com.onetattva.infron.core.common.Constants;
+import com.onetattva.infron.core.config.InfronConsoleProperties;
+import com.onetattva.infron.core.providers.VmConsoleType;
+import com.onetattva.infron.grpc.vmconsole.v1.ResolveVmConsoleRequest;
+import com.onetattva.infron.grpc.vmconsole.v1.ResolveVmConsoleResponse;
+import com.onetattva.infron.grpc.vmconsole.v1.VmConsoleResolutionServiceGrpc;
+import io.grpc.StatusRuntimeException;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.db.model.ConsoleSessionConsoleType;
+import com.onetattva.infron.db.model.ConsoleSessionEntity;
+import com.onetattva.infron.db.model.ConsoleSessionStatus;
+import com.onetattva.infron.db.model.SystemSettingsEntity;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
 import com.onetattva.infron.db.model.VmEntity;
@@ -27,15 +38,22 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -74,6 +92,18 @@ public class VmsService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private VmConsoleResolutionServiceGrpc.VmConsoleResolutionServiceBlockingStub vmConsoleResolutionStub;
+
+    @Autowired
+    private ConsoleSessionRepository consoleSessionRepository;
+
+    @Autowired
+    private SystemSettingsRepository systemSettingsRepository;
+
+    @Autowired
+    private InfronConsoleProperties infronConsoleProperties;
 
     public VmCreateResponse createVm(UUID tenantId, VmCreateRequest request) {
         TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
@@ -278,20 +308,85 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM deletion initiated");
     }
 
+    @Transactional
     public VmConsoleResponse getVmConsole(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
 
-        // Validate VM is running
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
             throw new IllegalStateException("VM must be running to access console");
         }
+        UUID userId = getCurrentUserId();
+        if (userId == null) {
+            throw new AccessDeniedException("User identity is required to open a VM console");
+        }
+        long active = consoleSessionRepository.countByUserIdAndStatus(userId, ConsoleSessionStatus.ACTIVE);
+        if (active >= infronConsoleProperties.getMaxSessionsPerUser()) {
+            throw new IllegalStateException("Maximum number of active console sessions reached; close an existing session and retry");
+        }
 
-        // Build console response
+        TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
+                .findById(vm.getTenantDatacenterGrantId())
+                .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found"));
+        UUID infronTenantId = grant.getTenant().getId();
+        if (!infronTenantId.equals(tenantId)) {
+            throw new AccessDeniedException("VM tenant mismatch");
+        }
+
+        ResolveVmConsoleRequest grpcReq = ResolveVmConsoleRequest.newBuilder()
+                .setTenantDatacenterGrantId(vm.getTenantDatacenterGrantId().toString())
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setNodeId(vm.getNodeId() != null ? vm.getNodeId().toString() : "")
+                .build();
+
+        ResolveVmConsoleResponse grpcResp;
+        try {
+            grpcResp = vmConsoleResolutionStub.resolveVmConsole(grpcReq);
+        } catch (StatusRuntimeException e) {
+            throw new IllegalStateException("Console orchestrator unavailable: " + e.getStatus(), e);
+        }
+
+        if (!grpcResp.getOk()) {
+            String msg = grpcResp.getErrorMessage();
+            throw new IllegalStateException(
+                    msg != null && !msg.isBlank() ? msg : "Failed to resolve console from orchestrator");
+        }
+
+        VmConsoleType consoleType;
+        try {
+            consoleType = VmConsoleType.valueOf(grpcResp.getConsoleType());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Unknown console type: " + grpcResp.getConsoleType());
+        }
+
+        String hypervisorPassword = grpcResp.getPassword().isEmpty() ? null : grpcResp.getPassword();
+
+        String token = new BigInteger(130, new SecureRandom()).toString(32);
+        int timeoutMinutes = resolveConsoleTimeoutMinutes(tenantId);
+        Instant expiresAt = Instant.now().plus(timeoutMinutes, ChronoUnit.MINUTES);
+
+        ConsoleSessionEntity session = new ConsoleSessionEntity();
+        session.setVmId(vm.getId());
+        session.setTenantId(tenantId);
+        session.setUserId(userId);
+        session.setToken(token);
+        session.setConsoleType(mapPersistenceConsoleType(consoleType));
+        session.setHypervisorHost(grpcResp.getHost());
+        session.setHypervisorPort(grpcResp.getPort());
+        session.setHypervisorPassword(hypervisorPassword);
+        session.setTls(grpcResp.getTls());
+        session.setStatus(ConsoleSessionStatus.ACTIVE);
+        session.setExpiresAt(expiresAt);
+        session.setCreatedAt(Instant.now());
+        session.setLastActivityAt(Instant.now());
+        consoleSessionRepository.save(session);
+
         VmConsoleResponse response = new VmConsoleResponse();
-        response.setUrl(URI.create(generateConsoleUrl(vm)));
-        response.setToken(generateConsoleToken(vm));
-        response.setExpiresAt(Instant.now().plusSeconds(300).atOffset(ZoneOffset.UTC)); // 5 minutes
-
+        response.setUrl(URI.create(buildConsoleProxyWsUrl(token)));
+        response.setToken(token);
+        response.setExpiresAt(expiresAt.atOffset(ZoneOffset.UTC));
+        response.setConsoleType(mapApiConsoleType(consoleType));
+        response.setRemotePassword(hypervisorPassword);
         return response;
     }
 
@@ -697,11 +792,45 @@ public class VmsService {
         return "req-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private String generateConsoleUrl(VmEntity vm) {
-        return String.format("wss://console.infron.local/vm/%s", vm.getId());
+    private String buildConsoleProxyWsUrl(String token) {
+        String base = infronConsoleProperties.getProxyWsBaseUrl();
+        String enc = URLEncoder.encode(token, StandardCharsets.UTF_8);
+        if (base.contains("?")) {
+            return base + "&token=" + enc;
+        }
+        return base + "?token=" + enc;
     }
 
-    private String generateConsoleToken(VmEntity vm) {
-        return UUID.randomUUID().toString();
+    private int resolveConsoleTimeoutMinutes(UUID tenantId) {
+        int fallback = 15;
+        Optional<SystemSettingsEntity> tenantSettings = systemSettingsRepository.findByTenantId(tenantId);
+        if (tenantSettings.isPresent()) {
+            Integer m = tenantSettings.get().getConsoleSessionTimeoutMinutes();
+            if (m != null && m > 0) {
+                return m;
+            }
+        }
+        Optional<SystemSettingsEntity> systemSettings =
+                systemSettingsRepository.findByTenantId(UUID.fromString(Constants.SYSTEM_ID));
+        return systemSettings
+                .map(SystemSettingsEntity::getConsoleSessionTimeoutMinutes)
+                .filter(m -> m != null && m > 0)
+                .orElse(fallback);
+    }
+
+    private static ConsoleSessionConsoleType mapPersistenceConsoleType(VmConsoleType type) {
+        return switch (type) {
+            case VNC -> ConsoleSessionConsoleType.VNC;
+            case SPICE -> ConsoleSessionConsoleType.SPICE;
+            case SERIAL -> ConsoleSessionConsoleType.SERIAL;
+        };
+    }
+
+    private static com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum mapApiConsoleType(VmConsoleType type) {
+        return switch (type) {
+            case VNC -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.VNC;
+            case SPICE -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.SPICE;
+            case SERIAL -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.SERIAL;
+        };
     }
 }

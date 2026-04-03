@@ -10,7 +10,7 @@ import com.onetattva.infron.core.providers.VmOperationResult;
 import com.onetattva.infron.core.providers.VmProvider;
 import com.onetattva.infron.core.providers.VmTemplateExportRequest;
 import com.onetattva.infron.core.providers.VmTemplateExportResult;
-import com.onetattva.infron.core.providers.TenantAwareVmProviderRegistry;
+import com.onetattva.infron.core.orch.wiring.TenantAwareVmProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.EventPublisher;

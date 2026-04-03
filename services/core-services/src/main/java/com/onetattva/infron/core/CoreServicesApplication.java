@@ -2,12 +2,15 @@ package com.onetattva.infron.core;
 
 import com.onetattva.infron.db.queue.QueueDbConfiguration;
 import org.springframework.boot.SpringApplication;
+import com.onetattva.infron.core.config.InfronConsoleProperties;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
 @Import(QueueDbConfiguration.class)
+@EnableConfigurationProperties(InfronConsoleProperties.class)
 @ComponentScan(basePackages = {"com.onetattva.infron.core.config",
         "com.onetattva.infron.core.security",
         "com.onetattva.infron.core.controllers",

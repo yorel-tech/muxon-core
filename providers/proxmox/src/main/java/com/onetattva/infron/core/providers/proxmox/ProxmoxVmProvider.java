@@ -1,8 +1,10 @@
 package com.onetattva.infron.core.providers.proxmox;
 
 import com.onetattva.infron.core.providers.*;
+import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.VmEntity;
+import com.onetattva.infron.db.repository.NodeRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import com.onetattva.infron.api.model.VmPowerState;
@@ -13,6 +15,7 @@ import fr.freshperf.pve4j.entities.nodes.PveNodesIndex;
 import fr.freshperf.pve4j.entities.nodes.node.qemu.PveQemuCreateOptions;
 import fr.freshperf.pve4j.entities.nodes.node.qemu.PveQemuIndex;
 import fr.freshperf.pve4j.entities.nodes.node.qemu.PveQemuStatus;
+import fr.freshperf.pve4j.entities.nodes.node.qemu.PveQemuVmVncProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +37,7 @@ public class ProxmoxVmProvider implements VmProvider {
     private final UUID providerId;
     private final ProviderRepository providerRepository;
     private final VmRepository vmRepository;
+    private final NodeRepository nodeRepository;
     private final Map<String, Proxmox> clientCache = new HashMap<>();
 
     /**
@@ -42,10 +46,12 @@ public class ProxmoxVmProvider implements VmProvider {
      * @param providerId The provider ID
      * @param providerRepository The provider repository for database access
      */
-    public ProxmoxVmProvider(UUID providerId, ProviderRepository providerRepository, VmRepository vmRepository) {
+    public ProxmoxVmProvider(UUID providerId, ProviderRepository providerRepository, VmRepository vmRepository,
+                             NodeRepository nodeRepository) {
         this.providerId = providerId;
         this.providerRepository = providerRepository;
         this.vmRepository = vmRepository;
+        this.nodeRepository = nodeRepository;
     }
 
     @Override
@@ -709,5 +715,52 @@ public class ProxmoxVmProvider implements VmProvider {
                         .providerErrorCode("PROXMOX_EXPORT_NOT_IMPLEMENTED")
                         .retryable(false)
                         .build()));
+    }
+
+    @Override
+    public CompletableFuture<VmConsoleConnectionInfo> getConsoleConnection(VmConsoleRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (request.externalId() == null || request.externalId().isBlank()) {
+                throw new IllegalStateException("VM has no external id; console is unavailable until the VM is provisioned");
+            }
+            ProviderEntity provider = providerRepository.findById(providerId)
+                    .orElseThrow(() -> new IllegalStateException("Provider configuration not found"));
+            ProxmoxProviderContext ctx = new ProxmoxProviderContext(
+                    provider, "node", "node", "local-lvm");
+            Proxmox client = getOrCreateClient(ctx);
+            String nodeName = findVmNode(client, request.externalId());
+            if (nodeName == null) {
+                throw new IllegalStateException("Could not locate VM on Proxmox cluster");
+            }
+            int vmid = Integer.parseInt(request.externalId().trim());
+            try {
+                PveQemuVmVncProxy proxy = client.getNodes().get(nodeName).getQemu().get(vmid).getVnc().getVncProxy().execute();
+                if (proxy == null) {
+                    throw new IllegalStateException("Proxmox returned empty VNC proxy response");
+                }
+                String host = resolveConsoleHost(provider, nodeName);
+                String password = proxy.getTicket() != null && !proxy.getTicket().isBlank()
+                        ? proxy.getTicket()
+                        : proxy.getPassword();
+                // Proxmox VNC proxy typically expects TLS on the proxy port.
+                return new VmConsoleConnectionInfo(VmConsoleType.VNC, host, proxy.getPort(), password, true, null);
+            } catch (Exception e) {
+                logger.error("Failed to obtain Proxmox VNC proxy for vm {}: {}", request.externalId(), e.getMessage(), e);
+                throw new IllegalStateException("Failed to obtain console from Proxmox: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private String resolveConsoleHost(ProviderEntity provider, String nodeName) {
+        List<NodeEntity> nodes = nodeRepository.findByProviderId(providerId);
+        for (NodeEntity n : nodes) {
+            if (nodeName.equals(n.getName()) || nodeName.equals(n.getExternalId())) {
+                if (n.getIpAddresses() != null && !n.getIpAddresses().isEmpty()) {
+                    return n.getIpAddresses().getFirst();
+                }
+                break;
+            }
+        }
+        return extractHost(provider.getEndpoint());
     }
 }

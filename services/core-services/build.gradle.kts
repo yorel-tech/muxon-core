@@ -24,6 +24,8 @@ dependencies {
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))
     implementation(project(":libs:core-persistence"))
+    implementation(project(":libs:core-proto"))
+    implementation(libs.grpc.spring.boot.starter)
     implementation(project(":services:auth-api"))
 }
 

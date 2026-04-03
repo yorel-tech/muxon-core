@@ -393,6 +393,13 @@ public class MockVmProvider implements VmProvider {
                         Map.of("mock", "true")));
     }
 
+    @Override
+    public CompletableFuture<VmConsoleConnectionInfo> getConsoleConnection(VmConsoleRequest request) {
+        // Deterministic loopback target for integration tests; no real VNC listener unless provided externally.
+        return CompletableFuture.completedFuture(
+                new VmConsoleConnectionInfo(VmConsoleType.VNC, "127.0.0.1", 5900, "mock", false, null));
+    }
+
     /**
      * Clear all mock data (for testing)
      */

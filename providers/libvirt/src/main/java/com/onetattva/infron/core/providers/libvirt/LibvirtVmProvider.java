@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.libvirt.DomainInfo.DomainState.VIR_DOMAIN_RUNNING;
 
@@ -1121,6 +1123,90 @@ public class LibvirtVmProvider implements VmProvider {
         }
 
         return null;
+    }
+
+    @Override
+    public CompletableFuture<VmConsoleConnectionInfo> getConsoleConnection(VmConsoleRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            UUID resolvedNodeId = request.nodeId();
+            if (resolvedNodeId == null) {
+                resolvedNodeId = findNodeForVm(request.vmId());
+            }
+            if (resolvedNodeId == null) {
+                throw new IllegalStateException("Could not resolve hypervisor node for VM console");
+            }
+            final UUID nodeId = resolvedNodeId;
+            NodeEntity node = multiNodeManager.getAllNodes().stream()
+                    .filter(n -> n.getId().equals(nodeId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("Node not found for libvirt console"));
+            String host = node.getIpAddresses() != null && !node.getIpAddresses().isEmpty()
+                    ? node.getIpAddresses().getFirst()
+                    : node.getName();
+            Connect connection;
+            try {
+                connection = multiNodeManager.getConnection(nodeId);
+            } catch (LibvirtException e) {
+                throw new IllegalStateException("Failed to connect to libvirt: " + e.getMessage(), e);
+            }
+            Domain domain;
+            try {
+                domain = lookupDomain(connection, request.externalId(), request.vmId());
+            } catch (LibvirtException e) {
+                throw new IllegalStateException("Domain not found for console: " + e.getMessage(), e);
+            }
+            try {
+                String xml = domain.getXMLDesc(0);
+                return parseGraphicsFromXml(xml, host);
+            } catch (LibvirtException e) {
+                throw new IllegalStateException("Failed to read domain XML for console: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private static Domain lookupDomain(Connect connection, String externalId, UUID vmId) throws LibvirtException {
+        if (externalId != null && !externalId.isBlank()) {
+            try {
+                return connection.domainLookupByUUIDString(externalId);
+            } catch (LibvirtException ignored) {
+                // try as name
+            }
+            try {
+                return connection.domainLookupByName(externalId);
+            } catch (LibvirtException e) {
+                logger.debug("domainLookup by externalId failed: {}", e.getMessage());
+            }
+        }
+        return connection.domainLookupByUUIDString(vmId.toString());
+    }
+
+    private static final Pattern GRAPHICS_TYPE = Pattern.compile("<graphics[^>]*type='(vnc|spice)'", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_PORT = Pattern.compile("port='(-?\\d+)'");
+    private static final Pattern GRAPHICS_AUTOPORT = Pattern.compile("autoport='(yes|no)'", Pattern.CASE_INSENSITIVE);
+
+    private static VmConsoleConnectionInfo parseGraphicsFromXml(String xml, String hypervisorHost) {
+        Matcher typeM = GRAPHICS_TYPE.matcher(xml);
+        if (!typeM.find()) {
+            throw new IllegalStateException("No VNC/SPICE graphics device found in domain XML");
+        }
+        String gType = typeM.group(1).toLowerCase(Locale.ROOT);
+        VmConsoleType consoleType = "spice".equals(gType) ? VmConsoleType.SPICE : VmConsoleType.VNC;
+        Matcher portM = GRAPHICS_PORT.matcher(xml);
+        int port = -1;
+        if (portM.find()) {
+            port = Integer.parseInt(portM.group(1));
+        }
+        Matcher autoM = GRAPHICS_AUTOPORT.matcher(xml);
+        boolean autoport = !autoM.find() || "yes".equalsIgnoreCase(autoM.group(1));
+        if (port <= 0 && autoport) {
+            throw new IllegalStateException(
+                    "VM uses autoport without a fixed graphics port; start the VM or assign a fixed VNC/SPICE port");
+        }
+        if (port <= 0) {
+            port = "spice".equals(gType) ? 5900 : 5900;
+        }
+        // Libvirt graphics typically listens on hypervisor; plain TCP (no TLS) for standard VNC.
+        return new VmConsoleConnectionInfo(consoleType, hypervisorHost, port, null, false, null);
     }
 
     /**

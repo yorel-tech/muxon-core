@@ -1,4 +1,4 @@
-package com.onetattva.infron.core.orch;
+package com.onetattva.infron.core.orch.wiring;
 
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.providers.TenantDatacenterGrantResolver;
@@ -22,7 +22,7 @@ public class TenantDatacenterGrantResolverBean implements TenantDatacenterGrantR
     private static final Logger logger = LoggerFactory.getLogger(TenantDatacenterGrantResolverBean.class);
 
     @Autowired
-    TenantDatacenterGrantRepository tenantDatacenterGrantRepository;
+    private TenantDatacenterGrantRepository tenantDatacenterGrantRepository;
 
     @Override
     public Optional<String> resolveProviderId(UUID tenantDatacenterGrantId) {

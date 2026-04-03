@@ -123,4 +123,12 @@ public interface VmProvider {
      * Clone VM storage to a template file at the given provider-relative path.
      */
     CompletableFuture<VmTemplateExportResult> cloneVmAsTemplate(VmTemplateExportRequest request);
+
+    /**
+     * Resolve hypervisor console endpoint for a running VM (VNC/SPICE).
+     */
+    default CompletableFuture<VmConsoleConnectionInfo> getConsoleConnection(VmConsoleRequest request) {
+        return CompletableFuture.failedFuture(
+                new UnsupportedOperationException("Console is not supported for this provider"));
+    }
 }
