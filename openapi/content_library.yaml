@@ -191,6 +191,17 @@ components:
               nullable: true
             metadata:
               $ref: './commons.yaml#/components/schemas/Metadata'
+            providerRelativePath:
+              type: string
+              nullable: true
+              readOnly: true
+              description: Relative path under the provider storage pool when materialized (infron-.../content-libraries/...).
+            infronInstanceSegment:
+              type: string
+              maxLength: 64
+              nullable: true
+              readOnly: true
+              description: infron-{instanceName}-{instanceId} segment captured when the path was assigned.
 
     ContentItemCreate:
       type: object

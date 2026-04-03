@@ -26,14 +26,17 @@ public class ContentLibrarySyncService {
     private final ContentLibraryRepository contentLibraryRepository;
     private final ContentItemRepository contentItemRepository;
     private final TaskOrchestrationService taskOrchestrationService;
+    private final ContentLibraryProviderPathBuilder contentLibraryProviderPathBuilder;
 
     public ContentLibrarySyncService(
             ContentLibraryRepository contentLibraryRepository,
             ContentItemRepository contentItemRepository,
-            TaskOrchestrationService taskOrchestrationService) {
+            TaskOrchestrationService taskOrchestrationService,
+            ContentLibraryProviderPathBuilder contentLibraryProviderPathBuilder) {
         this.contentLibraryRepository = contentLibraryRepository;
         this.contentItemRepository = contentItemRepository;
         this.taskOrchestrationService = taskOrchestrationService;
+        this.contentLibraryProviderPathBuilder = contentLibraryProviderPathBuilder;
     }
 
     /**
@@ -98,6 +101,7 @@ public class ContentLibrarySyncService {
 
         item.setFetchStatus("available");
         item.setLastFetchedAt(Instant.now());
+        contentLibraryProviderPathBuilder.applyProviderPaths(item);
         contentItemRepository.save(item);
 
         ContentLibraryEntity library = contentLibraryRepository.findById(item.getLibraryId()).orElse(null);

@@ -65,6 +65,12 @@ public class ContentItemEntity {
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, String> metadata;
 
+    @Column(name = "provider_relative_path")
+    private String providerRelativePath;
+
+    @Column(name = "infron_instance_segment", length = 64)
+    private String infronInstanceSegment;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -196,6 +202,22 @@ public class ContentItemEntity {
 
     public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
+    }
+
+    public String getProviderRelativePath() {
+        return providerRelativePath;
+    }
+
+    public void setProviderRelativePath(String providerRelativePath) {
+        this.providerRelativePath = providerRelativePath;
+    }
+
+    public String getInfronInstanceSegment() {
+        return infronInstanceSegment;
+    }
+
+    public void setInfronInstanceSegment(String infronInstanceSegment) {
+        this.infronInstanceSegment = infronInstanceSegment;
     }
 
     public Instant getCreatedAt() {

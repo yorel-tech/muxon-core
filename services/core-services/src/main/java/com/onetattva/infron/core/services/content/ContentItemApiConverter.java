@@ -38,6 +38,8 @@ public class ContentItemApiConverter {
         if (entity.getLastFetchedAt() != null) {
             api.setLastFetchedAt(entity.getLastFetchedAt().atOffset(ZoneOffset.UTC));
         }
+        api.setProviderRelativePath(entity.getProviderRelativePath());
+        api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
         return api;
     }
 
