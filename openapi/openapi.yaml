@@ -190,6 +190,12 @@ paths:
     $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1resume'
   /api/v1/tenants/{tenantId}/vms/{vmId}/console:
     $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1console'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/attach-iso:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1attach-iso'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/detach-iso:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1detach-iso'
+  /api/v1/tenants/{tenantId}/vms/{vmId}/publish-as-template:
+    $ref: './vms_paths.yaml#/paths/~1api~1v1~1tenants~1{tenantId}~1vms~1{vmId}~1publish-as-template'
 
   # Compute Profiles
   /api/v1/compute-profiles:

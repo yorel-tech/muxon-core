@@ -425,3 +425,117 @@ paths:
           $ref: './commons.yaml#/components/responses/Forbidden'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/v1/tenants/{tenantId}/vms/{vmId}/attach-iso:
+    post:
+      tags:
+        - VM Management
+      summary: Attach ISO from content library
+      operationId: attachVmIso
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - name: vmId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './vms.yaml#/components/schemas/VmIsoAttachRequest'
+      responses:
+        '202':
+          description: ISO attachment accepted
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/v1/tenants/{tenantId}/vms/{vmId}/detach-iso:
+    post:
+      tags:
+        - VM Management
+      summary: Detach ISO device from VM
+      operationId: detachVmIso
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - name: vmId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './vms.yaml#/components/schemas/VmIsoDetachRequest'
+      responses:
+        '202':
+          description: ISO detachment accepted
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmOperationResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /api/v1/tenants/{tenantId}/vms/{vmId}/publish-as-template:
+    post:
+      tags:
+        - VM Management
+      summary: Publish VM as content library template (VM remains)
+      operationId: publishVmAsTemplate
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/tenantId'
+        - name: vmId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './vms.yaml#/components/schemas/VmPublishTemplateRequest'
+      responses:
+        '202':
+          description: Template publish accepted
+          content:
+            application/json:
+              schema:
+                $ref: './vms.yaml#/components/schemas/VmPublishTemplateResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './commons.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

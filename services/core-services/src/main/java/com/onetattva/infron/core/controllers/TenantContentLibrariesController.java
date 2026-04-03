@@ -6,6 +6,8 @@ import com.onetattva.infron.api.model.ContentLibraryCreate;
 import com.onetattva.infron.api.model.ContentLibraryList;
 import com.onetattva.infron.api.model.ContentLibraryUpdate;
 import com.onetattva.infron.api.model.ContentSyncResponse;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
 import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +38,7 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deleteTenantContentLibrary(UUID tenantId, UUID libraryId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         contentLibraryService.delete(libraryId);
@@ -49,12 +52,14 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentLibrary> getTenantContentLibrary(UUID tenantId, UUID libraryId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         return ResponseEntity.ok(contentLibraryService.get(libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentLibraryList> listTenantContentLibraries(
             UUID tenantId, Integer page, Integer perPage) {
         return ResponseEntity.ok(contentLibraryService.listVisibleToTenant(tenantId, page, perPage));
@@ -68,12 +73,14 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentSyncResponse> syncTenantContentLibrary(UUID tenantId, UUID libraryId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         return ResponseEntity.accepted().body(contentLibrarySyncService.enqueueSync(libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentLibrary> updateTenantContentLibrary(
             UUID tenantId, UUID libraryId, ContentLibraryUpdate contentLibraryUpdate) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);

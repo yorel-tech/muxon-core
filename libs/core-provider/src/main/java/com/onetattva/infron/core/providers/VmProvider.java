@@ -108,4 +108,19 @@ public interface VmProvider {
      * @return CompletableFuture with validation result
      */
     CompletableFuture<ValidationResult> validateVmSpec(String spec);
+
+    /**
+     * Attach an ISO (file path on provider storage) to a running or defined VM.
+     */
+    CompletableFuture<VmOperationResult> attachIso(VmIsoAttachProviderRequest request);
+
+    /**
+     * Detach a CD-ROM device by guest target name (e.g. sdc).
+     */
+    CompletableFuture<VmOperationResult> detachIso(VmIsoDetachProviderRequest request);
+
+    /**
+     * Clone VM storage to a template file at the given provider-relative path.
+     */
+    CompletableFuture<VmTemplateExportResult> cloneVmAsTemplate(VmTemplateExportRequest request);
 }

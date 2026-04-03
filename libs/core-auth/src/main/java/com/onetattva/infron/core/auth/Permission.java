@@ -53,7 +53,11 @@ public enum Permission {
     COMPUTE_PROFILE_CREATE("compute_profile:create", "Create compute profile", Scope.TENANT),
     COMPUTE_PROFILE_READ("compute_profile:read", "Read compute profile", Scope.TENANT),
     COMPUTE_PROFILE_EDIT("compute_profile:edit", "Edit compute profile", Scope.TENANT),
-    COMPUTE_PROFILE_MANAGE("compute_profile:manage", "Manage compute profile", Scope.TENANT);
+    COMPUTE_PROFILE_MANAGE("compute_profile:manage", "Manage compute profile", Scope.TENANT),
+
+    CONTENT_LIBRARY_READ("content_library:read", "Read content library", Scope.TENANT),
+    CONTENT_LIBRARY_WRITE("content_library:write", "Write to content library", Scope.TENANT),
+    CONTENT_LIBRARY_PUBLISH_TEMPLATE("content_library:publish_template", "Publish VM as template to content library", Scope.TENANT);
 
     private static final UUID NAMESPACE = UUID.fromString("696e6672-6f6e-636f-7265-111111111111");
     private static final Map<UUID, Permission> PERMISSION_BY_ID = new HashMap<>();

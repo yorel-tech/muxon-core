@@ -1,5 +1,7 @@
 package com.onetattva.infron.core.providers;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,10 +11,16 @@ import java.util.UUID;
 public record VmCreationRequest(
         UUID vmId,
         String spec,
-        ProviderContext providerContext,  // Replaces PlacementHints
+        ProviderContext providerContext,
         Map<String, String> metadata,
-        String correlationId
+        String correlationId,
+        String sourceImagePath,
+        List<IsoAttachment> isoAttachments
 ) {
+    public VmCreationRequest {
+        isoAttachments = isoAttachments == null ? List.of() : List.copyOf(isoAttachments);
+    }
+
     public static VmCreationRequestBuilder builder() {
         return new VmCreationRequestBuilder();
     }
@@ -23,6 +31,8 @@ public record VmCreationRequest(
         private ProviderContext providerContext;
         private Map<String, String> metadata;
         private String correlationId;
+        private String sourceImagePath;
+        private List<IsoAttachment> isoAttachments = Collections.emptyList();
 
         public VmCreationRequestBuilder vmId(UUID vmId) {
             this.vmId = vmId;
@@ -49,8 +59,18 @@ public record VmCreationRequest(
             return this;
         }
 
+        public VmCreationRequestBuilder sourceImagePath(String sourceImagePath) {
+            this.sourceImagePath = sourceImagePath;
+            return this;
+        }
+
+        public VmCreationRequestBuilder isoAttachments(List<IsoAttachment> isoAttachments) {
+            this.isoAttachments = isoAttachments == null ? Collections.emptyList() : isoAttachments;
+            return this;
+        }
+
         public VmCreationRequest build() {
-            return new VmCreationRequest(vmId, spec, providerContext, metadata, correlationId);
+            return new VmCreationRequest(vmId, spec, providerContext, metadata, correlationId, sourceImagePath, isoAttachments);
         }
     }
 }

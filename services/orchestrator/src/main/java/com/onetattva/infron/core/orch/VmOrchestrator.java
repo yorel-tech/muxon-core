@@ -1,9 +1,15 @@
 package com.onetattva.infron.core.orch;
 
+import com.onetattva.infron.core.providers.IsoAttachment;
 import com.onetattva.infron.core.providers.ProviderContext;
 import com.onetattva.infron.core.providers.VmCreationRequest;
 import com.onetattva.infron.core.providers.VmCreationResult;
+import com.onetattva.infron.core.providers.VmIsoAttachProviderRequest;
+import com.onetattva.infron.core.providers.VmIsoDetachProviderRequest;
+import com.onetattva.infron.core.providers.VmOperationResult;
 import com.onetattva.infron.core.providers.VmProvider;
+import com.onetattva.infron.core.providers.VmTemplateExportRequest;
+import com.onetattva.infron.core.providers.VmTemplateExportResult;
 import com.onetattva.infron.core.providers.TenantAwareVmProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
@@ -11,7 +17,9 @@ import com.onetattva.infron.core.spi.queue.EventPublisher;
 import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.VmPowerState;
 import com.onetattva.infron.api.enums.VmStatus;
+import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.VmEntity;
+import com.onetattva.infron.db.repository.ContentItemRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,6 +57,9 @@ public class VmOrchestrator {
 
     @Autowired
     private TenantAwareVmProviderRegistry providerRegistry;
+
+    @Autowired
+    private ContentItemRepository contentItemRepository;
 
     /**
      * Scheduled task to poll for pending VM command queue entries
@@ -108,6 +120,9 @@ public class VmOrchestrator {
                 case "VM_SUSPEND_COMMAND" -> processVmSuspendCommand(entry);
                 case "VM_RESUME_COMMAND" -> processVmResumeCommand(entry);
                 case "VM_DELETE_COMMAND" -> processVmDeleteCommand(entry);
+                case "VM_ATTACH_ISO_COMMAND" -> processVmAttachIsoCommand(entry);
+                case "VM_DETACH_ISO_COMMAND" -> processVmDetachIsoCommand(entry);
+                case "VM_PUBLISH_TEMPLATE_COMMAND" -> processVmPublishTemplateCommand(entry);
                 default -> {
                     logger.warn("Unknown queue type: {}", queueType);
                     commandQueue.markFailed(entry.id(), "Unknown queue type");
@@ -158,12 +173,45 @@ public class VmOrchestrator {
                 ? entry.metadata().get("requestId")
                 : entry.id().toString();
 
+        String sourceImagePath = null;
+        List<IsoAttachment> isoAttachments = new ArrayList<>();
+        try {
+            if (vm.getContentItemId() != null) {
+                ContentItemEntity tpl = contentItemRepository.findById(vm.getContentItemId())
+                        .orElseThrow(() -> new IllegalStateException("Template content item not found: " + vm.getContentItemId()));
+                ContentItemResolution.assertAvailableTemplate(tpl);
+                sourceImagePath = tpl.getProviderRelativePath();
+            }
+            Object rawIsos = entry.payload() != null ? entry.payload().get("isoContentItemIds") : null;
+            if (rawIsos instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o == null) {
+                        continue;
+                    }
+                    UUID isoId = UUID.fromString(o.toString());
+                    ContentItemEntity isoItem = contentItemRepository.findById(isoId)
+                            .orElseThrow(() -> new IllegalStateException("ISO content item not found: " + isoId));
+                    ContentItemResolution.assertAvailableIso(isoItem);
+                    isoAttachments.add(ContentItemResolution.toIsoAttachment(isoItem));
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Content library resolution failed for VM {}: {}", vmId, e.getMessage());
+            commandQueue.markFailed(entry.id(), e.getMessage());
+            vm.setStatus(VmStatus.ERROR);
+            vm.setUpdatedAt(Instant.now());
+            vmRepository.save(vm);
+            return;
+        }
+
         VmCreationRequest createRequest = VmCreationRequest.builder()
                 .vmId(vmId)
                 .spec(specJson)
-                .providerContext(contextOpt.get())  // Use ProviderContext instead of PlacementHints
+                .providerContext(contextOpt.get())
                 .metadata(null)
                 .correlationId(requestId)
+                .sourceImagePath(sourceImagePath)
+                .isoAttachments(isoAttachments)
                 .build();
 
         logger.info("Creating VM {} with provider {}", vmId, provider.id());
@@ -352,5 +400,164 @@ public class VmOrchestrator {
                 "after_status", VmStatus.DELETING.toString()
         ));
         commandQueue.markCompleted(entry.id());
+    }
+
+    private void processVmAttachIsoCommand(CommandMessage entry) {
+        UUID vmId = entry.entityId();
+        VmEntity vm = vmRepository.findById(vmId)
+                .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
+        if (vm.getExternalId() == null || vm.getExternalId().isBlank()) {
+            commandQueue.markFailed(entry.id(), "VM has no external ID");
+            return;
+        }
+        Object raw = entry.payload() != null ? entry.payload().get("contentItemId") : null;
+        if (raw == null) {
+            commandQueue.markFailed(entry.id(), "Missing contentItemId");
+            return;
+        }
+        UUID isoItemId = UUID.fromString(raw.toString());
+        ContentItemEntity isoItem = contentItemRepository.findById(isoItemId)
+                .orElse(null);
+        if (isoItem == null) {
+            commandQueue.markFailed(entry.id(), "ISO content item not found");
+            return;
+        }
+        try {
+            ContentItemResolution.assertAvailableIso(isoItem);
+        } catch (Exception e) {
+            commandQueue.markFailed(entry.id(), e.getMessage());
+            return;
+        }
+        IsoAttachment att = ContentItemResolution.toIsoAttachment(isoItem);
+        Optional<ProviderContext> contextOpt = providerRegistry.createContextForTenantDatacenter(vm.getTenantDatacenterGrantId());
+        if (contextOpt.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "Failed to create provider context");
+            return;
+        }
+        VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
+                .orElse(null);
+        if (provider == null) {
+            commandQueue.markFailed(entry.id(), "No provider available");
+            return;
+        }
+        String requestId = entry.metadata() != null && entry.metadata().get("requestId") != null
+                ? entry.metadata().get("requestId")
+                : entry.id().toString();
+        VmIsoAttachProviderRequest req = new VmIsoAttachProviderRequest(
+                vmId,
+                vm.getExternalId(),
+                att.isoPath(),
+                att.deviceName(),
+                att.bootable(),
+                contextOpt.get(),
+                requestId);
+        VmOperationResult result = provider.attachIso(req).join();
+        if (result.resultType() == VmOperationResult.ResultType.SUCCESS) {
+            commandQueue.markCompleted(entry.id());
+        } else {
+            commandQueue.markFailed(entry.id(), result.message() != null ? result.message() : "attachIso failed");
+        }
+    }
+
+    private void processVmDetachIsoCommand(CommandMessage entry) {
+        UUID vmId = entry.entityId();
+        VmEntity vm = vmRepository.findById(vmId)
+                .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
+        if (vm.getExternalId() == null || vm.getExternalId().isBlank()) {
+            commandQueue.markFailed(entry.id(), "VM has no external ID");
+            return;
+        }
+        Object raw = entry.payload() != null ? entry.payload().get("deviceName") : null;
+        if (raw == null || raw.toString().isBlank()) {
+            commandQueue.markFailed(entry.id(), "Missing deviceName");
+            return;
+        }
+        Optional<ProviderContext> contextOpt = providerRegistry.createContextForTenantDatacenter(vm.getTenantDatacenterGrantId());
+        if (contextOpt.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "Failed to create provider context");
+            return;
+        }
+        VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
+                .orElse(null);
+        if (provider == null) {
+            commandQueue.markFailed(entry.id(), "No provider available");
+            return;
+        }
+        String requestId = entry.metadata() != null && entry.metadata().get("requestId") != null
+                ? entry.metadata().get("requestId")
+                : entry.id().toString();
+        VmIsoDetachProviderRequest req = new VmIsoDetachProviderRequest(
+                vmId,
+                vm.getExternalId(),
+                raw.toString(),
+                contextOpt.get(),
+                requestId);
+        VmOperationResult result = provider.detachIso(req).join();
+        if (result.resultType() == VmOperationResult.ResultType.SUCCESS) {
+            commandQueue.markCompleted(entry.id());
+        } else {
+            commandQueue.markFailed(entry.id(), result.message() != null ? result.message() : "detachIso failed");
+        }
+    }
+
+    private void processVmPublishTemplateCommand(CommandMessage entry) {
+        UUID vmId = entry.entityId();
+        VmEntity vm = vmRepository.findById(vmId)
+                .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
+        if (vm.getExternalId() == null || vm.getExternalId().isBlank()) {
+            commandQueue.markFailed(entry.id(), "VM has no external ID");
+            return;
+        }
+        Object raw = entry.payload() != null ? entry.payload().get("contentItemId") : null;
+        if (raw == null) {
+            commandQueue.markFailed(entry.id(), "Missing contentItemId");
+            return;
+        }
+        UUID contentItemId = UUID.fromString(raw.toString());
+        ContentItemEntity item = contentItemRepository.findById(contentItemId).orElse(null);
+        if (item == null) {
+            commandQueue.markFailed(entry.id(), "Content item not found");
+            return;
+        }
+        if (item.getProviderRelativePath() == null || item.getProviderRelativePath().isBlank()) {
+            commandQueue.markFailed(entry.id(), "Content item has no provider path");
+            return;
+        }
+        Optional<ProviderContext> contextOpt = providerRegistry.createContextForTenantDatacenter(vm.getTenantDatacenterGrantId());
+        if (contextOpt.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "Failed to create provider context");
+            return;
+        }
+        VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
+                .orElse(null);
+        if (provider == null) {
+            commandQueue.markFailed(entry.id(), "No provider available");
+            return;
+        }
+        String requestId = entry.metadata() != null && entry.metadata().get("requestId") != null
+                ? entry.metadata().get("requestId")
+                : entry.id().toString();
+        VmTemplateExportRequest exportReq = new VmTemplateExportRequest(
+                vm.getExternalId(),
+                item.getProviderRelativePath(),
+                item.getName(),
+                contextOpt.get(),
+                requestId);
+        VmTemplateExportResult result = provider.cloneVmAsTemplate(exportReq).join();
+        if (result.resultType() == VmTemplateExportResult.ResultType.SUCCESS) {
+            item.setFetchStatus("available");
+            if (result.sizeBytes() != null) {
+                item.setSizeBytes(result.sizeBytes());
+            }
+            contentItemRepository.save(item);
+            commandQueue.markCompleted(entry.id());
+        } else {
+            item.setFetchStatus("failed");
+            contentItemRepository.save(item);
+            String msg = result.error() != null && result.error().message() != null
+                    ? result.error().message()
+                    : "Template export failed";
+            commandQueue.markFailed(entry.id(), msg);
+        }
     }
 }

@@ -6,6 +6,8 @@ import com.onetattva.infron.api.model.ContentItem;
 import com.onetattva.infron.api.model.ContentItemCreate;
 import com.onetattva.infron.api.model.ContentItemList;
 import com.onetattva.infron.api.model.ContentItemUpdate;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.content.ContentItemService;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
 import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
@@ -33,12 +35,14 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> createPlatformContentItem(UUID libraryId, ContentItemCreate contentItemCreate) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
         return ResponseEntity.status(201).body(contentItemService.create(libraryId, contentItemCreate));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> createTenantContentItem(
             UUID tenantId, UUID libraryId, ContentItemCreate contentItemCreate) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
@@ -46,6 +50,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deletePlatformContentItem(UUID libraryId, UUID itemId) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
         contentItemService.deleteInLibrary(libraryId, itemId);
@@ -53,6 +58,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deleteTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         contentItemService.deleteInLibrary(libraryId, itemId);
@@ -67,6 +73,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentFetchResponse> fetchTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
@@ -81,6 +88,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentItem> getTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
@@ -88,6 +96,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentItemList> listPlatformContentItemsByLibrary(
             UUID libraryId, Integer page, Integer perPage) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
@@ -102,6 +111,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> replacePlatformContentItem(
             UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
@@ -110,6 +120,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> replaceTenantContentItem(
             UUID tenantId, UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);
@@ -118,6 +129,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> updatePlatformContentItem(
             UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
@@ -126,6 +138,7 @@ public class ContentItemsController implements ContentItemsApi {
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> updateTenantContentItem(
             UUID tenantId, UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
         contentLibraryService.requireTenantLibrary(tenantId, libraryId);

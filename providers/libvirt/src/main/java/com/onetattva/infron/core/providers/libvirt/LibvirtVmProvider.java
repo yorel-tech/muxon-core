@@ -9,6 +9,11 @@ import org.libvirt.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -93,7 +98,12 @@ public class LibvirtVmProvider implements VmProvider {
 
                 connection = multiNodeManager.getConnection(selectedNode.getId());
 
-                String diskPath = createDiskVolume(connection, request.vmId(), request.spec());
+                String diskPath;
+                if (request.sourceImagePath() != null && !request.sourceImagePath().isBlank()) {
+                    diskPath = createDiskFromTemplate(connection, request.vmId(), request.sourceImagePath(), request.spec());
+                } else {
+                    diskPath = createDiskVolume(connection, request.vmId(), request.spec());
+                }
                 if (diskPath == null) {
                     return VmCreationResult.failure(
                             ProviderError.builder()
@@ -105,7 +115,30 @@ public class LibvirtVmProvider implements VmProvider {
                     );
                 }
 
-                String domainXml = LibvirtXmlBuilder.buildDomainXml(request.vmId(), request.spec(), diskPath);
+                List<IsoAttachment> resolvedIsos = new ArrayList<>();
+                StoragePool pathPool = null;
+                try {
+                    pathPool = connection.storagePoolLookupByName("default");
+                    if (pathPool.isActive() == 0) {
+                        pathPool.create(0);
+                    }
+                    String poolPath = poolTargetPath(pathPool);
+                    for (IsoAttachment iso : request.isoAttachments()) {
+                        String abs = resolveStoragePath(poolPath, iso.isoPath());
+                        resolvedIsos.add(new IsoAttachment(abs, iso.deviceName(), iso.bootable(), iso.metadata()));
+                    }
+                } finally {
+                    if (pathPool != null) {
+                        try {
+                            pathPool.free();
+                        } catch (LibvirtException e) {
+                            logger.warn("Error freeing pool: {}", e.getMessage());
+                        }
+                    }
+                }
+
+                String domainXml = LibvirtXmlBuilder.buildDomainXml(
+                        request.vmId(), request.spec(), diskPath, resolvedIsos);
 
                 logger.debug("Libvirt domain XML for VM {}: {}", request.vmId(), domainXml);
 
@@ -187,6 +220,146 @@ public class LibvirtVmProvider implements VmProvider {
                 }
             }
         }
+    }
+
+    private static final int VIR_DOMAIN_AFFECT_LIVE = 1;
+    private static final int VIR_DOMAIN_AFFECT_CONFIG = 2;
+
+    private String createDiskFromTemplate(Connect connection, UUID vmId, String templatePath, String spec) {
+        StoragePool pool = null;
+        try {
+            pool = connection.storagePoolLookupByName("default");
+            if (pool.isActive() == 0) {
+                pool.create(0);
+            }
+            String poolPath = poolTargetPath(pool);
+            String backing = resolveStoragePath(poolPath, templatePath);
+            String volName = "vm-" + vmId + ".qcow2";
+            long capacityGib = LibvirtXmlBuilder.DEFAULT_DISK_CAPACITY_GIB;
+            String volXml = LibvirtXmlBuilder.buildVolumeXml(volName, capacityGib);
+            StorageVol vol = pool.storageVolCreateXML(volXml, 0);
+            String destPath = vol.getPath();
+            vol.free();
+            vol = null;
+            if (!runQemuImgCreateBacking(backing, destPath)) {
+                try {
+                    pool.storageVolLookupByName(volName).delete(0);
+                } catch (LibvirtException ignored) {
+                }
+                return null;
+            }
+            return destPath;
+        } catch (LibvirtException e) {
+            logger.error("Failed to create disk from template for VM {}: {}", vmId, e.getMessage(), e);
+            return null;
+        } finally {
+            if (pool != null) {
+                try {
+                    pool.free();
+                } catch (LibvirtException e) {
+                    logger.warn("Error freeing pool: {}", e.getMessage());
+                }
+            }
+        }
+    }
+
+    private String poolTargetPath(StoragePool pool) throws LibvirtException {
+        String xml = pool.getXMLDesc(0);
+        int start = xml.indexOf("<path>");
+        if (start < 0) {
+            return "/var/lib/libvirt/images";
+        }
+        int end = xml.indexOf("</path>", start);
+        if (end < 0) {
+            return "/var/lib/libvirt/images";
+        }
+        return xml.substring(start + 6, end).trim();
+    }
+
+    private String resolveStoragePath(String poolPath, String relativeOrAbsolute) {
+        if (relativeOrAbsolute == null || relativeOrAbsolute.isBlank()) {
+            return "";
+        }
+        String p = relativeOrAbsolute.trim();
+        if (p.startsWith("/")) {
+            return p;
+        }
+        String base = poolPath.endsWith("/") ? poolPath.substring(0, poolPath.length() - 1) : poolPath;
+        return base + "/" + p;
+    }
+
+    private boolean runQemuImgCreateBacking(String backingFile, String newQcow2Path) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                    "qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", backingFile, newQcow2Path);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            String output;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                output = r.lines().reduce("", (a, b) -> a.isEmpty() ? b : a + "\n" + b);
+            }
+            int code = p.waitFor();
+            if (code != 0) {
+                logger.error("qemu-img create failed ({}): {}", code, output);
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            logger.error("qemu-img create error: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    private boolean runQemuImgConvert(String src, String dest) {
+        try {
+            Path destPath = Path.of(dest);
+            if (destPath.getParent() != null) {
+                Files.createDirectories(destPath.getParent());
+            }
+            ProcessBuilder pb = new ProcessBuilder("qemu-img", "convert", "-O", "qcow2", src, dest);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            p.getInputStream().readAllBytes();
+            int code = p.waitFor();
+            return code == 0;
+        } catch (Exception e) {
+            logger.error("qemu-img convert error: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    private static String extractFirstDiskSourceFile(String domainXml) {
+        int diskPos = 0;
+        while (diskPos < domainXml.length()) {
+            int d = domainXml.indexOf("device='disk'", diskPos);
+            if (d < 0) {
+                d = domainXml.indexOf("device=\"disk\"", diskPos);
+            }
+            if (d < 0) {
+                return null;
+            }
+            int endDisk = domainXml.indexOf("</disk>", d);
+            if (endDisk < 0) {
+                return null;
+            }
+            String chunk = domainXml.substring(d, endDisk);
+            int f = chunk.indexOf("file='");
+            if (f >= 0) {
+                int q = chunk.indexOf('\'', f + 6);
+                if (q > f) {
+                    return chunk.substring(f + 6, q);
+                }
+            }
+            f = chunk.indexOf("file=\"");
+            if (f >= 0) {
+                int q = chunk.indexOf('"', f + 6);
+                if (q > f) {
+                    return chunk.substring(f + 6, q);
+                }
+            }
+            diskPos = endDisk + 1;
+        }
+        return null;
     }
 
     @Override
@@ -616,6 +789,146 @@ public class LibvirtVmProvider implements VmProvider {
                         .resourceLimits(ResourceLimits.builder().build())
                         .features(Map.of())
                         .build();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> attachIso(VmIsoAttachProviderRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+                Connect connection = multiNodeManager.getConnection(nodeId);
+                Domain domain = connection.domainLookupByUUIDString(request.vmId().toString());
+                StoragePool pool = connection.storagePoolLookupByName("default");
+                if (pool.isActive() == 0) {
+                    pool.create(0);
+                }
+                try {
+                    String poolPath = poolTargetPath(pool);
+                    String isoAbs = resolveStoragePath(poolPath, request.isoPath());
+                    String dev = request.deviceName();
+                    domain.attachDeviceFlags(LibvirtXmlBuilder.cdromAttachXml(isoAbs, dev),
+                            VIR_DOMAIN_AFFECT_LIVE | VIR_DOMAIN_AFFECT_CONFIG);
+                    return VmOperationResult.success(getVmInfoFromDomain(domain));
+                } finally {
+                    pool.free();
+                }
+            } catch (LibvirtException e) {
+                logger.error("attachIso failed: {}", e.getMessage(), e);
+                return VmOperationResult.failure(
+                        ProviderError.builder()
+                                .code(LibvirtErrorHandler.mapLibvirtError(e))
+                                .message(e.getMessage())
+                                .providerErrorCode("LIBVIRT_ATTACH_ISO")
+                                .retryable(LibvirtErrorHandler.isRetryable(e))
+                                .build());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> detachIso(VmIsoDetachProviderRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                UUID nodeId = findNodeForVm(request.vmId());
+                if (nodeId == null) {
+                    return VmOperationResult.failure("VM not found on any node");
+                }
+                Connect connection = multiNodeManager.getConnection(nodeId);
+                Domain domain = connection.domainLookupByUUIDString(request.vmId().toString());
+                String xml = "<disk type='file' device='cdrom'>"
+                        + "<target dev='" + request.deviceName() + "' bus='sata'/>"
+                        + "</disk>";
+                domain.detachDeviceFlags(xml, VIR_DOMAIN_AFFECT_LIVE | VIR_DOMAIN_AFFECT_CONFIG);
+                return VmOperationResult.success(getVmInfoFromDomain(domain));
+            } catch (LibvirtException e) {
+                logger.error("detachIso failed: {}", e.getMessage(), e);
+                return VmOperationResult.failure(
+                        ProviderError.builder()
+                                .code(LibvirtErrorHandler.mapLibvirtError(e))
+                                .message(e.getMessage())
+                                .providerErrorCode("LIBVIRT_DETACH_ISO")
+                                .retryable(LibvirtErrorHandler.isRetryable(e))
+                                .build());
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<VmTemplateExportResult> cloneVmAsTemplate(VmTemplateExportRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            StoragePool pool = null;
+            try {
+                Domain domain = null;
+                for (NodeEntity node : multiNodeManager.getAllNodes()) {
+                    try {
+                        Connect connection = multiNodeManager.getConnection(node.getId());
+                        try {
+                            domain = connection.domainLookupByName(request.externalVmId());
+                            if (domain != null) {
+                                break;
+                            }
+                        } catch (LibvirtException e) {
+                            logger.debug("Domain {} not on node {}: {}", request.externalVmId(), node.getName(), e.getMessage());
+                        }
+                    } catch (LibvirtException e) {
+                        logger.warn("Connection failed for node {}: {}", node.getName(), e.getMessage());
+                    }
+                }
+                if (domain == null) {
+                    return VmTemplateExportResult.failure(ProviderError.builder()
+                            .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                            .message("Domain not found: " + request.externalVmId())
+                            .providerErrorCode("DOMAIN_NOT_FOUND")
+                            .retryable(false)
+                            .build());
+                }
+                Connect conn = domain.getConnect();
+                pool = conn.storagePoolLookupByName("default");
+                if (pool.isActive() == 0) {
+                    pool.create(0);
+                }
+                String poolPath = poolTargetPath(pool);
+                String src = extractFirstDiskSourceFile(domain.getXMLDesc(0));
+                if (src == null || src.isBlank()) {
+                    return VmTemplateExportResult.failure(ProviderError.builder()
+                            .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                            .message("Could not resolve VM disk path from domain XML")
+                            .providerErrorCode("NO_DISK_SOURCE")
+                            .retryable(false)
+                            .build());
+                }
+                String dest = resolveStoragePath(poolPath, request.destinationRelativePath());
+                if (!runQemuImgConvert(src, dest)) {
+                    return VmTemplateExportResult.failure(ProviderError.builder()
+                            .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                            .message("qemu-img convert failed")
+                            .providerErrorCode("QEMU_IMG_CONVERT")
+                            .retryable(true)
+                            .build());
+                }
+                long size = Files.size(Path.of(dest));
+                return VmTemplateExportResult.success(dest, size, Map.of("format", "qcow2"));
+            } catch (Exception e) {
+                logger.error("cloneVmAsTemplate failed: {}", e.getMessage(), e);
+                return VmTemplateExportResult.failure(ProviderError.builder()
+                        .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                        .message(e.getMessage())
+                        .providerErrorCode("EXPORT_FAILED")
+                        .retryable(false)
+                        .build());
+            } finally {
+                if (pool != null) {
+                    try {
+                        pool.free();
+                    } catch (LibvirtException e) {
+                        logger.warn("Error freeing pool: {}", e.getMessage());
+                    }
+                }
             }
         });
     }

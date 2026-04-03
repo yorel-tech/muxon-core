@@ -1,5 +1,9 @@
 package com.onetattva.infron.core.providers.libvirt;
 
+import com.onetattva.infron.core.providers.IsoAttachment;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,7 +25,7 @@ public class LibvirtXmlBuilder {
      * @return Libvirt domain XML string
      */
     public static String buildDomainXml(UUID vmId, String spec) {
-        return buildDomainXml(vmId, spec, "/var/lib/libvirt/images/vm-" + vmId + ".qcow2");
+        return buildDomainXml(vmId, spec, "/var/lib/libvirt/images/vm-" + vmId + ".qcow2", List.of());
     }
 
     /**
@@ -34,9 +38,17 @@ public class LibvirtXmlBuilder {
      * @return Libvirt domain XML string
      */
     public static String buildDomainXml(UUID vmId, String spec, String diskPath) {
+        return buildDomainXml(vmId, spec, diskPath, List.of());
+    }
 
-        // For now, create a basic domain XML
-        // In a real implementation, we would parse the spec JSON and extract the details
+    /**
+     * Builds domain XML with optional ISO CD-ROM devices. {@link IsoAttachment#deviceName()} selects
+     * the guest target dev (e.g. sdc); when null, assigns sdc, sdd, ...
+     */
+    public static String buildDomainXml(UUID vmId, String spec, String diskPath, List<IsoAttachment> isoAttachments) {
+        List<IsoAttachment> isos = isoAttachments == null ? List.of() : isoAttachments;
+        boolean anyBootableIso = isos.stream().anyMatch(IsoAttachment::bootable);
+
         StringBuilder xml = new StringBuilder();
         xml.append("<domain type='kvm'>\n");
         xml.append("  <name>vm-").append(vmId).append("</name>\n");
@@ -45,6 +57,12 @@ public class LibvirtXmlBuilder {
         xml.append("  <vcpu>2</vcpu>\n");
         xml.append("  <os>\n");
         xml.append("    <type arch='x86_64' machine='pc'>hvm</type>\n");
+        if (anyBootableIso) {
+            xml.append("    <boot dev='cdrom'/>\n");
+            xml.append("    <boot dev='hd'/>\n");
+        } else {
+            xml.append("    <boot dev='hd'/>\n");
+        }
         xml.append("  </os>\n");
         xml.append("  <features>\n");
         xml.append("    <acpi/>\n");
@@ -59,20 +77,38 @@ public class LibvirtXmlBuilder {
         xml.append("  <on_crash>restart</on_crash>\n");
         xml.append("  <devices>\n");
 
-        // Add disk using the provided path (must exist; create via storage pool before calling)
         xml.append("    <disk type='file' device='disk'>\n");
         xml.append("      <driver name='qemu' type='qcow2' cache='writeback'/>\n");
         xml.append("      <source file='").append(escapeXmlAttr(diskPath)).append("'/>\n");
         xml.append("      <target dev='vda' bus='virtio'/>\n");
         xml.append("    </disk>\n");
 
-        // Add a basic network interface
+        List<String> usedTargets = new ArrayList<>();
+        usedTargets.add("vda");
+        int autoIdx = 0;
+        String[] fallbackDevs = {"sdc", "sdd", "sde", "sdf"};
+        for (IsoAttachment iso : isos) {
+            String dev = iso.deviceName();
+            if (dev == null || dev.isBlank()) {
+                dev = fallbackDevs[Math.min(autoIdx++, fallbackDevs.length - 1)];
+            }
+            while (usedTargets.contains(dev)) {
+                dev = fallbackDevs[Math.min(autoIdx++, fallbackDevs.length - 1)];
+            }
+            usedTargets.add(dev);
+            xml.append("    <disk type='file' device='cdrom'>\n");
+            xml.append("      <driver name='qemu' type='raw'/>\n");
+            xml.append("      <source file='").append(escapeXmlAttr(iso.isoPath())).append("'/>\n");
+            xml.append("      <target dev='").append(escapeXmlText(dev)).append("' bus='sata'/>\n");
+            xml.append("      <readonly/>\n");
+            xml.append("    </disk>\n");
+        }
+
         xml.append("    <interface type='network'>\n");
         xml.append("      <source network='default'/>\n");
         xml.append("      <model type='virtio'/>\n");
         xml.append("    </interface>\n");
 
-        // Add console
         xml.append("    <console type='pty'>\n");
         xml.append("      <target type='serial' port='0'/>\n");
         xml.append("    </console>\n");
@@ -81,6 +117,16 @@ public class LibvirtXmlBuilder {
         xml.append("</domain>\n");
 
         return xml.toString();
+    }
+
+    public static String cdromAttachXml(String isoPath, String targetDev) {
+        String dev = targetDev != null && !targetDev.isBlank() ? targetDev : "sdc";
+        return "<disk type='file' device='cdrom'>"
+                + "<driver name='qemu' type='raw'/>"
+                + "<source file='" + escapeXmlAttr(isoPath) + "'/>"
+                + "<target dev='" + escapeXmlText(dev) + "' bus='sata'/>"
+                + "<readonly/>"
+                + "</disk>";
     }
 
     /**

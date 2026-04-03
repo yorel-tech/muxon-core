@@ -185,6 +185,12 @@ components:
               format: uuid
               nullable: true
               description: Content library item used as VM image/template source.
+            attached_iso_item_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Content library ISO items attached to this VM.
             tags:
               type: array
               items:
@@ -223,6 +229,12 @@ components:
           type: string
           format: uuid
           description: Optional content item reference to materialize before deployment.
+        iso_content_item_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Optional ISO content items to attach at creation.
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
         tags:
@@ -322,6 +334,56 @@ components:
           type: string
           format: date-time
           description: Token expiration time
+
+    VmIsoAttachRequest:
+      type: object
+      required:
+        - content_item_id
+      properties:
+        content_item_id:
+          type: string
+          format: uuid
+          description: Content library ISO item to attach.
+
+    VmIsoDetachRequest:
+      type: object
+      required:
+        - device_name
+      properties:
+        device_name:
+          type: string
+          description: Guest device to detach (e.g. sdc).
+
+    VmPublishTemplateRequest:
+      type: object
+      required:
+        - library_id
+        - template_name
+      properties:
+        library_id:
+          type: string
+          format: uuid
+        template_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1000
+        version_label:
+          type: string
+          maxLength: 128
+        metadata:
+          $ref: './commons.yaml#/components/schemas/Metadata'
+
+    VmPublishTemplateResponse:
+      type: object
+      properties:
+        content_item_id:
+          type: string
+          format: uuid
+        message:
+          type: string
 
     Error:
       type: object

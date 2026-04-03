@@ -366,6 +366,33 @@ public class MockVmProvider implements VmProvider {
         return CompletableFuture.completedFuture(result);
     }
 
+    @Override
+    public CompletableFuture<VmOperationResult> attachIso(VmIsoAttachProviderRequest request) {
+        MockVm vm = vms.get(request.vmId().toString());
+        if (vm == null) {
+            return CompletableFuture.completedFuture(VmOperationResult.failure("VM not found"));
+        }
+        return CompletableFuture.completedFuture(VmOperationResult.success(vm.toVmInfo()));
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> detachIso(VmIsoDetachProviderRequest request) {
+        MockVm vm = vms.get(request.vmId().toString());
+        if (vm == null) {
+            return CompletableFuture.completedFuture(VmOperationResult.failure("VM not found"));
+        }
+        return CompletableFuture.completedFuture(VmOperationResult.success(vm.toVmInfo()));
+    }
+
+    @Override
+    public CompletableFuture<VmTemplateExportResult> cloneVmAsTemplate(VmTemplateExportRequest request) {
+        return CompletableFuture.completedFuture(
+                VmTemplateExportResult.success(
+                        "/mock/" + request.destinationRelativePath(),
+                        1024L,
+                        Map.of("mock", "true")));
+    }
+
     /**
      * Clear all mock data (for testing)
      */

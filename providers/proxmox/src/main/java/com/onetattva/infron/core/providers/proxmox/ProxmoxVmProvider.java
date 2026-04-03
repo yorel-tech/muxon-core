@@ -77,7 +77,7 @@ public class ProxmoxVmProvider implements VmProvider {
                 int nextVmId = client.getCluster().getNextId().execute();
                 String vmIdStr = String.valueOf(nextVmId);
                 
-                PveQemuCreateOptions createOptions = buildQemuCreateOptions(request.spec(), context);
+                PveQemuCreateOptions createOptions = buildQemuCreateOptions(request, context);
                 
                 // Create VM on the target node
                 String nodeName = resolveTargetNodeName(client, context);
@@ -511,30 +511,40 @@ public class ProxmoxVmProvider implements VmProvider {
         return endpoint.split(":")[0];
     }
     
-    private PveQemuCreateOptions buildQemuCreateOptions(String specJson, ProxmoxProviderContext context) {
-        // TODO: Parse JSON spec and convert to Proxmox VM config
+    private PveQemuCreateOptions buildQemuCreateOptions(VmCreationRequest request, ProxmoxProviderContext context) {
         Object storage = context.getMetadata().get("storagePool");
         String storagePool = storage != null ? storage.toString() : "local-lvm";
-        String diskConfig = buildDiskConfig(storagePool);
-        return PveQemuCreateOptions.builder()
-                .name("vm-" + UUID.randomUUID().toString().substring(0, 8))
+        String diskConfig = buildDiskConfig(storagePool, request.sourceImagePath());
+        var builder = PveQemuCreateOptions.builder()
+                .name("vm-" + request.vmId().toString().substring(0, 8))
                 .memory(2048)
                 .cores(2)
                 .ostype("l26")
                 .onboot(true)
                 .boot("order=scsi0;net0")
                 .scsi(0, diskConfig)
-                .net(0, "virtio,bridge=vmbr0")
-                .build();
+                .net(0, "virtio,bridge=vmbr0");
+        List<IsoAttachment> isos = request.isoAttachments();
+        if (isos != null && !isos.isEmpty()) {
+            IsoAttachment iso = isos.get(0);
+            String p = iso.isoPath() != null ? iso.isoPath() : "";
+            builder = builder.ide(2, p.isEmpty() ? "none,media=cdrom" : "file=" + p + ",media=cdrom");
+        }
+        return builder.build();
     }
 
-    private String buildDiskConfig(String storagePool) {
+    private String buildDiskConfig(String storagePool, String importFromPath) {
         String normalizedPool = storagePool != null ? storagePool.toLowerCase(Locale.ROOT) : "";
-        // Proxmox LVM/LVM-thin backends only support raw volumes (not qcow2).
+        String base;
         if (normalizedPool.contains("lvm")) {
-            return storagePool + ":8,format=raw";
+            base = storagePool + ":8,format=raw";
+        } else {
+            base = storagePool + ":8,format=qcow2";
         }
-        return storagePool + ":8,format=qcow2";
+        if (importFromPath != null && !importFromPath.isBlank()) {
+            return base + ",import-from=" + importFromPath;
+        }
+        return base;
     }
 
     private String resolveTargetNodeName(Proxmox client, ProxmoxProviderContext context) {
@@ -673,5 +683,31 @@ public class ProxmoxVmProvider implements VmProvider {
                 .resourceLimits(ResourceLimits.builder().build())
                 .features(Map.of())
                 .build();
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> attachIso(VmIsoAttachProviderRequest request) {
+        logger.warn("attachIso not implemented for Proxmox provider");
+        return CompletableFuture.completedFuture(
+                VmOperationResult.failure("ISO attach is not implemented for Proxmox"));
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> detachIso(VmIsoDetachProviderRequest request) {
+        logger.warn("detachIso not implemented for Proxmox provider");
+        return CompletableFuture.completedFuture(
+                VmOperationResult.failure("ISO detach is not implemented for Proxmox"));
+    }
+
+    @Override
+    public CompletableFuture<VmTemplateExportResult> cloneVmAsTemplate(VmTemplateExportRequest request) {
+        logger.warn("cloneVmAsTemplate not implemented for Proxmox provider");
+        return CompletableFuture.completedFuture(VmTemplateExportResult.failure(
+                ProviderError.builder()
+                        .code(ProviderError.ErrorCode.PROVIDER_ERROR)
+                        .message("Template export is not implemented for Proxmox")
+                        .providerErrorCode("PROXMOX_EXPORT_NOT_IMPLEMENTED")
+                        .retryable(false)
+                        .build()));
     }
 }

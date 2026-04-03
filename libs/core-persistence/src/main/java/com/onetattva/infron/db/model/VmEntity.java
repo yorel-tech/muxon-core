@@ -69,6 +69,10 @@ public class VmEntity {
     @Column(name = "content_item_id", nullable = true)
     private UUID contentItemId;
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "attached_iso_item_ids", columnDefinition = "uuid[]")
+    private List<UUID> attachedIsoItemIds;
+
     // Network configuration
     @Column(name = "ip_addresses", nullable = true, columnDefinition = "TEXT[]")
     private List<String> ipAddresses;
@@ -228,6 +232,14 @@ public class VmEntity {
 
     public void setContentItemId(UUID contentItemId) {
         this.contentItemId = contentItemId;
+    }
+
+    public List<UUID> getAttachedIsoItemIds() {
+        return attachedIsoItemIds;
+    }
+
+    public void setAttachedIsoItemIds(List<UUID> attachedIsoItemIds) {
+        this.attachedIsoItemIds = attachedIsoItemIds;
     }
 
     public List<String> getIpAddresses() {

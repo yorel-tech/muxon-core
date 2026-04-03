@@ -6,6 +6,8 @@ import com.onetattva.infron.api.model.ContentLibraryCreate;
 import com.onetattva.infron.api.model.ContentLibraryList;
 import com.onetattva.infron.api.model.ContentLibraryUpdate;
 import com.onetattva.infron.api.model.ContentSyncResponse;
+import com.onetattva.infron.core.auth.Permission;
+import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
 import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +37,7 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deletePlatformContentLibrary(UUID libraryId) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
         contentLibraryService.delete(libraryId);
@@ -42,22 +45,26 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentSyncResponse> ensurePlatformContentLibrary(UUID libraryId) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
         return ResponseEntity.accepted().body(contentLibrarySyncService.enqueueSync(libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentLibrary> getPlatformContentLibrary(UUID libraryId) {
         return ResponseEntity.ok(contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentLibraryList> listPlatformContentLibraries(Integer page, Integer perPage) {
         return ResponseEntity.ok(contentLibraryService.listByScope(PLATFORM_SCOPE, page, perPage));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentLibrary> replacePlatformContentLibrary(
             UUID libraryId,
             ContentLibraryUpdate contentLibraryUpdate) {
@@ -66,12 +73,14 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentSyncResponse> syncPlatformContentLibrary(UUID libraryId) {
         contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
         return ResponseEntity.accepted().body(contentLibrarySyncService.enqueueSync(libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentLibrary> updatePlatformContentLibrary(
             UUID libraryId,
             ContentLibraryUpdate contentLibraryUpdate) {

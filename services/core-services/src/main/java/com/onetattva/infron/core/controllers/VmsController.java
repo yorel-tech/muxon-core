@@ -94,4 +94,23 @@ public class VmsController implements VmManagementApi {
         VmConsoleResponse response = vmsService.getVmConsole(tenantId, vmId);
         return ResponseEntity.ok(response);
     }
+
+    @Override
+    @RequiresPermission(Permission.VM_MANAGE)
+    public ResponseEntity<VmOperationResponse> attachVmIso(UUID tenantId, UUID vmId, VmIsoAttachRequest vmIsoAttachRequest) {
+        return ResponseEntity.accepted().body(vmsService.attachVmIso(tenantId, vmId, vmIsoAttachRequest));
+    }
+
+    @Override
+    @RequiresPermission(Permission.VM_MANAGE)
+    public ResponseEntity<VmOperationResponse> detachVmIso(UUID tenantId, UUID vmId, VmIsoDetachRequest vmIsoDetachRequest) {
+        return ResponseEntity.accepted().body(vmsService.detachVmIso(tenantId, vmId, vmIsoDetachRequest));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_PUBLISH_TEMPLATE)
+    public ResponseEntity<VmPublishTemplateResponse> publishVmAsTemplate(
+            UUID tenantId, UUID vmId, VmPublishTemplateRequest vmPublishTemplateRequest) {
+        return ResponseEntity.accepted().body(vmsService.publishVmAsTemplate(tenantId, vmId, vmPublishTemplateRequest));
+    }
 }
