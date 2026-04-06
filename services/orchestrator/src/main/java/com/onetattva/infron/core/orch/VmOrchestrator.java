@@ -8,18 +8,23 @@ import com.onetattva.infron.core.providers.VmIsoAttachProviderRequest;
 import com.onetattva.infron.core.providers.VmIsoDetachProviderRequest;
 import com.onetattva.infron.core.providers.VmOperationResult;
 import com.onetattva.infron.core.providers.VmProvider;
+import com.onetattva.infron.core.providers.VmConsoleConnectionInfo;
+import com.onetattva.infron.core.providers.VmConsoleRequest;
 import com.onetattva.infron.core.providers.VmTemplateExportRequest;
 import com.onetattva.infron.core.providers.VmTemplateExportResult;
 import com.onetattva.infron.core.orch.wiring.TenantAwareVmProviderRegistry;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.EventPublisher;
+import com.onetattva.infron.core.spi.queue.VmConsoleResolvePayloadKeys;
+import com.onetattva.infron.core.spi.queue.VmQueueCommands;
 import com.onetattva.infron.api.model.EntityType;
 import com.onetattva.infron.api.enums.VmPowerState;
 import com.onetattva.infron.api.enums.VmStatus;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.repository.ContentItemRepository;
+import com.onetattva.infron.db.repository.QueueEntryRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +66,9 @@ public class VmOrchestrator {
 
     @Autowired
     private ContentItemRepository contentItemRepository;
+
+    @Autowired
+    private QueueEntryRepository queueEntryRepository;
 
     /**
      * Scheduled task to poll for pending VM command queue entries
@@ -123,6 +132,7 @@ public class VmOrchestrator {
                 case "VM_ATTACH_ISO_COMMAND" -> processVmAttachIsoCommand(entry);
                 case "VM_DETACH_ISO_COMMAND" -> processVmDetachIsoCommand(entry);
                 case "VM_PUBLISH_TEMPLATE_COMMAND" -> processVmPublishTemplateCommand(entry);
+                case VmQueueCommands.CONSOLE_RESOLVE -> processVmConsoleResolveCommand(entry);
                 default -> {
                     logger.warn("Unknown queue type: {}", queueType);
                     commandQueue.markFailed(entry.id(), "Unknown queue type");
@@ -545,19 +555,95 @@ public class VmOrchestrator {
                 requestId);
         VmTemplateExportResult result = provider.cloneVmAsTemplate(exportReq).join();
         if (result.resultType() == VmTemplateExportResult.ResultType.SUCCESS) {
-            item.setFetchStatus("available");
+            item.setContentStatus("available");
             if (result.sizeBytes() != null) {
                 item.setSizeBytes(result.sizeBytes());
             }
             contentItemRepository.save(item);
             commandQueue.markCompleted(entry.id());
         } else {
-            item.setFetchStatus("failed");
+            item.setContentStatus("failed");
             contentItemRepository.save(item);
             String msg = result.error() != null && result.error().message() != null
                     ? result.error().message()
                     : "Template export failed";
             commandQueue.markFailed(entry.id(), msg);
         }
+    }
+
+    private void processVmConsoleResolveCommand(CommandMessage entry) {
+        Map<String, Object> payload = entry.payload();
+        if (payload == null || payload.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "Missing console resolve payload");
+            return;
+        }
+        Object grantObj = payload.get(VmConsoleResolvePayloadKeys.TENANT_DATACENTER_GRANT_ID);
+        if (grantObj == null) {
+            commandQueue.markFailed(entry.id(), "Missing tenantDatacenterGrantId");
+            return;
+        }
+        UUID grantId;
+        try {
+            grantId = UUID.fromString(grantObj.toString());
+        } catch (IllegalArgumentException e) {
+            commandQueue.markFailed(entry.id(), "Invalid tenantDatacenterGrantId");
+            return;
+        }
+
+        UUID vmId = entry.entityId();
+        String externalId = Optional.ofNullable(payload.get(VmConsoleResolvePayloadKeys.EXTERNAL_ID))
+                .map(Object::toString)
+                .orElse("");
+        String nodeIdStr = Optional.ofNullable(payload.get(VmConsoleResolvePayloadKeys.NODE_ID))
+                .map(Object::toString)
+                .orElse("");
+        UUID nodeId = null;
+        if (!nodeIdStr.isBlank()) {
+            try {
+                nodeId = UUID.fromString(nodeIdStr);
+            } catch (IllegalArgumentException e) {
+                commandQueue.markFailed(entry.id(), "Invalid nodeId");
+                return;
+            }
+        }
+
+        Optional<VmProvider> providerOpt = providerRegistry.resolveProviderForTenantDatacenter(grantId);
+        if (providerOpt.isEmpty()) {
+            commandQueue.markFailed(entry.id(), "No infrastructure provider is configured for this VM");
+            return;
+        }
+
+        VmConsoleRequest consoleRequest = new VmConsoleRequest(vmId, grantId, externalId, nodeId);
+        VmConsoleConnectionInfo info;
+        try {
+            info = providerOpt.get().getConsoleConnection(consoleRequest).join();
+        } catch (Exception e) {
+            Throwable c = e.getCause() != null ? e.getCause() : e;
+            logger.warn("Console resolution failed for vm {}: {}", vmId, c.getMessage());
+            commandQueue.markFailed(entry.id(), c.getMessage() != null ? c.getMessage() : "Provider error");
+            return;
+        }
+
+        Map<String, Object> result = new HashMap<>(payload);
+        result.put(VmConsoleResolvePayloadKeys.RESOLVED, true);
+        result.put(VmConsoleResolvePayloadKeys.CONSOLE_TYPE, info.consoleType().name());
+        result.put(VmConsoleResolvePayloadKeys.HOST, info.host());
+        result.put(VmConsoleResolvePayloadKeys.PORT, info.port());
+        result.put(VmConsoleResolvePayloadKeys.TLS, info.tls());
+        if (info.password() != null) {
+            result.put(VmConsoleResolvePayloadKeys.PASSWORD, info.password());
+        }
+        persistQueuePayloadAndMarkCompleted(entry.id(), result);
+    }
+
+    private void persistQueuePayloadAndMarkCompleted(UUID commandId, Map<String, Object> newPayload) {
+        queueEntryRepository.findById(commandId).ifPresentOrElse(entry -> {
+            entry.setPayload(newPayload);
+            entry.setUpdatedAt(Instant.now());
+            queueEntryRepository.save(entry);
+        }, () -> {
+            throw new IllegalStateException("Queue entry not found: " + commandId);
+        });
+        commandQueue.markCompleted(commandId);
     }
 }

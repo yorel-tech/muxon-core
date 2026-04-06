@@ -55,11 +55,11 @@ public class ContentItemEntity {
     @Column(name = "source_item_id")
     private UUID sourceItemId;
 
-    @Column(name = "fetch_status", nullable = false, length = 32)
-    private String fetchStatus;
+    @Column(name = "content_status", nullable = false, length = 32)
+    private String contentStatus;
 
-    @Column(name = "last_fetched_at")
-    private Instant lastFetchedAt;
+    @Column(name = "last_replicated_at")
+    private Instant lastReplicatedAt;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
@@ -180,20 +180,20 @@ public class ContentItemEntity {
         this.sourceItemId = sourceItemId;
     }
 
-    public String getFetchStatus() {
-        return fetchStatus;
+    public String getContentStatus() {
+        return contentStatus;
     }
 
-    public void setFetchStatus(String fetchStatus) {
-        this.fetchStatus = fetchStatus;
+    public void setContentStatus(String contentStatus) {
+        this.contentStatus = contentStatus;
     }
 
-    public Instant getLastFetchedAt() {
-        return lastFetchedAt;
+    public Instant getLastReplicatedAt() {
+        return lastReplicatedAt;
     }
 
-    public void setLastFetchedAt(Instant lastFetchedAt) {
-        this.lastFetchedAt = lastFetchedAt;
+    public void setLastReplicatedAt(Instant lastReplicatedAt) {
+        this.lastReplicatedAt = lastReplicatedAt;
     }
 
     public Map<String, String> getMetadata() {

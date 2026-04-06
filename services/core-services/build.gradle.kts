@@ -20,12 +20,11 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     implementation(libs.jackson.annotations)
+    implementation(libs.aws.s3)
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))
     implementation(project(":libs:core-persistence"))
-    implementation(project(":libs:core-proto"))
-    implementation(libs.grpc.spring.boot.starter)
     implementation(project(":services:auth-api"))
 }
 

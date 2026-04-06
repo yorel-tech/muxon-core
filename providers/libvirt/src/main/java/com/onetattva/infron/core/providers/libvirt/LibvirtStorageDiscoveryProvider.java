@@ -200,7 +200,12 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
                     "shared", false
                 ))
             );
-            
+
+            String hostPath = readPoolTargetPath(pool);
+            if (hostPath != null && !hostPath.isBlank()) {
+                capabilities.put("host_path", hostPath);
+            }
+
             // Extract metrics
             Map<String, Object> metrics = new HashMap<>();
             metrics.put("total_gb", bytesToGb(info.capacity));
@@ -227,6 +232,36 @@ public class LibvirtStorageDiscoveryProvider implements StorageDiscoveryProvider
             log.warn("Failed to get info for storage pool: {}", e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Absolute directory for dir/netfs pools (used by core-services to replicate content library files).
+     */
+    private static String readPoolTargetPath(StoragePool pool) {
+        try {
+            return extractTargetPathFromPoolXml(pool.getXMLDesc(0));
+        } catch (LibvirtException e) {
+            return null;
+        }
+    }
+
+    static String extractTargetPathFromPoolXml(String xml) {
+        if (xml == null) {
+            return null;
+        }
+        int target = xml.indexOf("<target");
+        if (target < 0) {
+            return null;
+        }
+        int pathStart = xml.indexOf("<path>", target);
+        if (pathStart < 0) {
+            return null;
+        }
+        int end = xml.indexOf("</path>", pathStart);
+        if (end < 0) {
+            return null;
+        }
+        return xml.substring(pathStart + 6, end).trim();
     }
 
     private String getPoolType(StoragePool pool) {

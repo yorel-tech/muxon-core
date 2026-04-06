@@ -51,12 +51,14 @@ tags:
   description: Capability-based storage class management
 - name: ProviderStorage
   description: Discovered provider storage inventory and sync operations
+- name: ContentStorages
+  description: Platform content storage backends (local path, NFS mount, or S3) for content library artifacts
 - name: PlatformContentLibraries
-  description: Platform-scoped (global) content library CRUD, sync, ensure, and items
+  description: Platform content library CRUD, sync, replicate, publish to datacenters, and items
 - name: ContentItems
-  description: Content library item CRUD and fetch operations
+  description: Content library item CRUD, upload, and download
 - name: TenantContentLibraries
-  description: Tenant-scoped content library CRUD, sync, ensure, and items
+  description: Tenant content library CRUD, publish to datacenters, and items (local libraries only)
 - name: Overview
   description: Dashboard aggregate counts for system and tenant scope
 
@@ -298,6 +300,11 @@ paths:
   /api/v1/provider-storage/{id}:
     $ref: './storage.yaml#/paths/~1provider-storage~1{id}'
 
+  /api/v1/platform/content-storages:
+    $ref: './content_storage.yaml#/paths/~1platform~1content-storages'
+  /api/v1/platform/content-storages/{contentStorageId}:
+    $ref: './content_storage.yaml#/paths/~1platform~1content-storages~1{contentStorageId}'
+
   # Content libraries (platform-scoped and tenant-scoped only; no generic /content-libraries)
   /api/v1/platform/content-libraries:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries'
@@ -305,28 +312,52 @@ paths:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}'
   /api/v1/platform/content-libraries/{libraryId}/sync:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1sync'
-  /api/v1/platform/content-libraries/{libraryId}/ensure:
-    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1ensure'
+  /api/v1/platform/content-libraries/{libraryId}/replicate:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1replicate'
+  /api/v1/platform/content-libraries/{libraryId}/publish:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1publish'
+  /api/v1/platform/content-libraries/{libraryId}/datacenters:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters'
+  /api/v1/platform/content-libraries/{libraryId}/datacenters/{datacenterId}:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}'
+  /api/v1/platform/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}~1replicate'
   /api/v1/platform/content-libraries/{libraryId}/items:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items'
   /api/v1/platform/content-libraries/{libraryId}/items/{itemId}:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}'
-  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/fetch:
-    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1fetch'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/download:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1download'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/uploads:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads~1{uploadId}'
+  /api/v1/platform/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}/complete:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads~1{uploadId}~1complete'
   /api/v1/tenants/{tenantId}/content-libraries:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/sync:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1sync'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/ensure:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1ensure'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/publish:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1publish'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}~1replicate'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/fetch:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1fetch'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/download:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1download'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads~1{uploadId}'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}/complete:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items~1{itemId}~1uploads~1{uploadId}~1complete'
 
   # Users
   /api/v1/system-users:

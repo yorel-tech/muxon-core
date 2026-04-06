@@ -238,11 +238,16 @@ public class ProxmoxStorageDiscoveryProvider implements StorageDiscoveryProvider
             
             // Estimate IOPS based on storage type
             metrics.put("estimated_iops", estimateIops(storageType));
-            
-            // Get content types
+
+            // Content types accepted by this storage (for upload validation)
             String content = readString(storageObj, "getContent");
-            if (content != null) {
-                metrics.put("content_types", Arrays.asList(content.split(",")));
+            if (content != null && !content.isBlank()) {
+                capabilities.put(
+                        "content_types",
+                        Arrays.stream(content.split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .toList());
             }
             
             // Check if enabled/active

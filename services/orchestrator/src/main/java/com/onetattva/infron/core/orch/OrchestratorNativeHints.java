@@ -35,10 +35,6 @@ public class OrchestratorNativeHints {
                 .registerType(TypeReference.of(DatacenterRepository.class))
                 .registerType(TypeReference.of(QueueEntryRepository.class));
 
-            // Register reflection for gRPC services (if any)
-            hints.reflection()
-                .registerType(TypeReference.of("com.onetattva.infron.grpc.*"));
-
             // Register resources for configuration files
             hints.resources()
                 .registerPattern("application.yaml")

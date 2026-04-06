@@ -29,4 +29,9 @@ public class ProxmoxProviderConfiguration {
         
         return provider;
     }
+
+    @Bean
+    public ProxmoxStorageUploader proxmoxStorageUploader() {
+        return new ProxmoxStorageUploader();
+    }
 }

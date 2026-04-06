@@ -27,7 +27,7 @@ public class ContentItemApiConverter {
         api.setChecksumAlgorithm(entity.getChecksumAlgorithm());
         api.setSourceUrl(entity.getSourceUrl());
         api.setSourceItemId(entity.getSourceItemId());
-        api.setFetchStatus(ContentItemStatus.fromValue(entity.getFetchStatus()));
+        api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
         api.setMetadata(entity.getMetadata());
         if (entity.getCreatedAt() != null) {
             api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
@@ -35,8 +35,8 @@ public class ContentItemApiConverter {
         if (entity.getUpdatedAt() != null) {
             api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
         }
-        if (entity.getLastFetchedAt() != null) {
-            api.setLastFetchedAt(entity.getLastFetchedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) {
+            api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
         }
         api.setProviderRelativePath(entity.getProviderRelativePath());
         api.setInfronInstanceSegment(entity.getInfronInstanceSegment());

@@ -39,11 +39,6 @@ infron:
   queue:
     backend: "db"
 
-# gRPC configuration
-grpc:
-  server:
-    port: 9081
-
 # OpenTelemetry configuration
 management:
   endpoints:

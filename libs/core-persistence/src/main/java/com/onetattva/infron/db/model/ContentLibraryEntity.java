@@ -31,16 +31,13 @@ public class ContentLibraryEntity {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "scope", nullable = false, length = 16)
-    private String scope;
-
     @Column(name = "library_type", nullable = false, length = 32)
     private String libraryType;
 
     @Column(name = "access_mode", nullable = false, length = 32)
     private String accessMode;
 
-    @Column(name = "tenant_id")
+    @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -49,6 +46,9 @@ public class ContentLibraryEntity {
 
     @Column(name = "storage_class_name", length = 64)
     private String storageClassName;
+
+    @Column(name = "content_storage_id", nullable = false)
+    private UUID contentStorageId;
 
     @Column(name = "sync_status", nullable = false, length = 32)
     private String syncStatus;
@@ -105,14 +105,6 @@ public class ContentLibraryEntity {
         this.description = description;
     }
 
-    public String getScope() {
-        return scope;
-    }
-
-    public void setScope(String scope) {
-        this.scope = scope;
-    }
-
     public String getLibraryType() {
         return libraryType;
     }
@@ -151,6 +143,14 @@ public class ContentLibraryEntity {
 
     public void setStorageClassName(String storageClassName) {
         this.storageClassName = storageClassName;
+    }
+
+    public UUID getContentStorageId() {
+        return contentStorageId;
+    }
+
+    public void setContentStorageId(UUID contentStorageId) {
+        this.contentStorageId = contentStorageId;
     }
 
     public String getSyncStatus() {

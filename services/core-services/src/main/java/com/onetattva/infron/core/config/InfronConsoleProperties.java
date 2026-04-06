@@ -16,6 +16,11 @@ public class InfronConsoleProperties {
 
     private int maxSessionsPerUser = 5;
 
+    /**
+     * Max time to wait for the orchestrator to process a {@code VM_CONSOLE_RESOLVE_COMMAND} row (seconds).
+     */
+    private int resolveTimeoutSeconds = 90;
+
     public String getProxyWsBaseUrl() {
         return proxyWsBaseUrl;
     }
@@ -30,5 +35,13 @@ public class InfronConsoleProperties {
 
     public void setMaxSessionsPerUser(int maxSessionsPerUser) {
         this.maxSessionsPerUser = maxSessionsPerUser;
+    }
+
+    public int getResolveTimeoutSeconds() {
+        return resolveTimeoutSeconds;
+    }
+
+    public void setResolveTimeoutSeconds(int resolveTimeoutSeconds) {
+        this.resolveTimeoutSeconds = resolveTimeoutSeconds;
     }
 }

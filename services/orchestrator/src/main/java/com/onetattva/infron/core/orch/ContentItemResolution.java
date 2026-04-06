@@ -26,8 +26,8 @@ final class ContentItemResolution {
     }
 
     private static void assertAvailable(ContentItemEntity item) {
-        if (!"available".equalsIgnoreCase(item.getFetchStatus())) {
-            throw new IllegalStateException("Content item not available: " + item.getId() + " status=" + item.getFetchStatus());
+        if (!"available".equalsIgnoreCase(item.getContentStatus())) {
+            throw new IllegalStateException("Content item not available: " + item.getId() + " status=" + item.getContentStatus());
         }
         if (item.getProviderRelativePath() == null || item.getProviderRelativePath().isBlank()) {
             throw new IllegalStateException("Content item has no provider path: " + item.getId());

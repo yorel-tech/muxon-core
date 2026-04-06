@@ -35,7 +35,7 @@ public class ContentLibraryApiConverter {
         if (entity.getSourceConfig() != null) {
             api.setSourceConfig(objectMapper.convertValue(entity.getSourceConfig(), ContentSourceConfig.class));
         }
-        api.setStorageClassName(entity.getStorageClassName());
+        api.setContentStorageId(entity.getContentStorageId());
         api.setSyncStatus(ContentSyncStatus.fromValue(entity.getSyncStatus()));
         api.setMetadata(entity.getMetadata());
         if (entity.getCreatedAt() != null) {

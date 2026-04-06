@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 
 /**
  * Proxmox VM Provider implementation.
@@ -518,9 +519,14 @@ public class ProxmoxVmProvider implements VmProvider {
     }
     
     private PveQemuCreateOptions buildQemuCreateOptions(VmCreationRequest request, ProxmoxProviderContext context) {
-        Object storage = context.getMetadata().get("storagePool");
-        String storagePool = storage != null ? storage.toString() : "local-lvm";
-        String diskConfig = buildDiskConfig(storagePool, request.sourceImagePath());
+        Map<String, Object> md = context.getMetadata();
+        Object storage = md != null ? md.get("storagePool") : null;
+        String diskStoragePool = storage != null ? storage.toString() : "local-lvm";
+        Object importSrc = md != null ? md.get("importSourceStorage") : null;
+        String importSourcePool = importSrc != null && !importSrc.toString().isBlank()
+                ? importSrc.toString().trim()
+                : diskStoragePool;
+        String diskConfig = buildDiskConfig(diskStoragePool, importSourcePool, request.sourceImagePath());
         var builder = PveQemuCreateOptions.builder()
                 .name("vm-" + request.vmId().toString().substring(0, 8))
                 .memory(2048)
@@ -539,18 +545,72 @@ public class ProxmoxVmProvider implements VmProvider {
         return builder.build();
     }
 
-    private String buildDiskConfig(String storagePool, String importFromPath) {
-        String normalizedPool = storagePool != null ? storagePool.toLowerCase(Locale.ROOT) : "";
+    private String buildDiskConfig(String diskStoragePool, String importSourceStorage, String importFromPath) {
+        String normalizedDisk = diskStoragePool != null ? diskStoragePool.toLowerCase(Locale.ROOT) : "";
         String base;
-        if (normalizedPool.contains("lvm")) {
-            base = storagePool + ":8,format=raw";
+        if (normalizedDisk.contains("lvm")) {
+            // 0 = size follows source image (matches Proxmox UI); import-from pulls from dir storage.
+            base = diskStoragePool + ":0,format=raw";
         } else {
-            base = storagePool + ":8,format=qcow2";
+            base = diskStoragePool + ":0,format=qcow2";
         }
         if (importFromPath != null && !importFromPath.isBlank()) {
-            return base + ",import-from=" + importFromPath;
+            String importVolId = resolveProxmoxImportFromVolumeId(importSourceStorage, importFromPath.trim());
+            return base + ",import-from=" + importVolId;
         }
         return base;
+    }
+
+    /**
+     * Proxmox {@code import-from} must be a volume ID {@code storage:volid}, not a filesystem path.
+     * Replicated library images are uploaded to directory {@code import/} content; until per-datacenter
+     * resolution exists, that pool is hardcoded to {@value #HARDCODED_PROXMOX_DIR_IMPORT_STORAGE}.
+     * Non-library paths use {@code importSourceStorage} from context metadata (default: disk pool).
+     */
+    private static String resolveProxmoxImportFromVolumeId(String importSourceStorage, String pathOrVolid) {
+        if (looksLikeProxmoxVolumeId(pathOrVolid)) {
+            return pathOrVolid;
+        }
+        String fromLibrary = toReplicatedImportVolumeId(pathOrVolid);
+        if (fromLibrary != null) {
+            return fromLibrary;
+        }
+        return importSourceStorage + ":" + pathOrVolid;
+    }
+
+    private static final Pattern PVE_STORAGE_PREFIX = Pattern.compile("^[A-Za-z0-9_.-]+:.+");
+
+    private static boolean looksLikeProxmoxVolumeId(String s) {
+        return s != null && PVE_STORAGE_PREFIX.matcher(s).matches();
+    }
+
+    private static final String CONTENT_LIBRARIES = "/content-libraries/";
+
+    /**
+     * Proxmox directory storage id where {@link ProxmoxStorageUploader} places {@code import} uploads.
+     * TODO: resolve per datacenter / content replication target (registry metadata was unreliable without sync).
+     */
+    private static final String HARDCODED_PROXMOX_DIR_IMPORT_STORAGE = "local";
+
+    private static String toReplicatedImportVolumeId(String providerRelativePath) {
+        int m = providerRelativePath.indexOf(CONTENT_LIBRARIES);
+        if (m < 0) {
+            return null;
+        }
+        String tail = providerRelativePath.substring(m + CONTENT_LIBRARIES.length());
+        String[] parts = tail.split("/", 3);
+        if (parts.length < 3 || parts[2].isBlank()) {
+            return null;
+        }
+        try {
+            UUID libraryId = UUID.fromString(parts[0]);
+            UUID itemId = UUID.fromString(parts[1]);
+            String leaf = parts[2];
+            String uploadName = ProxmoxStorageUploader.encodeInfronUploadFilename(libraryId, itemId, leaf);
+            return HARDCODED_PROXMOX_DIR_IMPORT_STORAGE + ":import/" + uploadName;
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     private String resolveTargetNodeName(Proxmox client, ProxmoxProviderContext context) {

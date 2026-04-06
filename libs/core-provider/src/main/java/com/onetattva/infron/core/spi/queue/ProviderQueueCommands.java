@@ -19,4 +19,7 @@ public final class ProviderQueueCommands {
 
     /** Full inventory sync: capabilities (where applicable), node cluster + nodes, storage. */
     public static final String INVENTORY_SYNC = "PROVIDER_INVENTORY_SYNC_COMMAND";
+
+    /** Push content library artifacts to provider storage via provider API (e.g. Proxmox upload). */
+    public static final String CONTENT_DATACENTER_REPLICATE = "CONTENT_DATACENTER_REPLICATE_COMMAND";
 }

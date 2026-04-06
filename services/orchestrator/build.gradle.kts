@@ -3,7 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":libs:core-proto"))
     implementation(project(":libs:core-commons"))
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-persistence"))
@@ -17,9 +16,6 @@ dependencies {
     implementation(libs.bundles.spring.boot.starter)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.postgresql)
-    
-    // gRPC
-    implementation(libs.grpc.spring.boot.starter)
     
     // OpenTelemetry & Micrometer
     implementation(libs.micrometer.tracing.bridge.otel)

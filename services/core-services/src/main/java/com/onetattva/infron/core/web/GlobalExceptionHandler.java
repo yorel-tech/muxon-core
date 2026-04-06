@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -87,9 +88,28 @@ public class GlobalExceptionHandler {
         auditService.logAction("resource:not_found", null);
 
         ErrorResponse error = new ErrorResponse(
-            "RESOURCE_NOT_FOUND",
-            ex.getMessage(),
-            System.currentTimeMillis()
+                "RESOURCE_NOT_FOUND",
+                ex.getMessage(),
+                System.currentTimeMillis()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * Unmapped paths that fall through to the static resource handler (e.g. missing REST routes).
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(
+            NoResourceFoundException ex, WebRequest request) {
+
+        logError("No resource", ex, request);
+        auditService.logAction("resource:not_found", null);
+
+        ErrorResponse error = new ErrorResponse(
+                "RESOURCE_NOT_FOUND",
+                ex.getMessage() != null ? ex.getMessage() : "Not found",
+                System.currentTimeMillis()
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);

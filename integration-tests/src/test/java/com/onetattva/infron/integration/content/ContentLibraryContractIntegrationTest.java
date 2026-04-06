@@ -13,10 +13,19 @@ class ContentLibraryContractIntegrationTest {
     @Test
     void contentLibrarySpecIncludesProviderAndTenantApis() throws IOException {
         String spec = Files.readString(Path.of("..", "openapi", "content_library.yaml"));
-        assertTrue(spec.contains("/provider-content-libraries:"), "provider library endpoint should exist");
+        assertTrue(spec.contains("/platform/content-libraries:"), "platform library endpoint should exist");
         assertTrue(spec.contains("/tenants/{tenantId}/content-libraries:"), "tenant-scoped library endpoint should exist");
-        assertTrue(spec.contains("tags: [ProviderContentLibraries]"), "provider tag split should exist");
+        assertTrue(spec.contains("tags: [PlatformContentLibraries]"), "platform tag should exist");
         assertTrue(spec.contains("tags: [TenantContentLibraries]"), "tenant tag split should exist");
+        assertTrue(spec.contains("contentStorageId:"), "library schema should reference content storage");
+    }
+
+    @Test
+    void contentStorageSpecHasCrudPaths() throws IOException {
+        String spec = Files.readString(Path.of("..", "openapi", "content_storage.yaml"));
+        assertTrue(spec.contains("/platform/content-storages:"), "content storages list/create path should exist");
+        assertTrue(spec.contains("/platform/content-storages/{contentStorageId}:"), "content storage by id path should exist");
+        assertTrue(spec.contains("tags: [ContentStorages]"), "content storages tag should exist");
     }
 
     @Test

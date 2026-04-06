@@ -9,15 +9,20 @@ import com.onetattva.infron.core.providers.proxmox.ProxmoxNodeInventoryProvider;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxVmProvider;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
+import com.onetattva.infron.db.model.ProviderStorageEntity;
 import com.onetattva.infron.db.repository.NodeRepository;
 import com.onetattva.infron.db.repository.ProviderRepository;
+import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import com.onetattva.infron.db.repository.VmRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +39,7 @@ public class TenantAwareVmProviderRegistry {
 
     private final TenantDatacenterGrantResolver grantResolver;
     private final ProviderRepository providerRepository;
+    private final ProviderStorageRepository providerStorageRepository;
     private final NodeRepository nodeRepository;
     private final VmRepository vmRepository;
 
@@ -51,10 +57,12 @@ public class TenantAwareVmProviderRegistry {
 
     public TenantAwareVmProviderRegistry(TenantDatacenterGrantResolver grantResolver,
                                          ProviderRepository providerRepository,
+                                         ProviderStorageRepository providerStorageRepository,
                                          NodeRepository nodeRepository,
                                          VmRepository vmRepository) {
         this.grantResolver = grantResolver;
         this.providerRepository = providerRepository;
+        this.providerStorageRepository = providerStorageRepository;
         this.nodeRepository = nodeRepository;
         this.vmRepository = vmRepository;
     }
@@ -97,11 +105,21 @@ public class TenantAwareVmProviderRegistry {
             return Optional.empty();
         }
         String preferredStorage = getPreferredStorage(tenantDatacenterGrantId);
+        String importSource = resolveProxmoxImportSourceStorage(providerEntity.getId(), preferredStorage)
+                .orElse(null);
+        if (importSource != null) {
+            logger.debug(
+                    "Proxmox VM disk pool {} vs content import pool {} for provider {}",
+                    preferredStorage,
+                    importSource,
+                    providerEntity.getId());
+        }
         return Optional.of(new com.onetattva.infron.core.providers.proxmox.ProxmoxProviderContext(
                 providerEntity,
                 nodeInfo.nodeName(),
                 nodeInfo.nodeId(),
-                preferredStorage));
+                preferredStorage,
+                importSource));
     }
 
     private UUID selectTargetNodeForLibvirt(UUID tenantDatacenterGrantId) {
@@ -159,6 +177,82 @@ public class TenantAwareVmProviderRegistry {
 
     private String getPreferredStorage(UUID tenantDatacenterGrantId) {
         return "local-lvm";
+    }
+
+    /**
+     * When new VM disks use LVM/thin pools but content-library images were uploaded to directory-backed
+     * storage (e.g. {@code local:import/...}), return that storage's Proxmox id for {@code import-from}.
+     */
+    private Optional<String> resolveProxmoxImportSourceStorage(UUID providerId, String diskStoragePool) {
+        if (diskStoragePool == null || diskStoragePool.isBlank()) {
+            return Optional.empty();
+        }
+        String diskLower = diskStoragePool.toLowerCase(Locale.ROOT);
+        if (!diskLower.contains("lvm")) {
+            return Optional.empty();
+        }
+        List<ProviderStorageEntity> storages = providerStorageRepository.findByProviderIdAndEnabled(providerId, true);
+        List<ProviderStorageEntity> candidates = new ArrayList<>();
+        for (ProviderStorageEntity ps : storages) {
+            if (!"proxmox".equalsIgnoreCase(ps.getProviderType())) {
+                continue;
+            }
+            if (diskStoragePool.equals(ps.getExternalId())) {
+                continue;
+            }
+            if (!pathStyleProxmoxImportStorage(ps)) {
+                continue;
+            }
+            if (!storageAcceptsImportContent(ps)) {
+                continue;
+            }
+            candidates.add(ps);
+        }
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        candidates.sort(Comparator.comparing(ProviderStorageEntity::getExternalId, String.CASE_INSENSITIVE_ORDER));
+        Optional<ProviderStorageEntity> localNamed = candidates.stream()
+                .filter(s -> "local".equalsIgnoreCase(s.getExternalId()))
+                .findFirst();
+        return Optional.of(localNamed.orElse(candidates.getFirst()).getExternalId());
+    }
+
+    private static boolean pathStyleProxmoxImportStorage(ProviderStorageEntity ps) {
+        String t = ps.getStorageType();
+        if (t == null) {
+            return false;
+        }
+        return switch (t.toLowerCase(Locale.ROOT)) {
+            case "dir", "nfs", "cifs" -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean storageAcceptsImportContent(ProviderStorageEntity ps) {
+        if (ps.getCapabilities() == null) {
+            return false;
+        }
+        Object raw = ps.getCapabilities().get("content_types");
+        if (raw == null) {
+            return false;
+        }
+        List<String> types = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o != null) {
+                    types.add(o.toString().trim().toLowerCase(Locale.ROOT));
+                }
+            }
+        } else {
+            for (String part : raw.toString().split(",")) {
+                String t = part.trim().toLowerCase(Locale.ROOT);
+                if (!t.isEmpty()) {
+                    types.add(t);
+                }
+            }
+        }
+        return types.contains("import");
     }
 
     private record ProxmoxNodeInfo(String nodeName, String nodeId) {

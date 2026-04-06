@@ -56,7 +56,7 @@ class ContentItemResolutionTest {
         e.setLibraryId(UUID.randomUUID());
         e.setName("n");
         e.setContentType(type);
-        e.setFetchStatus(status);
+        e.setContentStatus(status);
         e.setProviderRelativePath(path);
         return e;
     }

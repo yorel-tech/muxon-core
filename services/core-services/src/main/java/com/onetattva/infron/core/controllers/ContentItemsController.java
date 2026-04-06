@@ -1,16 +1,19 @@
 package com.onetattva.infron.core.controllers;
 
 import com.onetattva.infron.api.ContentItemsApi;
-import com.onetattva.infron.api.model.ContentFetchResponse;
 import com.onetattva.infron.api.model.ContentItem;
 import com.onetattva.infron.api.model.ContentItemCreate;
+import com.onetattva.infron.api.model.ContentItemDownloadLink;
 import com.onetattva.infron.api.model.ContentItemList;
 import com.onetattva.infron.api.model.ContentItemUpdate;
+import com.onetattva.infron.api.model.ContentItemUploadInitiate;
+import com.onetattva.infron.api.model.ContentItemUploadSession;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.RequiresPermission;
 import com.onetattva.infron.core.services.content.ContentItemService;
+import com.onetattva.infron.core.services.content.ContentItemUploadService;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
-import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,25 +22,23 @@ import java.util.UUID;
 @RestController
 public class ContentItemsController implements ContentItemsApi {
 
-    private static final String PLATFORM_SCOPE = "platform";
-
     private final ContentItemService contentItemService;
-    private final ContentLibrarySyncService contentLibrarySyncService;
     private final ContentLibraryService contentLibraryService;
+    private final ContentItemUploadService contentItemUploadService;
 
     public ContentItemsController(
             ContentItemService contentItemService,
-            ContentLibrarySyncService contentLibrarySyncService,
-            ContentLibraryService contentLibraryService) {
+            ContentLibraryService contentLibraryService,
+            ContentItemUploadService contentItemUploadService) {
         this.contentItemService = contentItemService;
-        this.contentLibrarySyncService = contentLibrarySyncService;
         this.contentLibraryService = contentLibraryService;
+        this.contentItemUploadService = contentItemUploadService;
     }
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> createPlatformContentItem(UUID libraryId, ContentItemCreate contentItemCreate) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         return ResponseEntity.status(201).body(contentItemService.create(libraryId, contentItemCreate));
     }
 
@@ -45,14 +46,14 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> createTenantContentItem(
             UUID tenantId, UUID libraryId, ContentItemCreate contentItemCreate) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireWriteAccess(tenantId, libraryId);
         return ResponseEntity.status(201).body(contentItemService.create(libraryId, contentItemCreate));
     }
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deletePlatformContentItem(UUID libraryId, UUID itemId) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         contentItemService.deleteInLibrary(libraryId, itemId);
         return ResponseEntity.noContent().build();
     }
@@ -60,29 +61,105 @@ public class ContentItemsController implements ContentItemsApi {
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<Void> deleteTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireWriteAccess(tenantId, libraryId);
         contentItemService.deleteInLibrary(libraryId, itemId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
-    public ResponseEntity<ContentFetchResponse> fetchPlatformContentItem(UUID libraryId, UUID itemId) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
+    public ResponseEntity<ContentItemDownloadLink> downloadPlatformContentItem(UUID libraryId, UUID itemId) {
+        contentLibraryService.requirePlatformLibrary(libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
-        return ResponseEntity.accepted().body(contentLibrarySyncService.enqueueFetch(libraryId, itemId));
+        return ResponseEntity.ok(contentItemUploadService.buildDownloadLink(libraryId, itemId));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
+    public ResponseEntity<ContentItemDownloadLink> downloadTenantContentItem(
+            UUID tenantId, UUID libraryId, UUID itemId) {
+        contentLibraryService.requireReadAccess(tenantId, libraryId);
+        contentItemService.assertItemInLibrary(libraryId, itemId);
+        return ResponseEntity.ok(contentItemUploadService.buildDownloadLink(libraryId, itemId));
     }
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<ContentFetchResponse> fetchTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
-        contentItemService.assertItemInLibrary(libraryId, itemId);
-        return ResponseEntity.accepted().body(contentLibrarySyncService.enqueueFetch(libraryId, itemId));
+    public ResponseEntity<ContentItemUploadSession> initiatePlatformContentItemUpload(
+            UUID libraryId, UUID itemId, ContentItemUploadInitiate contentItemUploadInitiate) {
+        return ResponseEntity.status(201)
+                .body(contentItemUploadService.initiatePlatform(libraryId, itemId, contentItemUploadInitiate));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<ContentItemUploadSession> getPlatformContentItemUploadSession(
+            UUID libraryId, UUID itemId, UUID uploadId) {
+        return ResponseEntity.ok(contentItemUploadService.getPlatform(libraryId, itemId, uploadId));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<Void> putPlatformContentItemUploadChunk(
+            UUID libraryId,
+            UUID itemId,
+            UUID uploadId,
+            String contentRange,
+            Resource body) {
+        int status = contentItemUploadService.putChunkPlatform(libraryId, itemId, uploadId, contentRange, body);
+        return ResponseEntity.status(status).build();
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<Void> completePlatformContentItemUpload(UUID libraryId, UUID itemId, UUID uploadId) {
+        contentItemUploadService.completePlatform(libraryId, itemId, uploadId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<ContentItemUploadSession> initiateTenantContentItemUpload(
+            UUID tenantId,
+            UUID libraryId,
+            UUID itemId,
+            ContentItemUploadInitiate contentItemUploadInitiate) {
+        return ResponseEntity.status(201)
+                .body(contentItemUploadService.initiateTenant(tenantId, libraryId, itemId, contentItemUploadInitiate));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<ContentItemUploadSession> getTenantContentItemUploadSession(
+            UUID tenantId, UUID libraryId, UUID itemId, UUID uploadId) {
+        return ResponseEntity.ok(contentItemUploadService.getTenant(tenantId, libraryId, itemId, uploadId));
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<Void> putTenantContentItemUploadChunk(
+            UUID tenantId,
+            UUID libraryId,
+            UUID itemId,
+            UUID uploadId,
+            String contentRange,
+            Resource body) {
+        int status = contentItemUploadService.putChunkTenant(
+                tenantId, libraryId, itemId, uploadId, contentRange, body);
+        return ResponseEntity.status(status).build();
+    }
+
+    @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
+    public ResponseEntity<Void> completeTenantContentItemUpload(
+            UUID tenantId, UUID libraryId, UUID itemId, UUID uploadId) {
+        contentItemUploadService.completeTenant(tenantId, libraryId, itemId, uploadId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<ContentItem> getPlatformContentItem(UUID libraryId, UUID itemId) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.get(itemId));
     }
@@ -90,7 +167,7 @@ public class ContentItemsController implements ContentItemsApi {
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentItem> getTenantContentItem(UUID tenantId, UUID libraryId, UUID itemId) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireReadAccess(tenantId, libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.get(itemId));
     }
@@ -99,14 +176,15 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentItemList> listPlatformContentItemsByLibrary(
             UUID libraryId, Integer page, Integer perPage) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         return ResponseEntity.ok(contentItemService.listByLibrary(libraryId, page, perPage));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
     public ResponseEntity<ContentItemList> listTenantContentItemsByLibrary(
             UUID tenantId, UUID libraryId, Integer page, Integer perPage) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireReadAccess(tenantId, libraryId);
         return ResponseEntity.ok(contentItemService.listByLibrary(libraryId, page, perPage));
     }
 
@@ -114,7 +192,7 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> replacePlatformContentItem(
             UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.replace(itemId, contentItemUpdate));
     }
@@ -123,7 +201,7 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> replaceTenantContentItem(
             UUID tenantId, UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireWriteAccess(tenantId, libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.replace(itemId, contentItemUpdate));
     }
@@ -132,7 +210,7 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> updatePlatformContentItem(
             UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
-        contentLibraryService.getByScope(libraryId, PLATFORM_SCOPE);
+        contentLibraryService.requirePlatformLibrary(libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.update(itemId, contentItemUpdate));
     }
@@ -141,7 +219,7 @@ public class ContentItemsController implements ContentItemsApi {
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
     public ResponseEntity<ContentItem> updateTenantContentItem(
             UUID tenantId, UUID libraryId, UUID itemId, ContentItemUpdate contentItemUpdate) {
-        contentLibraryService.requireTenantLibrary(tenantId, libraryId);
+        contentLibraryService.requireWriteAccess(tenantId, libraryId);
         contentItemService.assertItemInLibrary(libraryId, itemId);
         return ResponseEntity.ok(contentItemService.update(itemId, contentItemUpdate));
     }

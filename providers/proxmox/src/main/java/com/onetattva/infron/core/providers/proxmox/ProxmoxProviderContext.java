@@ -15,15 +15,28 @@ public class ProxmoxProviderContext implements ProviderContext {
     private final String targetNodeName;  // Proxmox node name
     private final String targetNodeId;    // Proxmox node ID (numeric string)
     private final String preferredStoragePool;
-    
+    /** Proxmox storage id where disk-import images live (e.g. {@code local}); null if same as {@link #preferredStoragePool}. */
+    private final String importSourceStorage;
+
     public ProxmoxProviderContext(ProviderEntity providerEntity,
                                  String targetNodeName,
                                  String targetNodeId,
                                  String preferredStoragePool) {
+        this(providerEntity, targetNodeName, targetNodeId, preferredStoragePool, null);
+    }
+
+    public ProxmoxProviderContext(ProviderEntity providerEntity,
+                                 String targetNodeName,
+                                 String targetNodeId,
+                                 String preferredStoragePool,
+                                 String importSourceStorage) {
         this.providerEntity = providerEntity;
         this.targetNodeName = targetNodeName;
         this.targetNodeId = targetNodeId;
         this.preferredStoragePool = preferredStoragePool;
+        this.importSourceStorage = importSourceStorage != null && !importSourceStorage.isBlank()
+                ? importSourceStorage.trim()
+                : null;
     }
     
     @Override
@@ -65,14 +78,18 @@ public class ProxmoxProviderContext implements ProviderContext {
     
     @Override
     public Map<String, Object> getMetadata() {
-        return Map.of(
-            "providerId", providerEntity.getId().toString(),
-            "clusterEndpoint", providerEntity.getEndpoint(),
-            "targetNode", targetNodeName,
-            "targetNodeId", targetNodeId,
-            "storagePool", preferredStoragePool,
-            "nodeType", "proxmox"
-        );
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("providerId", providerEntity.getId().toString());
+        m.put("clusterEndpoint", providerEntity.getEndpoint());
+        m.put("targetNode", targetNodeName);
+        m.put("targetNodeId", targetNodeId);
+        m.put("storagePool", preferredStoragePool);
+        m.put("nodeType", "proxmox");
+        if (importSourceStorage != null
+                && (preferredStoragePool == null || !importSourceStorage.equals(preferredStoragePool))) {
+            m.put("importSourceStorage", importSourceStorage);
+        }
+        return Collections.unmodifiableMap(m);
     }
     
     @Override

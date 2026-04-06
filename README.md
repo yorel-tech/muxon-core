@@ -11,7 +11,6 @@ Open, source-available foundation for private cloud control.
 - `services/core-services` — Spring Boot API
 - `services/orchestrator` — Quarkus queue/gRPC workers
 - `services/usage-billing` — Quarkus usage aggregator
-- `services/agent` — Micronaut/Quarkus native daemon
 - `services/console-proxy` — Netty/noVNC bridge
 - `providers/*` — Provider adapters
 

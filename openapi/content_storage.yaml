@@ -1,0 +1,232 @@
+openapi: 3.0.3
+info:
+  title: Infron Content Storage API
+  version: 2026-04-05
+  description: >
+    Platform-managed content storage backends: local filesystem path, NFS mount path on core-services, or S3-compatible object storage.
+
+components:
+  parameters:
+    contentStorageId:
+      name: contentStorageId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    ContentStorageType:
+      type: string
+      enum: [local, nfs, s3]
+      description: >
+        local — absolute path on the core-services host. nfs — read/write via a pre-mounted path (mountPath);
+        server/export are informational for operators. s3 — object storage (bucket/region; optional static credentials or default provider chain).
+
+    ContentStorageConfig:
+      type: object
+      description: >
+        For type `local`, use `path` (absolute directory; empty string means runtime default from system config).
+        For type `nfs`, set `mountPath` (required) to the local mount; optional `server`, `export`.
+        For type `s3`, set `bucket` and `region` (required); optional `prefix`, `endpoint` (S3-compatible), `accessKeyId`, `secretAccessKey`.
+      additionalProperties: true
+      properties:
+        path:
+          type: string
+          description: Local filesystem root for content artifacts (local type).
+        mountPath:
+          type: string
+          description: Local mount point where NFS export is mounted (nfs type).
+        server:
+          type: string
+          description: NFS server hostname or IP (informational).
+        export:
+          type: string
+          description: Remote export path (informational).
+        bucket:
+          type: string
+          description: S3 bucket name (s3 type).
+        region:
+          type: string
+          description: AWS region or equivalent for the S3 endpoint (s3 type).
+        prefix:
+          type: string
+          description: Optional key prefix inside the bucket (s3 type); leading/trailing slashes are normalized.
+        endpoint:
+          type: string
+          description: Optional custom endpoint URL for S3-compatible storage (MinIO, etc.).
+        accessKeyId:
+          type: string
+          description: Optional static access key; omit to use the default AWS credential provider chain.
+        secretAccessKey:
+          type: string
+          description: Optional static secret key; used with accessKeyId when both are set.
+
+    ContentStorage:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          required: [id, name, type, config, isDefault]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+              maxLength: 128
+            type:
+              $ref: '#/components/schemas/ContentStorageType'
+            config:
+              $ref: '#/components/schemas/ContentStorageConfig'
+            isDefault:
+              type: boolean
+              description: When true, this storage is used for all tenant content libraries and as fallback when resolving paths.
+
+    ContentStorageCreate:
+      type: object
+      required: [name, type, config]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        type:
+          $ref: '#/components/schemas/ContentStorageType'
+        config:
+          $ref: '#/components/schemas/ContentStorageConfig'
+        isDefault:
+          type: boolean
+          default: false
+      additionalProperties: false
+
+    ContentStorageUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        config:
+          $ref: '#/components/schemas/ContentStorageConfig'
+        isDefault:
+          type: boolean
+      additionalProperties: false
+
+    ContentStorageList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentStorage'
+
+paths:
+  /platform/content-storages:
+    get:
+      tags: [ContentStorages]
+      summary: List content storages
+      operationId: listContentStorages
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated content storages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStorageList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [ContentStorages]
+      summary: Create content storage
+      operationId: createContentStorage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentStorageCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStorage'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /platform/content-storages/{contentStorageId}:
+    parameters:
+      - $ref: '#/components/parameters/contentStorageId'
+    get:
+      tags: [ContentStorages]
+      summary: Get content storage
+      operationId: getContentStorage
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Content storage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStorage'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    patch:
+      tags: [ContentStorages]
+      summary: Update content storage
+      operationId: updateContentStorage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentStorageUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStorage'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [ContentStorages]
+      summary: Delete content storage
+      operationId: deleteContentStorage
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

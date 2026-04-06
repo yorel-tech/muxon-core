@@ -20,11 +20,25 @@ components:
       schema:
         type: string
         format: uuid
+    uploadId:
+      name: uploadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    datacenterId:
+      name: datacenterId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     ContentLibraryType:
       type: string
-      enum: [local, remote, subscribed]
+      enum: [local, remote]
 
     ContentLibraryAccessMode:
       type: string
@@ -36,7 +50,7 @@ components:
 
     ContentItemStatus:
       type: string
-      enum: [pending, fetching, available, failed]
+      enum: [pending, replicating, available, failed]
 
     ContentType:
       type: string
@@ -48,7 +62,7 @@ components:
       properties:
         type:
           type: string
-          enum: [http, https, s3]
+          enum: [http, https, s3, nfs]
         url:
           type: string
         bucket:
@@ -63,7 +77,7 @@ components:
       allOf:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
         - type: object
-          required: [id, name, type, accessMode, syncStatus]
+          required: [id, name, type, accessMode, syncStatus, contentStorageId]
           properties:
             id:
               type: string
@@ -75,13 +89,15 @@ components:
             tenantId:
               type: string
               format: uuid
-              nullable: true
-              description: Null for platform-scoped libraries; set for tenant-scoped libraries.
+              description: >
+                Platform libraries use the system tenant id (215012d9-8b1e-5dc5-b54f-89022875fe1e).
+                Tenant libraries use the owning tenant id.
             sourceConfig:
               $ref: '#/components/schemas/ContentSourceConfig'
-            storageClassName:
+            contentStorageId:
               type: string
-              maxLength: 64
+              format: uuid
+              description: Content store backing uploads and downloads for this library.
             syncStatus:
               $ref: '#/components/schemas/ContentSyncStatus'
             lastSyncedAt:
@@ -108,9 +124,12 @@ components:
           $ref: '#/components/schemas/ContentLibraryAccessMode'
         sourceConfig:
           $ref: '#/components/schemas/ContentSourceConfig'
-        storageClassName:
+        contentStorageId:
           type: string
-          maxLength: 64
+          format: uuid
+          description: >
+            Platform libraries must set this to a ContentStorage id. Tenant library APIs ignore this field
+            and always use the system default ContentStorage.
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
       additionalProperties: false
@@ -129,9 +148,10 @@ components:
           $ref: '#/components/schemas/ContentLibraryAccessMode'
         sourceConfig:
           $ref: '#/components/schemas/ContentSourceConfig'
-        storageClassName:
+        contentStorageId:
           type: string
-          maxLength: 64
+          format: uuid
+          description: Platform libraries only; tenant updates ignore this (default storage).
         metadata:
           $ref: './commons.yaml#/components/schemas/Metadata'
       additionalProperties: false
@@ -154,7 +174,7 @@ components:
       allOf:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
         - type: object
-          required: [id, libraryId, contentType, fetchStatus]
+          required: [id, libraryId, contentType, contentStatus]
           properties:
             id:
               type: string
@@ -183,9 +203,9 @@ components:
               type: string
               format: uuid
               nullable: true
-            fetchStatus:
+            contentStatus:
               $ref: '#/components/schemas/ContentItemStatus'
-            lastFetchedAt:
+            lastReplicatedAt:
               type: string
               format: date-time
               nullable: true
@@ -292,11 +312,14 @@ components:
         message:
           type: string
 
-    ContentFetchResponse:
+    ContentReplicateResponse:
       type: object
       required: [status]
       properties:
-        itemId:
+        libraryId:
+          type: string
+          format: uuid
+        datacenterId:
           type: string
           format: uuid
         taskId:
@@ -307,6 +330,122 @@ components:
           enum: [accepted, completed, failed]
         message:
           type: string
+
+    PublishRequest:
+      type: object
+      required: [datacenterId, storageClassName]
+      properties:
+        datacenterId:
+          type: string
+          format: uuid
+        storageClassName:
+          type: string
+          description: Datacenter storage class; replication uses provider pools that match this class.
+      additionalProperties: false
+
+    ContentLibraryDatacenter:
+      type: object
+      required: [id, libraryId, datacenterId, replicateStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        storageClassName:
+          type: string
+          nullable: true
+          description: Storage class chosen when this library was published to the datacenter.
+        datacenter:
+          allOf:
+            - $ref: './commons.yaml#/components/schemas/EntityReference'
+          description: Resolved datacenter id and display name (populated on read).
+        replicateStatus:
+          type: string
+          enum: [pending, replicating, available, failed]
+        lastReplicatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ContentLibraryDatacenterList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentLibraryDatacenter'
+
+    ContentItemDownloadLink:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to download the artifact (may be time-limited).
+
+    ContentItemUploadInitiate:
+      type: object
+      required: [totalSize, checksumAlgorithm, expectedChecksum]
+      properties:
+        totalSize:
+          type: integer
+          format: int64
+          minimum: 1
+        checksumAlgorithm:
+          type: string
+          description: Currently only sha256 is supported.
+        expectedChecksum:
+          type: string
+          description: Lowercase hex SHA-256 of the full object.
+        chunkSizeHint:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Optional client chunk size; server may echo as chunkSize in the session.
+      additionalProperties: false
+
+    ContentItemUploadSession:
+      type: object
+      required: [id, status, totalSize, uploadedBytes, checksumAlgorithm, expectedChecksum]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          description: e.g. active, complete, failed
+        totalSize:
+          type: integer
+          format: int64
+        chunkSize:
+          type: integer
+          format: int64
+          description: Suggested chunk size in bytes.
+        uploadedBytes:
+          type: integer
+          format: int64
+        checksumAlgorithm:
+          type: string
+        expectedChecksum:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
 
 paths:
   /platform/content-libraries:
@@ -441,7 +580,7 @@ paths:
       - $ref: '#/components/parameters/libraryId'
     post:
       tags: [PlatformContentLibraries]
-      summary: Trigger content library sync
+      summary: Sync remote catalog metadata into stub content items (remote libraries only)
       operationId: syncPlatformContentLibrary
       security:
         - BearerAuth: []
@@ -452,6 +591,119 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentSyncResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/replicate:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Replicate remote artifacts into Infron content store (remote libraries only)
+      operationId: replicatePlatformContentLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Replicate accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentReplicateResponse'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Publish content library to a datacenter (availability)
+      operationId: publishPlatformContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      responses:
+        '201':
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryDatacenter'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/datacenters:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [PlatformContentLibraries]
+      summary: List datacenters this library is published to
+      operationId: listPlatformContentLibraryDatacenters
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryDatacenterList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/datacenters/{datacenterId}:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/datacenterId'
+    delete:
+      tags: [PlatformContentLibraries]
+      summary: Unpublish library from datacenter
+      operationId: unpublishPlatformContentLibraryDatacenter
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Unpublished
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/datacenterId'
+    post:
+      tags: [PlatformContentLibraries]
+      summary: Replicate content from content store to provider storage at datacenter
+      operationId: replicatePlatformContentLibraryDatacenter
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Replicate accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentReplicateResponse'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
@@ -591,44 +843,127 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /platform/content-libraries/{libraryId}/items/{itemId}/fetch:
+  /platform/content-libraries/{libraryId}/items/{itemId}/download:
     parameters:
       - $ref: '#/components/parameters/libraryId'
       - $ref: '#/components/parameters/itemId'
-    post:
+    get:
       tags: [ContentItems]
-      summary: Trigger content item fetch
-      operationId: fetchPlatformContentItem
+      summary: Get a download link for the content item (client machine)
+      operationId: downloadPlatformContentItem
       security:
         - BearerAuth: []
       responses:
-        '202':
-          description: Fetch accepted
+        '200':
+          description: Download URL
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentFetchResponse'
+                $ref: '#/components/schemas/ContentItemDownloadLink'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /platform/content-libraries/{libraryId}/ensure:
+  /platform/content-libraries/{libraryId}/items/{itemId}/uploads:
     parameters:
       - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
     post:
-      tags: [PlatformContentLibraries]
-      summary: Ensure platform content library is materialized
-      operationId: ensurePlatformContentLibrary
+      tags: [ContentItems]
+      summary: Start binary upload for a content item
+      operationId: initiatePlatformContentItemUpload
       security:
         - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUploadInitiate'
       responses:
-        '202':
-          description: Ensure accepted
+        '201':
+          description: Upload session created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentSyncResponse'
+                $ref: '#/components/schemas/ContentItemUploadSession'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+      - $ref: '#/components/parameters/uploadId'
+    get:
+      tags: [ContentItems]
+      summary: Get upload session status
+      operationId: getPlatformContentItemUploadSession
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemUploadSession'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [ContentItems]
+      summary: Upload a chunk (application/octet-stream, Content-Range bytes start-end/total)
+      operationId: putPlatformContentItemUploadChunk
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Content-Range
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Chunk stored
+        '308':
+          description: Resume incomplete (client should GET session and continue)
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+      - $ref: '#/components/parameters/uploadId'
+    post:
+      tags: [ContentItems]
+      summary: Finalize upload after all bytes are received
+      operationId: completePlatformContentItemUpload
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Upload verified and artifact stored
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
@@ -769,23 +1104,95 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/sync:
+  /tenants/{tenantId}/content-libraries/{libraryId}/publish:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
     post:
       tags: [TenantContentLibraries]
-      summary: Trigger content library sync
-      operationId: syncTenantContentLibrary
+      summary: Publish content library to a datacenter
+      operationId: publishTenantContentLibrary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      responses:
+        '201':
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryDatacenter'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+    get:
+      tags: [TenantContentLibraries]
+      summary: List datacenters this library is published to
+      operationId: listTenantContentLibraryDatacenters
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentLibraryDatacenterList'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/datacenterId'
+    delete:
+      tags: [TenantContentLibraries]
+      summary: Unpublish library from datacenter
+      operationId: unpublishTenantContentLibraryDatacenter
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Unpublished
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/datacenterId'
+    post:
+      tags: [TenantContentLibraries]
+      summary: Replicate content from content store to provider storage at datacenter
+      operationId: replicateTenantContentLibraryDatacenter
       security:
         - BearerAuth: []
       responses:
         '202':
-          description: Sync accepted
+          description: Replicate accepted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentSyncResponse'
+                $ref: '#/components/schemas/ContentReplicateResponse'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
@@ -927,46 +1334,131 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/fetch:
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/download:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+    get:
+      tags: [ContentItems]
+      summary: Get a download link for the content item
+      operationId: downloadTenantContentItem
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Download URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemDownloadLink'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
       - $ref: '#/components/parameters/itemId'
     post:
       tags: [ContentItems]
-      summary: Trigger content item fetch
-      operationId: fetchTenantContentItem
+      summary: Start binary upload for a content item
+      operationId: initiateTenantContentItemUpload
       security:
         - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentItemUploadInitiate'
       responses:
-        '202':
-          description: Fetch accepted
+        '201':
+          description: Upload session created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentFetchResponse'
+                $ref: '#/components/schemas/ContentItemUploadSession'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/ensure:
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
-    post:
-      tags: [TenantContentLibraries]
-      summary: Ensure tenant content library is materialized
-      operationId: ensureTenantContentLibrary
+      - $ref: '#/components/parameters/itemId'
+      - $ref: '#/components/parameters/uploadId'
+    get:
+      tags: [ContentItems]
+      summary: Get upload session status
+      operationId: getTenantContentItemUploadSession
       security:
         - BearerAuth: []
       responses:
-        '202':
-          description: Ensure accepted
+        '200':
+          description: Current session
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentSyncResponse'
+                $ref: '#/components/schemas/ContentItemUploadSession'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    put:
+      tags: [ContentItems]
+      summary: Upload a chunk (application/octet-stream, Content-Range bytes start-end/total)
+      operationId: putTenantContentItemUploadChunk
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Content-Range
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Chunk stored
+        '308':
+          description: Resume incomplete
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}/uploads/{uploadId}/complete:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/itemId'
+      - $ref: '#/components/parameters/uploadId'
+    post:
+      tags: [ContentItems]
+      summary: Finalize upload after all bytes are received
+      operationId: completeTenantContentItemUpload
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Upload verified and artifact stored
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':

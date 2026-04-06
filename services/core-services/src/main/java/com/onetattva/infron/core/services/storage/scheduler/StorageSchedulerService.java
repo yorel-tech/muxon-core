@@ -158,6 +158,34 @@ public class StorageSchedulerService {
     }
 
     /**
+     * All enabled provider pools for {@code providerId} that match {@code storageClassName} (capabilities,
+     * constraints, and optional storage overrides). Used when replicating content into every eligible pool.
+     */
+    public List<ProviderStorageEntity> findMatchingStoragePoolsForProvider(
+            String storageClassName, UUID providerId) {
+        Optional<StorageClassEntity> storageClassOpt = storageClassRepository.findByName(storageClassName);
+        if (storageClassOpt.isEmpty()) {
+            return List.of();
+        }
+        StorageClassEntity storageClass = storageClassOpt.get();
+        SchedulerContext context = SchedulerContext.builder()
+                .storageClassName(storageClassName)
+                .providerId(providerId)
+                .sizeBytes(0L)
+                .capabilities(storageClass.getCapabilities())
+                .constraints(storageClass.getConstraints())
+                .build();
+        List<ProviderStorageEntity> candidates = checkOverrides(context);
+        if (candidates.isEmpty()) {
+            candidates = new ArrayList<>(providerStorageRepository.findByProviderIdAndEnabled(providerId, true));
+        }
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+        return capabilityFilter.filter(candidates, context);
+    }
+
+    /**
      * Get all available storage for a storage class across all providers.
      *
      * @param storageClassName storage class name

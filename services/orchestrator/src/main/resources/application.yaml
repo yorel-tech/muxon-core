@@ -44,11 +44,6 @@ infron:
     # Default when queue metadata omits executionTimeoutSeconds (must match core-services).
     storage-discovery-execution-timeout-seconds: 300
 
-# gRPC configuration
-grpc:
-  server:
-    port: 9081
-
 # OpenTelemetry configuration
 management:
   endpoints:

@@ -12,7 +12,6 @@ include(
     "services:core-services",
     "services:orchestrator",
     "services:usage-billing",
-    "services:agent",
     "services:console-proxy",
     "providers:mock",
     "providers:libvirt",

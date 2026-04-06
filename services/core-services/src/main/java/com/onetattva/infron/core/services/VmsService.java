@@ -9,26 +9,25 @@ import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.UserPrincipal;
 import com.onetattva.infron.core.common.Constants;
 import com.onetattva.infron.core.config.InfronConsoleProperties;
+import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.core.providers.VmConsoleType;
-import com.onetattva.infron.grpc.vmconsole.v1.ResolveVmConsoleRequest;
-import com.onetattva.infron.grpc.vmconsole.v1.ResolveVmConsoleResponse;
-import com.onetattva.infron.grpc.vmconsole.v1.VmConsoleResolutionServiceGrpc;
-import io.grpc.StatusRuntimeException;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.core.spi.queue.VmConsoleResolvePayloadKeys;
+import com.onetattva.infron.core.spi.queue.VmQueueCommands;
 import com.onetattva.infron.db.model.ConsoleSessionConsoleType;
 import com.onetattva.infron.db.model.ConsoleSessionEntity;
 import com.onetattva.infron.db.model.ConsoleSessionStatus;
 import com.onetattva.infron.db.model.SystemSettingsEntity;
 import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
+import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.ContentLibraryEntity;
 import com.onetattva.infron.db.repository.*;
 import com.onetattva.infron.core.services.content.ContentLibraryProviderPathBuilder;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
-import com.onetattva.infron.core.services.content.ContentLibrarySyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,7 +37,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigInteger;
 import java.net.URI;
@@ -76,9 +78,6 @@ public class VmsService {
     @Autowired
     private ContentItemRepository contentItemRepository;
     @Autowired
-    private ContentLibrarySyncService contentLibrarySyncService;
-
-    @Autowired
     private ContentLibraryRepository contentLibraryRepository;
 
     @Autowired
@@ -94,7 +93,10 @@ public class VmsService {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private VmConsoleResolutionServiceGrpc.VmConsoleResolutionServiceBlockingStub vmConsoleResolutionStub;
+    private QueueEntryRepository queueEntryRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private ConsoleSessionRepository consoleSessionRepository;
@@ -123,8 +125,9 @@ public class VmsService {
             if (!"vm_template".equalsIgnoreCase(tpl.getContentType())) {
                 throw new IllegalArgumentException("content_item_id must reference a vm_template item");
             }
-            if (!"available".equalsIgnoreCase(tpl.getFetchStatus())) {
-                contentLibrarySyncService.enqueueFetch(tpl.getLibraryId(), tpl.getId());
+            if (!"available".equalsIgnoreCase(tpl.getContentStatus())) {
+                throw new IllegalArgumentException(
+                        "Template content item must be available in the content store before VM create");
             }
         }
 
@@ -137,8 +140,9 @@ public class VmsService {
                 if (!"iso".equalsIgnoreCase(iso.getContentType())) {
                     throw new IllegalArgumentException("iso_content_item_ids must reference iso items");
                 }
-                if (!"available".equalsIgnoreCase(iso.getFetchStatus())) {
-                    contentLibrarySyncService.enqueueFetch(iso.getLibraryId(), iso.getId());
+                if (!"available".equalsIgnoreCase(iso.getContentStatus())) {
+                    throw new IllegalArgumentException(
+                            "ISO content item must be available in the content store before VM create");
                 }
             }
         }
@@ -308,7 +312,6 @@ public class VmsService {
         return buildOperationResponse(vmId, "VM deletion initiated");
     }
 
-    @Transactional
     public VmConsoleResponse getVmConsole(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
 
@@ -332,34 +335,53 @@ public class VmsService {
             throw new AccessDeniedException("VM tenant mismatch");
         }
 
-        ResolveVmConsoleRequest grpcReq = ResolveVmConsoleRequest.newBuilder()
-                .setTenantDatacenterGrantId(vm.getTenantDatacenterGrantId().toString())
-                .setVmId(vm.getId().toString())
-                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
-                .setNodeId(vm.getNodeId() != null ? vm.getNodeId().toString() : "")
+        Map<String, Object> resolvePayload = new HashMap<>();
+        resolvePayload.put(VmConsoleResolvePayloadKeys.TENANT_DATACENTER_GRANT_ID, vm.getTenantDatacenterGrantId().toString());
+        resolvePayload.put(VmConsoleResolvePayloadKeys.EXTERNAL_ID, vm.getExternalId() != null ? vm.getExternalId() : "");
+        resolvePayload.put(VmConsoleResolvePayloadKeys.NODE_ID, vm.getNodeId() != null ? vm.getNodeId().toString() : "");
+
+        CommandMessage consoleCommand = CommandMessage.builder()
+                .queueType(VmQueueCommands.CONSOLE_RESOLVE)
+                .entityType(EntityType.VM)
+                .entityId(vm.getId())
+                .payload(resolvePayload)
+                .metadata(Map.of("source", "api", "requestId", generateRequestId()))
+                .source("core-services")
+                .actorType("USER")
+                .actorUserId(userId)
+                .actorService("api")
+                .createdAt(Instant.now())
                 .build();
 
-        ResolveVmConsoleResponse grpcResp;
-        try {
-            grpcResp = vmConsoleResolutionStub.resolveVmConsole(grpcReq);
-        } catch (StatusRuntimeException e) {
-            throw new IllegalStateException("Console orchestrator unavailable: " + e.getStatus(), e);
+        UUID commandId = commandQueue.sendCommand(consoleCommand);
+        Map<String, Object> resolved = waitForConsoleResolve(commandId, infronConsoleProperties.getResolveTimeoutSeconds());
+
+        if (!Boolean.TRUE.equals(resolved.get(VmConsoleResolvePayloadKeys.RESOLVED))) {
+            throw new IllegalStateException("Console resolution did not complete successfully");
         }
 
-        if (!grpcResp.getOk()) {
-            String msg = grpcResp.getErrorMessage();
-            throw new IllegalStateException(
-                    msg != null && !msg.isBlank() ? msg : "Failed to resolve console from orchestrator");
+        Object typeObj = resolved.get(VmConsoleResolvePayloadKeys.CONSOLE_TYPE);
+        if (typeObj == null) {
+            throw new IllegalStateException("Orchestrator returned no console type");
         }
-
         VmConsoleType consoleType;
         try {
-            consoleType = VmConsoleType.valueOf(grpcResp.getConsoleType());
+            consoleType = VmConsoleType.valueOf(typeObj.toString());
         } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Unknown console type: " + grpcResp.getConsoleType());
+            throw new IllegalStateException("Unknown console type: " + typeObj);
         }
 
-        String hypervisorPassword = grpcResp.getPassword().isEmpty() ? null : grpcResp.getPassword();
+        Object hostObj = resolved.get(VmConsoleResolvePayloadKeys.HOST);
+        Object portObj = resolved.get(VmConsoleResolvePayloadKeys.PORT);
+        if (hostObj == null || portObj == null) {
+            throw new IllegalStateException("Orchestrator returned incomplete console endpoint");
+        }
+        String host = hostObj.toString();
+        int port = payloadPort(portObj);
+        boolean tls = Boolean.TRUE.equals(resolved.get(VmConsoleResolvePayloadKeys.TLS));
+
+        Object pwObj = resolved.get(VmConsoleResolvePayloadKeys.PASSWORD);
+        String hypervisorPassword = pwObj != null && !pwObj.toString().isEmpty() ? pwObj.toString() : null;
 
         String token = new BigInteger(130, new SecureRandom()).toString(32);
         int timeoutMinutes = resolveConsoleTimeoutMinutes(tenantId);
@@ -371,15 +393,18 @@ public class VmsService {
         session.setUserId(userId);
         session.setToken(token);
         session.setConsoleType(mapPersistenceConsoleType(consoleType));
-        session.setHypervisorHost(grpcResp.getHost());
-        session.setHypervisorPort(grpcResp.getPort());
+        session.setHypervisorHost(host);
+        session.setHypervisorPort(port);
         session.setHypervisorPassword(hypervisorPassword);
-        session.setTls(grpcResp.getTls());
+        session.setTls(tls);
         session.setStatus(ConsoleSessionStatus.ACTIVE);
         session.setExpiresAt(expiresAt);
         session.setCreatedAt(Instant.now());
         session.setLastActivityAt(Instant.now());
-        consoleSessionRepository.save(session);
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(status -> consoleSessionRepository.save(session));
 
         VmConsoleResponse response = new VmConsoleResponse();
         response.setUrl(URI.create(buildConsoleProxyWsUrl(token)));
@@ -388,6 +413,44 @@ public class VmsService {
         response.setConsoleType(mapApiConsoleType(consoleType));
         response.setRemotePassword(hypervisorPassword);
         return response;
+    }
+
+    private static int payloadPort(Object portObj) {
+        if (portObj instanceof Number n) {
+            return n.intValue();
+        }
+        return Integer.parseInt(portObj.toString());
+    }
+
+    private Map<String, Object> waitForConsoleResolve(UUID commandId, int timeoutSeconds) {
+        Instant deadline = Instant.now().plusSeconds(timeoutSeconds);
+        while (Instant.now().isBefore(deadline)) {
+            Optional<QueueEntryEntity> opt = queueEntryRepository.findById(commandId);
+            if (opt.isEmpty()) {
+                throw new IllegalStateException("Console resolve command disappeared");
+            }
+            QueueEntryEntity row = opt.get();
+            if (row.getStatus() == QueueStatus.COMPLETED) {
+                Map<String, Object> p = row.getPayload();
+                if (p == null) {
+                    throw new IllegalStateException("Console resolve completed without payload");
+                }
+                return p;
+            }
+            if (row.getStatus() == QueueStatus.FAILED) {
+                String msg = row.getErrorMessage();
+                throw new IllegalStateException(
+                        msg != null && !msg.isBlank() ? msg : "Console resolution failed");
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for console resolution", e);
+            }
+        }
+        throw new IllegalStateException(
+                "Console resolution timed out after " + timeoutSeconds + "s; ensure the orchestrator is running");
     }
 
     public VmOperationResponse attachVmIso(UUID tenantId, UUID vmId, VmIsoAttachRequest request) {
@@ -403,8 +466,8 @@ public class VmsService {
         if (!"iso".equalsIgnoreCase(iso.getContentType())) {
             throw new IllegalArgumentException("content_item_id must reference an iso item");
         }
-        if (!"available".equalsIgnoreCase(iso.getFetchStatus())) {
-            contentLibrarySyncService.enqueueFetch(iso.getLibraryId(), iso.getId());
+        if (!"available".equalsIgnoreCase(iso.getContentStatus())) {
+            throw new IllegalArgumentException("ISO content item must be available in the content store");
         }
         List<UUID> attached = vm.getAttachedIsoItemIds();
         if (attached == null) {
@@ -449,7 +512,7 @@ public class VmsService {
                 && st != com.onetattva.infron.api.enums.VmStatus.STOPPED) {
             throw new IllegalStateException("VM must be active or stopped to publish as template");
         }
-        contentLibraryService.requireTenantLibrary(tenantId, request.getLibraryId());
+        contentLibraryService.requireWriteAccess(tenantId, request.getLibraryId());
 
         ContentItemEntity item = new ContentItemEntity();
         item.setLibraryId(request.getLibraryId());
@@ -460,7 +523,7 @@ public class VmsService {
             item.setVersionLabel(request.getVersionLabel());
         }
         item.setMetadata(request.getMetadata());
-        item.setFetchStatus("pending");
+        item.setContentStatus("pending");
         ContentItemEntity saved = contentItemRepository.save(item);
         contentLibraryProviderPathBuilder.applyProviderPaths(saved);
         saved = contentItemRepository.save(saved);
@@ -737,8 +800,8 @@ public class VmsService {
     private void assertContentItemReadableByTenant(UUID tenantId, ContentItemEntity item) {
         ContentLibraryEntity lib = contentLibraryRepository.findById(item.getLibraryId())
                 .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + item.getLibraryId()));
-        boolean visible = (lib.getTenantId() != null && lib.getTenantId().equals(tenantId))
-                || "provider".equalsIgnoreCase(lib.getScope());
+        boolean visible = lib.getTenantId().equals(tenantId)
+                || lib.getTenantId().equals(ContentLibraryService.SYSTEM_TENANT_ID);
         if (!visible) {
             throw new EntityNotFoundException("Content item not found: " + item.getId());
         }

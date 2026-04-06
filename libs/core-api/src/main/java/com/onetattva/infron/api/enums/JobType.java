@@ -20,8 +20,12 @@ public enum JobType {
     PROVIDER_SYNC,
     /** Provider storage inventory sync (orchestrator + storage discovery providers). */
     PROVIDER_STORAGE_SYNC,
-    /** Content library catalog sync from configured source. */
+    /** Content library catalog sync from configured source (metadata only). */
     CONTENT_LIBRARY_SYNC,
-    /** Content item fetch/materialization to provider storage. */
-    CONTENT_ITEM_FETCH
+    /** Content item fetch/materialization (legacy; prefer replicate jobs). */
+    CONTENT_ITEM_FETCH,
+    /** Pull remote artifacts into Infron content store for a remote library. */
+    CONTENT_LIBRARY_REPLICATE,
+    /** Push library content from content store to provider storage at a datacenter. */
+    CONTENT_DATACENTER_REPLICATE
 }

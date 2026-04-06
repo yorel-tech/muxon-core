@@ -9,17 +9,22 @@ import com.onetattva.infron.core.providers.libvirt.LibvirtNodeInventorySupport;
 import com.onetattva.infron.core.providers.libvirt.LibvirtProviderSdk;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxNodeInventoryProvider;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxProviderSdk;
+import com.onetattva.infron.core.providers.proxmox.ProxmoxStorageUploader;
 import com.onetattva.infron.core.providers.storage.StorageDiscoveryProvider;
 import com.onetattva.infron.core.providers.storage.StorageDiscoveryProviderRegistry;
 import com.onetattva.infron.api.enums.JobStatus;
+import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import com.onetattva.infron.core.spi.queue.ProviderQueueMetadataKeys;
+import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.NodeClusterEntity;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
+import com.onetattva.infron.db.repository.ContentItemRepository;
+import com.onetattva.infron.db.repository.ContentLibraryDatacenterRepository;
 import com.onetattva.infron.db.repository.JobRepository;
 import com.onetattva.infron.db.repository.NodeClusterRepository;
 import com.onetattva.infron.db.repository.NodeRepository;
@@ -33,6 +38,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -89,6 +96,15 @@ public class ProviderConnectionOrchestrator {
     @Autowired
     private NodeClusterRepository nodeClusterRepository;
 
+    @Autowired
+    private ProxmoxStorageUploader proxmoxStorageUploader;
+
+    @Autowired
+    private ContentItemRepository contentItemRepository;
+
+    @Autowired
+    private ContentLibraryDatacenterRepository contentLibraryDatacenterRepository;
+
     @Value("${infron.provider.storage-discovery-execution-timeout-seconds:300}")
     private int defaultStorageDiscoveryExecutionTimeoutSeconds;
 
@@ -130,6 +146,10 @@ public class ProviderConnectionOrchestrator {
         }
         if (Objects.equals(queueType, ProviderQueueCommands.INVENTORY_SYNC)) {
             processInventorySync(entry);
+            return;
+        }
+        if (Objects.equals(queueType, ProviderQueueCommands.CONTENT_DATACENTER_REPLICATE)) {
+            processContentDatacenterReplicate(entry);
             return;
         }
         // Unknown queue type for this worker; consider it handled.
@@ -748,6 +768,231 @@ public class ProviderConnectionOrchestrator {
             job.setCurrentStep(null);
             jobRepository.save(job);
             logger.info("Storage discovery job FAILED: jobId={}, message={}", jobId, message);
+        });
+    }
+
+    private void processContentDatacenterReplicate(CommandMessage entry) {
+        UUID providerId = entry.entityId();
+        UUID jobId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.JOB_ID));
+        UUID libraryId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.LIBRARY_ID));
+        UUID datacenterId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.DATACENTER_ID));
+        String artifactRootStr = entry.metadata().get(ProviderQueueMetadataKeys.ARTIFACT_ROOT);
+        String storagePoolIdsRaw = entry.metadata().get(ProviderQueueMetadataKeys.STORAGE_POOL_IDS);
+        int execTimeoutSec = parseExecutionTimeoutSeconds(
+                entry.metadata().get(ProviderQueueMetadataKeys.EXECUTION_TIMEOUT_SECONDS));
+
+        logger.info(
+                "Content datacenter replicate claimed: commandId={}, providerId={}, jobId={}, libraryId={}, datacenterId={}",
+                entry.id(),
+                providerId,
+                jobId,
+                libraryId,
+                datacenterId);
+
+        if (jobId == null
+                || libraryId == null
+                || datacenterId == null
+                || artifactRootStr == null
+                || artifactRootStr.isBlank()
+                || storagePoolIdsRaw == null
+                || storagePoolIdsRaw.isBlank()) {
+            String msg = "Content datacenter replicate missing required metadata (jobId, libraryId, datacenterId, artifactRoot, storagePoolIds)";
+            failContentDatacenterReplicateJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
+            return;
+        }
+
+        ProviderEntity entity = providerRepository.findById(providerId).orElse(null);
+        if (entity == null) {
+            String msg = "Provider not found: " + providerId;
+            failContentDatacenterReplicateJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
+            return;
+        }
+        if (!ProviderType.PROXMOX.equals(entity.getType())) {
+            String msg = "Content datacenter replicate is only supported for Proxmox providers (got " + entity.getType() + ")";
+            failContentDatacenterReplicateJob(jobId, msg);
+            commandQueue.markFailed(entry.id(), msg);
+            return;
+        }
+
+        markContentDatacenterReplicateJobRunning(jobId);
+
+        try {
+            Path artifactRoot = Path.of(artifactRootStr).toAbsolutePath().normalize();
+            ProxmoxStorageUploader.PveAuthSession session =
+                    proxmoxStorageUploader.authenticate(entity.getEndpoint(), entity.getCredentials());
+
+            List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+            int uploadCount = 0;
+            for (String poolIdRaw : storagePoolIdsRaw.split(",")) {
+                String storagePoolId = poolIdRaw.trim();
+                if (storagePoolId.isEmpty()) {
+                    continue;
+                }
+                ProviderStorageEntity ps = providerStorageRepository
+                        .findByProviderIdAndExternalId(providerId, storagePoolId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Provider storage not found for provider " + providerId + " storage " + storagePoolId));
+                String nodeName = ps.getNodeId();
+                if (nodeName == null || nodeName.isBlank()) {
+                    throw new IllegalStateException("Provider storage " + storagePoolId + " has no node id (run inventory sync)");
+                }
+
+                for (ContentItemEntity item : items) {
+                    if (!"available".equalsIgnoreCase(item.getContentStatus())) {
+                        continue;
+                    }
+                    String rel = item.getProviderRelativePath();
+                    if (rel == null || rel.isBlank()) {
+                        throw new IllegalStateException("Content item " + item.getId() + " has no provider relative path");
+                    }
+                    Path src = artifactRoot.resolve(rel).normalize();
+                    if (!src.startsWith(artifactRoot)) {
+                        throw new IllegalStateException("Refusing to read outside artifact root: " + src);
+                    }
+                    if (!Files.isRegularFile(src)) {
+                        throw new IllegalStateException("Missing artifact file for item " + item.getId() + " at " + src);
+                    }
+                    String leaf = src.getFileName().toString();
+                    String proxmoxContent = ProxmoxStorageUploader.resolveProxmoxContentTypeForItem(
+                            item.getContentType(), leaf);
+                    ensureStorageAcceptsProxmoxContent(ps, proxmoxContent);
+                    String uploadName =
+                            ProxmoxStorageUploader.encodeInfronUploadFilename(libraryId, item.getId(), leaf);
+                    String upid = proxmoxStorageUploader.upload(
+                            entity.getEndpoint(),
+                            session,
+                            nodeName,
+                            storagePoolId,
+                            proxmoxContent,
+                            uploadName,
+                            src,
+                            item.getContentType());
+                    proxmoxStorageUploader.waitForTask(
+                            entity.getEndpoint(), session, nodeName, upid, execTimeoutSec);
+                    uploadCount++;
+                }
+            }
+
+            completeContentDatacenterReplicateJob(jobId, libraryId, datacenterId, uploadCount);
+            contentLibraryDatacenterRepository
+                    .findByLibraryIdAndDatacenterId(libraryId, datacenterId)
+                    .ifPresent(m -> {
+                        m.setReplicateStatus("available");
+                        m.setLastReplicatedAt(Instant.now());
+                        contentLibraryDatacenterRepository.save(m);
+                    });
+            logger.info(
+                    "Content datacenter replicate completed: commandId={}, jobId={}, uploadCount={}",
+                    entry.id(),
+                    jobId,
+                    uploadCount);
+            commandQueue.markCompleted(entry.id());
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "Content datacenter replicate failed";
+            logger.error("Content datacenter replicate failed: providerId={}, jobId={}", providerId, jobId, e);
+            failContentDatacenterReplicateJob(jobId, msg);
+            contentLibraryDatacenterRepository
+                    .findByLibraryIdAndDatacenterId(libraryId, datacenterId)
+                    .ifPresent(m -> {
+                        m.setReplicateStatus("failed");
+                        contentLibraryDatacenterRepository.save(m);
+                    });
+            commandQueue.markFailed(entry.id(), msg);
+        }
+    }
+
+    private static void ensureStorageAcceptsProxmoxContent(ProviderStorageEntity ps, String proxmoxContent) {
+        if (ps.getCapabilities() == null) {
+            return;
+        }
+        Object raw = ps.getCapabilities().get("content_types");
+        if (raw == null) {
+            return;
+        }
+        List<String> types = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object o : list) {
+                if (o != null) {
+                    types.add(o.toString().trim());
+                }
+            }
+        } else {
+            for (String part : raw.toString().split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) {
+                    types.add(t);
+                }
+            }
+        }
+        if (types.isEmpty()) {
+            return;
+        }
+        String want = proxmoxContent.trim().toLowerCase(Locale.ROOT);
+        boolean ok = types.stream().anyMatch(t -> t.toLowerCase(Locale.ROOT).equals(want));
+        if (!ok) {
+            throw new IllegalArgumentException(
+                    "Proxmox storage \""
+                            + ps.getExternalId()
+                            + "\" does not accept content type "
+                            + proxmoxContent
+                            + "; allowed: "
+                            + types);
+        }
+    }
+
+    private void markContentDatacenterReplicateJobRunning(UUID jobId) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            if (job.getStatus() != JobStatus.PENDING) {
+                logger.warn(
+                        "Content datacenter replicate job {} not in PENDING (was {}); still marking RUNNING",
+                        jobId,
+                        job.getStatus());
+            }
+            job.setStatus(JobStatus.RUNNING);
+            job.setStartedAt(Instant.now());
+            job.setLastHeartbeatAt(Instant.now());
+            job.setCurrentStep("Uploading content library to Proxmox storage");
+            jobRepository.save(job);
+            logger.info("Content datacenter replicate job marked RUNNING: jobId={}", jobId);
+        });
+    }
+
+    private void completeContentDatacenterReplicateJob(UUID jobId, UUID libraryId, UUID datacenterId, int uploadCount) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.setStatus(JobStatus.COMPLETED);
+            job.setCompletedAt(Instant.now());
+            job.setProgressPercentage(100);
+            job.setCurrentStep(null);
+            job.setResult(String.format(
+                    Locale.US,
+                    "{\"libraryId\":\"%s\",\"datacenterId\":\"%s\",\"uploadCount\":%d}",
+                    libraryId,
+                    datacenterId,
+                    uploadCount));
+            jobRepository.save(job);
+            logger.info("Content datacenter replicate job COMPLETED: jobId={}, uploadCount={}", jobId, uploadCount);
+        });
+    }
+
+    private void failContentDatacenterReplicateJob(UUID jobId, String message) {
+        if (jobId == null) {
+            return;
+        }
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.setStatus(JobStatus.FAILED);
+            job.setCompletedAt(Instant.now());
+            job.setErrorMessage(message);
+            job.setCurrentStep(null);
+            jobRepository.save(job);
+            logger.info("Content datacenter replicate job FAILED: jobId={}, message={}", jobId, message);
         });
     }
 

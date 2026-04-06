@@ -77,7 +77,7 @@ public class ContentItemService {
         entity.setSourceUrl(body.getSourceUrl());
         entity.setSourceItemId(body.getSourceItemId());
         entity.setMetadata(body.getMetadata());
-        entity.setFetchStatus("pending");
+        entity.setContentStatus("pending");
         return converter.toApi(contentItemRepository.save(entity));
     }
 

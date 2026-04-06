@@ -29,4 +29,7 @@ public interface DatacenterRepository extends JpaRepository<DatacenterEntity, ja
      */
     @Query("SELECT d FROM DatacenterEntity d JOIN d.nodeCluster nc JOIN nc.provider p WHERE p.type = :providerType")
     java.util.List<DatacenterEntity> findByProviderType(@Param("providerType") ProviderType providerType);
+
+    @Query("SELECT d FROM DatacenterEntity d JOIN FETCH d.nodeCluster nc JOIN FETCH nc.provider WHERE d.id = :id")
+    Optional<DatacenterEntity> findByIdWithNodeClusterAndProvider(@Param("id") UUID id);
 }
