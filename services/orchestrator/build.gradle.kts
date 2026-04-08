@@ -19,14 +19,12 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.postgresql)
 
-    // gRPC server (Spring Boot integration)
-    implementation("net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE")
-    implementation("io.grpc:grpc-netty-shaded:1.69.1")
-    
-    // OpenTelemetry & Micrometer
-    implementation(libs.micrometer.tracing.bridge.otel)
-    implementation(libs.opentelemetry.exporter.otlp)
-    implementation(libs.micrometer.prometheus)
+    // gRPC server (Spring gRPC + grpc-netty-shaded)
+    implementation(platform(libs.spring.grpc.dependencies))
+    implementation(libs.spring.grpc.server.spring.boot.starter) {
+        exclude(group = "io.grpc", module = "grpc-netty")
+    }
+    implementation(libs.grpc.netty.shaded)
     
     // Development tools
     developmentOnly(libs.spring.boot.devtools)

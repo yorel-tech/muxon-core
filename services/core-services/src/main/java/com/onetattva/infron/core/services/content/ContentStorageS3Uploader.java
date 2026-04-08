@@ -9,10 +9,18 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -31,6 +39,76 @@ public class ContentStorageS3Uploader {
             PutObjectRequest put =
                     PutObjectRequest.builder().bucket(bucket).key(key).build();
             client.putObject(put, RequestBody.fromFile(file));
+        }
+    }
+
+    /**
+     * Best-effort delete of one object (S3 succeeds even when the key does not exist).
+     */
+    public void deleteRelativeObject(ContentStorageEntity storage, String relativePath) {
+        if (!isS3(storage)) {
+            throw new IllegalArgumentException("Not S3 storage");
+        }
+        Map<String, Object> cfg = storage.getConfig() != null ? storage.getConfig() : Map.of();
+        String bucket = requiredString(cfg, "bucket", "bucket");
+        String rel = relativePath == null ? "" : relativePath.replace('\\', '/').replaceFirst("^/+", "");
+        String key = buildObjectKey(cfg, rel);
+        try (S3Client client = buildClient(cfg)) {
+            client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+        }
+    }
+
+    /**
+     * Deletes every object whose key starts with the prefix derived from {@code relativeDirectoryPrefix}
+     * (same rules as {@link #buildObjectKey(Map, String)}). The prefix is treated as a directory: a trailing
+     * {@code /} is appended after applying storage config so only keys under that path are removed.
+     */
+    public void deleteAllUnderRelativePrefix(ContentStorageEntity storage, String relativeDirectoryPrefix) {
+        if (!isS3(storage)) {
+            throw new IllegalArgumentException("Not S3 storage");
+        }
+        Map<String, Object> cfg = storage.getConfig() != null ? storage.getConfig() : Map.of();
+        String bucket = requiredString(cfg, "bucket", "bucket");
+        String normalized =
+                relativeDirectoryPrefix == null ? "" : relativeDirectoryPrefix.replace('\\', '/').replaceFirst("^/+", "");
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("relativeDirectoryPrefix must not be empty");
+        }
+        String keyPrefix = buildObjectKey(cfg, normalized);
+        if (!keyPrefix.endsWith("/")) {
+            keyPrefix = keyPrefix + "/";
+        }
+
+        try (S3Client client = buildClient(cfg)) {
+            String continuationToken = null;
+            do {
+                ListObjectsV2Request.Builder listReq =
+                        ListObjectsV2Request.builder().bucket(bucket).prefix(keyPrefix);
+                if (continuationToken != null) {
+                    listReq.continuationToken(continuationToken);
+                }
+                var response = client.listObjectsV2(listReq.build());
+                List<S3Object> contents = response.contents();
+                if (!contents.isEmpty()) {
+                    List<ObjectIdentifier> toDelete = new ArrayList<>(contents.size());
+                    for (S3Object obj : contents) {
+                        toDelete.add(ObjectIdentifier.builder().key(obj.key()).build());
+                    }
+                    for (int i = 0; i < toDelete.size(); i += 1000) {
+                        int end = Math.min(i + 1000, toDelete.size());
+                        DeleteObjectsRequest delReq = DeleteObjectsRequest.builder()
+                                .bucket(bucket)
+                                .delete(Delete.builder()
+                                        .objects(toDelete.subList(i, end))
+                                        .build())
+                                .build();
+                        client.deleteObjects(delReq);
+                    }
+                }
+                continuationToken = Boolean.TRUE.equals(response.isTruncated())
+                        ? response.nextContinuationToken()
+                        : null;
+            } while (continuationToken != null);
         }
     }
 

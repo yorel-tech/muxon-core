@@ -4,8 +4,8 @@ plugins {
 }
 
 dependencies {
-    api("io.grpc:grpc-protobuf:1.69.1")
-    api("io.grpc:grpc-stub:1.69.1")
+    api(libs.grpc.protobuf)
+    api(libs.grpc.stub)
     api("com.google.protobuf:protobuf-java:3.25.5")
     compileOnly("javax.annotation:javax.annotation-api:1.3.2")
 }
@@ -16,7 +16,7 @@ protobuf {
     }
     plugins {
         create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.69.1"
+            artifact = "io.grpc:protoc-gen-grpc-java:${libs.versions.grpc.java.get()}"
         }
     }
     generateProtoTasks {

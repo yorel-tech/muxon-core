@@ -20,7 +20,8 @@ swagger = "2.2.40"
 libvirt = "0.5.3"
 jna = "5.16.0"
 lombok = "1.18.38"
-grpc-spring-boot = "4.0.0"
+spring-grpc = "1.0.0"
+grpc-java = "1.77.0"
 graalvm-buildtools = "0.10.4"
 spring-cloud = "2025.1.0"
 aws-sdk = "2.29.51"
@@ -60,8 +61,13 @@ spring-web = { module = "org.springframework:spring-web", version.ref = "spring-
 servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "servlet-api" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
-# gRPC
-grpc-spring-boot-starter = { module = "org.springframework.grpc:spring-grpc-spring-boot-starter", version = "1.0.0" }
+# gRPC (Spring gRPC + io.grpc aligned via spring-grpc-dependencies BOM)
+spring-grpc-dependencies = { module = "org.springframework.grpc:spring-grpc-dependencies", version.ref = "spring-grpc" }
+spring-grpc-server-spring-boot-starter = { module = "org.springframework.grpc:spring-grpc-server-spring-boot-starter", version.ref = "spring-grpc" }
+spring-grpc-client-spring-boot-starter = { module = "org.springframework.grpc:spring-grpc-client-spring-boot-starter", version.ref = "spring-grpc" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc-java" }
+grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc-java" }
+grpc-netty-shaded = { module = "io.grpc:grpc-netty-shaded", version.ref = "grpc-java" }
 
 # OpenTelemetry & Micrometer
 micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel", version = "1.4.0" }

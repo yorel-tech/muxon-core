@@ -6,7 +6,7 @@ import com.onetattva.infron.core.orch.orch.JobService;
 import com.onetattva.infron.db.model.JobEntity;
 import com.onetattva.infron.grpc.workflow.v1.*;
 import io.grpc.stub.StreamObserver;
-import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,7 +17,7 @@ import java.util.UUID;
  * gRPC implementation of {@link JobQueryServiceGrpc.JobQueryServiceImplBase}.
  * Exposes job read + cancel operations to core-services for the REST /api/v1/jobs endpoints.
  */
-@GrpcService
+@Service
 public class JobQueryGrpcService extends JobQueryServiceGrpc.JobQueryServiceImplBase {
 
     private final JobService jobService;

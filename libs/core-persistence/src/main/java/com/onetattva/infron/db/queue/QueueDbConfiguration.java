@@ -7,6 +7,7 @@ import com.onetattva.infron.core.spi.queue.TaskEventQueue;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -28,7 +29,7 @@ import org.springframework.context.annotation.Bean;
  * }
  * </pre>
  */
-@AutoConfiguration
+@AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 public class QueueDbConfiguration {
 
     @Bean

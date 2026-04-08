@@ -11,6 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.onetattva.infron.db"
 })
 @EnableScheduling
+@EnableJpaRepositories(basePackages = "com.onetattva.infron.db.repository")
+@EntityScan(basePackages = "com.onetattva.infron.db.model")
 public class OrchestratorApp {
     public static void main(String[] args) {
         SpringApplication.run(OrchestratorApp.class, args);

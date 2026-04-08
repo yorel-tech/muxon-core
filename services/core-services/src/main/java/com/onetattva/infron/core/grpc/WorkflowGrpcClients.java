@@ -4,43 +4,49 @@ import com.onetattva.infron.grpc.workflow.v1.ContentLibraryWorkflowServiceGrpc;
 import com.onetattva.infron.grpc.workflow.v1.JobQueryServiceGrpc;
 import com.onetattva.infron.grpc.workflow.v1.VMWorkflowServiceGrpc;
 import io.grpc.ManagedChannel;
-import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.grpc.client.GrpcChannelFactory;
 
 /**
  * gRPC client stubs for the three workflow services hosted by services/orchestrator.
- * All three stubs share a single managed channel (configured via
- * {@code grpc.client.orchestrator.*} properties).
+ * All three stubs share a single managed channel (named {@code orchestrator}; configure via
+ * {@code spring.grpc.client.channels.orchestrator.*}).
  *
- * <p>Example application.yml:
+ * <p>Example {@code application.yaml}:
  * <pre>
- * grpc:
- *   client:
- *     orchestrator:
- *       address: static://localhost:9090
- *       negotiation-type: plaintext
+ * spring:
+ *   grpc:
+ *     client:
+ *       channels:
+ *         orchestrator:
+ *           address: static://localhost:9090
+ *           negotiation-type: PLAINTEXT
  * </pre>
  */
 @Configuration
 public class WorkflowGrpcClients {
 
-    @GrpcClient("orchestrator")
-    private ManagedChannel orchestratorChannel;
+    @Bean(destroyMethod = "shutdown")
+    public ManagedChannel orchestratorChannel(GrpcChannelFactory channelFactory) {
+        return channelFactory.createChannel("orchestrator");
+    }
 
     @Bean
-    public VMWorkflowServiceGrpc.VMWorkflowServiceBlockingStub vmWorkflowStub() {
+    public VMWorkflowServiceGrpc.VMWorkflowServiceBlockingStub vmWorkflowStub(
+            ManagedChannel orchestratorChannel) {
         return VMWorkflowServiceGrpc.newBlockingStub(orchestratorChannel);
     }
 
     @Bean
     public ContentLibraryWorkflowServiceGrpc.ContentLibraryWorkflowServiceBlockingStub
-    contentLibraryWorkflowStub() {
+            contentLibraryWorkflowStub(ManagedChannel orchestratorChannel) {
         return ContentLibraryWorkflowServiceGrpc.newBlockingStub(orchestratorChannel);
     }
 
     @Bean
-    public JobQueryServiceGrpc.JobQueryServiceBlockingStub jobQueryStub() {
+    public JobQueryServiceGrpc.JobQueryServiceBlockingStub jobQueryStub(
+            ManagedChannel orchestratorChannel) {
         return JobQueryServiceGrpc.newBlockingStub(orchestratorChannel);
     }
 }

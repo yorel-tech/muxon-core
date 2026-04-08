@@ -29,9 +29,12 @@ dependencies {
     implementation(project(":libs:core-proto"))
     implementation(project(":services:auth-api"))
 
-    // gRPC client (to call the orchestrator's workflow services)
-    implementation("net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE")
-    implementation("io.grpc:grpc-netty-shaded:1.69.1")
+    // gRPC client (Spring gRPC; shaded Netty)
+    implementation(platform(libs.spring.grpc.dependencies))
+    implementation(libs.spring.grpc.client.spring.boot.starter) {
+        exclude(group = "io.grpc", module = "grpc-netty")
+    }
+    implementation(libs.grpc.netty.shaded)
 }
 
 tasks.jar {

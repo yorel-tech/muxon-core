@@ -5,7 +5,7 @@ import com.onetattva.infron.api.enums.JobType;
 import com.onetattva.infron.core.orch.orch.JobService;
 import com.onetattva.infron.grpc.workflow.v1.*;
 import io.grpc.stub.StreamObserver;
-import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * gRPC implementation of {@link ContentLibraryWorkflowServiceGrpc.ContentLibraryWorkflowServiceImplBase}.
  */
-@GrpcService
+@Service
 public class ContentLibraryWorkflowGrpcService
         extends ContentLibraryWorkflowServiceGrpc.ContentLibraryWorkflowServiceImplBase {
 

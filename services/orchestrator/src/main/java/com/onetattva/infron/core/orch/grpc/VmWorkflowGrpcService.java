@@ -6,7 +6,7 @@ import com.onetattva.infron.core.orch.orch.JobService;
 import com.onetattva.infron.core.spi.queue.VmQueueCommands;
 import com.onetattva.infron.grpc.workflow.v1.*;
 import io.grpc.stub.StreamObserver;
-import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,7 @@ import java.util.UUID;
  * gRPC implementation of {@link VMWorkflowServiceGrpc.VMWorkflowServiceImplBase}.
  * Each method creates a Job + enqueues a task via {@link JobService} and returns a {@link JobResponse}.
  */
-@GrpcService
+@Service
 public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServiceImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(VmWorkflowGrpcService.class);
