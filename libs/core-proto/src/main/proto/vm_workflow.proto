@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package infron.workflow.v1;
+
+import "job_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.onetattva.infron.grpc.workflow.v1";
+option java_outer_classname = "VmWorkflowProto";
+
+// All VM lifecycle operations. Implemented by services/orchestrator.
+// Each method creates a Job and returns it synchronously; the actual work is async.
+service VMWorkflowService {
+  rpc CreateVM(CreateVMRequest)                  returns (JobResponse);
+  rpc DeleteVM(DeleteVMRequest)                  returns (JobResponse);
+  rpc PowerOnVM(PowerOnVMRequest)                returns (JobResponse);
+  rpc PowerOffVM(PowerOffVMRequest)              returns (JobResponse);
+  rpc RestartVM(RestartVMRequest)                returns (JobResponse);
+  rpc SuspendVM(SuspendVMRequest)                returns (JobResponse);
+  rpc ResumeVM(ResumeVMRequest)                  returns (JobResponse);
+  rpc MigrateVM(MigrateVMRequest)                returns (JobResponse);
+  rpc AttachIso(AttachIsoVMRequest)              returns (JobResponse);
+  rpc DetachIso(DetachIsoVMRequest)              returns (JobResponse);
+  rpc PublishVMTemplate(PublishVMTemplateRequest) returns (JobResponse);
+  rpc ResolveConsole(ResolveConsoleRequest)       returns (JobResponse);
+}
+
+// ── Request messages ──────────────────────────────────────────────────────────
+
+message CreateVMRequest {
+  string vm_id                      = 1;
+  string tenant_datacenter_grant_id = 2;
+  string spec_json                  = 3;   // full provider-agnostic VM spec JSON
+  string source_image_path          = 4;   // optional: provider-relative path of template
+  repeated string iso_content_ids   = 5;   // optional: list of ISO content item UUIDs
+  string correlation_id             = 6;
+}
+
+message DeleteVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;  // provider-assigned VM ID
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message PowerOnVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message PowerOffVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message RestartVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message SuspendVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message ResumeVMRequest {
+  string vm_id         = 1;
+  string external_id   = 2;
+  string grant_id      = 3;
+  string correlation_id = 4;
+}
+
+message MigrateVMRequest {
+  string vm_id          = 1;
+  string external_id    = 2;
+  string grant_id       = 3;
+  string target_node_id = 4;  // optional; orchestrator will pick one if empty
+  string correlation_id = 5;
+}
+
+message AttachIsoVMRequest {
+  string vm_id             = 1;
+  string external_id       = 2;
+  string grant_id          = 3;
+  string iso_content_id    = 4;
+  string correlation_id    = 5;
+}
+
+message DetachIsoVMRequest {
+  string vm_id          = 1;
+  string external_id    = 2;
+  string grant_id       = 3;
+  string device_name    = 4;
+  string correlation_id = 5;
+}
+
+message PublishVMTemplateRequest {
+  string vm_id           = 1;
+  string external_id     = 2;
+  string grant_id        = 3;
+  string content_item_id = 4;
+  string correlation_id  = 5;
+}
+
+message ResolveConsoleRequest {
+  string vm_id                      = 1;
+  string external_id                = 2;
+  string grant_id                   = 3;
+  string node_id                    = 4;  // empty for cluster-managed providers
+  string correlation_id             = 5;
+}

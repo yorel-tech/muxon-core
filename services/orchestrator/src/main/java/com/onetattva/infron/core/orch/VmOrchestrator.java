@@ -1,5 +1,13 @@
 package com.onetattva.infron.core.orch;
 
+/**
+ * @deprecated Replaced by {@link com.onetattva.infron.core.orch.worker.WorkerTaskPoller} +
+ * {@link com.onetattva.infron.core.orch.worker.VmTaskExecutor} in Stage 3.
+ * The @Service annotation below is intentionally disabled; this class is preserved for
+ * reference only and will be removed in a cleanup pass.
+ */
+@Deprecated(since = "stage3", forRemoval = true)
+
 import com.onetattva.infron.core.providers.IsoAttachment;
 import com.onetattva.infron.core.providers.ProviderContext;
 import com.onetattva.infron.core.providers.VmCreationRequest;
@@ -43,10 +51,21 @@ import java.util.UUID;
 
 /**
  * VM Orchestrator service.
- * Processes queue entries and manages VM lifecycle by invoking providers.
+ * @deprecated Replaced by {@code WorkerTaskPoller} + {@code VmTaskExecutor} in Stage 3.
+ * Disabled via conditional; preserved for reference.
  */
-@Service
+@SuppressWarnings("DeprecatedIsStillUsed")
+@org.springframework.context.annotation.Conditional(VmOrchestrator.Disabled.class)
 public class VmOrchestrator {
+
+    /** Condition that never matches — permanently disables this bean. */
+    static class Disabled implements org.springframework.context.annotation.Condition {
+        @Override
+        public boolean matches(org.springframework.context.annotation.ConditionContext ctx,
+                               org.springframework.core.type.AnnotatedTypeMetadata meta) {
+            return false;
+        }
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(VmOrchestrator.class);
     private static final int POLL_BATCH_SIZE = 10;

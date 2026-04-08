@@ -9,5 +9,6 @@ public enum EntityType {
     DATACENTER,
     TENANT,
     PROVIDER,
-    USER
+    USER,
+    CONTENT_LIBRARY
 }

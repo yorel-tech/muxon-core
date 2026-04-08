@@ -25,7 +25,13 @@ dependencies {
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))
     implementation(project(":libs:core-persistence"))
+    implementation(project(":libs:core-provider"))
+    implementation(project(":libs:core-proto"))
     implementation(project(":services:auth-api"))
+
+    // gRPC client (to call the orchestrator's workflow services)
+    implementation("net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE")
+    implementation("io.grpc:grpc-netty-shaded:1.69.1")
 }
 
 tasks.jar {

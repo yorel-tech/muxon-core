@@ -6,5 +6,9 @@ package com.onetattva.infron.api.enums;
 public enum QueueCategory {
     COMMAND,
     STATUS,
-    AUDIT
+    AUDIT,
+    /** Task status events published by workers, consumed by the orchestrator TaskEventProcessor. */
+    TASK_EVENT,
+    /** Entity state events published by workers, consumed by core-services EntityEventProcessor. */
+    ENTITY_EVENT
 }

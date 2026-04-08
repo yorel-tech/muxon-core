@@ -15,6 +15,8 @@ import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.VmConsoleResolvePayloadKeys;
 import com.onetattva.infron.core.spi.queue.VmQueueCommands;
+import com.onetattva.infron.grpc.workflow.v1.*;
+import io.grpc.StatusRuntimeException;
 import com.onetattva.infron.db.model.ConsoleSessionConsoleType;
 import com.onetattva.infron.db.model.ConsoleSessionEntity;
 import com.onetattva.infron.db.model.ConsoleSessionStatus;
@@ -68,9 +70,12 @@ public class VmsService {
     @Autowired
     private TenantDatacenterGrantRepository tenantDatacenterGrantRepository;
     @Autowired
-    private CommandQueue commandQueue;
+    private CommandQueue commandQueue;   // kept for console-resolve polling flow
     @Autowired
     private JobRepository jobRepository;
+
+    @Autowired
+    private VMWorkflowServiceGrpc.VMWorkflowServiceBlockingStub vmWorkflowStub;
     @Autowired
     private UserRoleBindingViewRepository userRoleBindingViewRepository;
     @Autowired
@@ -166,15 +171,15 @@ public class VmsService {
         // Save VM
         VmEntity saved = vmRepository.save(vm);
 
-        // Enqueue command via transport-agnostic port
-        CommandMessage command = buildCreateCommand(saved, request);
-        commandQueue.sendCommand(command);
+        // Dispatch VM creation workflow to orchestrator via gRPC
+        CreateVMRequest grpcRequest = buildGrpcCreateRequest(saved, request);
+        JobResponse jobResponse = vmWorkflowStub.createVM(grpcRequest);
 
         VmCreateResponse response = new VmCreateResponse();
         response.setId(saved.getId());
         response.setName(saved.getName());
         response.setStatus(VmStatus.valueOf(saved.getStatus().name()));
-        response.setMessage("VM creation initiated");
+        response.setMessage("VM creation initiated — job: " + jobResponse.getJobId());
         response.setCreatedAt(saved.getCreatedAt().atOffset(ZoneOffset.UTC));
         return response;
     }
@@ -241,75 +246,74 @@ public class VmsService {
 
     public VmOperationResponse startVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.STOPPED) {
             throw new IllegalStateException("VM must be stopped to start");
         }
-
-        commandQueue.sendCommand(buildStartCommand(vm));
-
-        return buildOperationResponse(vmId, "VM start initiated");
+        JobResponse job = vmWorkflowStub.powerOnVM(PowerOnVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM start initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse stopVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
             throw new IllegalStateException("VM must be running to stop");
         }
-
-        commandQueue.sendCommand(buildStopCommand(vm));
-
-        return buildOperationResponse(vmId, "VM stop initiated");
+        JobResponse job = vmWorkflowStub.powerOffVM(PowerOffVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM stop initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse restartVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        commandQueue.sendCommand(buildRestartCommand(vm));
-
-        return buildOperationResponse(vmId, "VM restart initiated");
+        JobResponse job = vmWorkflowStub.restartVM(RestartVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM restart initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse suspendVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        // Validate state transition
-        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE && vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
-            throw new IllegalStateException("VM must be running or suspended to suspend");
+        if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
+            throw new IllegalStateException("VM must be running to suspend");
         }
-
-        commandQueue.sendCommand(buildSuspendCommand(vm));
-
-        return buildOperationResponse(vmId, "VM suspend initiated");
+        JobResponse job = vmWorkflowStub.suspendVM(SuspendVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM suspend initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse resumeVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        // Validate state transition
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.SUSPENDED) {
             throw new IllegalStateException("VM must be suspended to resume");
         }
-
-        commandQueue.sendCommand(buildResumeCommand(vm));
-
-        return buildOperationResponse(vmId, "VM resume initiated");
+        JobResponse job = vmWorkflowStub.resumeVM(ResumeVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM resume initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse deleteVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
-
-        // Update VM status
-        vm.setStatus(com.onetattva.infron.api.enums.VmStatus.DELETING);
-        vm.setUpdatedAt(Instant.now());
-        vmRepository.save(vm);
-
-        commandQueue.sendCommand(buildDeleteCommand(vm));
-
-        return buildOperationResponse(vmId, "VM deletion initiated");
+        JobResponse job = vmWorkflowStub.deleteVM(DeleteVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .build());
+        return buildOperationResponse(vmId, "VM deletion initiated — job: " + job.getJobId());
     }
 
     public VmConsoleResponse getVmConsole(UUID tenantId, UUID vmId) {
@@ -481,8 +485,13 @@ public class VmsService {
         vm.setAttachedIsoItemIds(attached);
         vm.setUpdatedAt(Instant.now());
         vmRepository.save(vm);
-        commandQueue.sendCommand(buildAttachIsoCommand(vm, isoId));
-        return buildOperationResponse(vmId, "ISO attach initiated");
+        JobResponse job = vmWorkflowStub.attachIso(AttachIsoVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .setIsoContentId(isoId.toString())
+                .build());
+        return buildOperationResponse(vmId, "ISO attach initiated — job: " + job.getJobId());
     }
 
     public VmOperationResponse detachVmIso(UUID tenantId, UUID vmId, VmIsoDetachRequest request) {
@@ -499,8 +508,13 @@ public class VmsService {
                 vmRepository.save(vm);
             }
         }
-        commandQueue.sendCommand(buildDetachIsoCommand(vm, deviceName));
-        return buildOperationResponse(vmId, "ISO detach initiated");
+        JobResponse detachJob = vmWorkflowStub.detachIso(DetachIsoVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .setDeviceName(deviceName)
+                .build());
+        return buildOperationResponse(vmId, "ISO detach initiated — job: " + detachJob.getJobId());
     }
 
     public VmPublishTemplateResponse publishVmAsTemplate(UUID tenantId, UUID vmId, VmPublishTemplateRequest request) {
@@ -528,11 +542,16 @@ public class VmsService {
         contentLibraryProviderPathBuilder.applyProviderPaths(saved);
         saved = contentItemRepository.save(saved);
 
-        commandQueue.sendCommand(buildPublishTemplateCommand(vm, saved.getId()));
+        JobResponse publishJob = vmWorkflowStub.publishVMTemplate(PublishVMTemplateRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
+                .setGrantId(vm.getTenantDatacenterGrantId().toString())
+                .setContentItemId(saved.getId().toString())
+                .build());
 
         VmPublishTemplateResponse response = new VmPublishTemplateResponse();
         response.setContentItemId(saved.getId());
-        response.setMessage("Template publishing initiated");
+        response.setMessage("Template publishing initiated — job: " + publishJob.getJobId());
         return response;
     }
 
@@ -631,6 +650,18 @@ public class VmsService {
             .actorService("api")
             .createdAt(Instant.now())
             .build();
+    }
+
+    private CreateVMRequest buildGrpcCreateRequest(VmEntity vm, VmCreateRequest request) {
+        CreateVMRequest.Builder b = CreateVMRequest.newBuilder()
+                .setVmId(vm.getId().toString())
+                .setTenantDatacenterGrantId(request.getTenantDatacenterGrantId().toString())
+                .setSpecJson(vm.getSpec() != null ? vm.getSpec() : "{}")
+                .setCorrelationId(generateRequestId());
+        if (request.getIsoContentItemIds() != null) {
+            request.getIsoContentItemIds().forEach(id -> b.addIsoContentIds(id.toString()));
+        }
+        return b.build();
     }
 
     private CommandMessage buildStartCommand(VmEntity vm) {

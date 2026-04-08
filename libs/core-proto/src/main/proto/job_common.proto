@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package infron.workflow.v1;
+
+option java_multiple_files = true;
+option java_package = "com.onetattva.infron.grpc.workflow.v1";
+option java_outer_classname = "JobCommonProto";
+
+// Shared response returned by every workflow operation.
+// Allows callers to track the async job via /api/v1/jobs/{job_id}.
+message JobResponse {
+  string job_id        = 1;
+  string status        = 2;  // PENDING | RUNNING | COMPLETED | FAILED | CANCELLED
+  string entity_id     = 3;
+  string entity_type   = 4;  // VM | NODE | etc.
+  int32  task_count    = 5;
+  int32  tasks_done    = 6;
+  string created_at    = 7;  // ISO-8601 timestamp
+  string error_message = 8;
+}
+
+// ── Job query messages ────────────────────────────────────────────────────────
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message ListJobsRequest {
+  string entity_id   = 1;  // filter by entity (recommended)
+  string entity_type = 2;  // VM | NODE | etc. (optional)
+  string status      = 3;  // PENDING | RUNNING | COMPLETED | FAILED | CANCELLED (optional)
+  int32  page        = 4;  // 0-based page index
+  int32  size        = 5;  // page size (default 20)
+}
+
+message ListJobsResponse {
+  repeated JobResponse jobs = 1;
+  int32 total               = 2;
+}
+
+message CancelJobRequest {
+  string job_id  = 1;
+  string reason  = 2;
+}
+
+message CancelJobResponse {
+  bool   accepted      = 1;
+  string error_message = 2;
+}

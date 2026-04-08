@@ -1,6 +1,7 @@
 package com.onetattva.infron.db.repository;
 
 import com.onetattva.infron.api.enums.EntityType;
+import com.onetattva.infron.api.enums.QueueCategory;
 import com.onetattva.infron.api.enums.QueueStatus;
 import com.onetattva.infron.db.model.QueueEntryEntity;
 import jakarta.persistence.LockModeType;
@@ -110,6 +111,16 @@ public interface QueueEntryRepository extends JpaRepository<QueueEntryEntity, UU
      */
     @Query("SELECT q FROM QueueEntryEntity q WHERE q.status = 'PROCESSING' AND q.processedAt < :cutoff ORDER BY q.processedAt ASC")
     List<QueueEntryEntity> findStaleProcessingEntries(@Param("cutoff") Instant cutoff);
+
+    /**
+     * Poll for pending entries by queue category with pessimistic lock (claim).
+     * Used by TaskEventQueue and EntityEventQueue DB implementations.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM QueueEntryEntity q WHERE q.queueCategory = :category AND q.status = 'PENDING' ORDER BY q.createdAt ASC")
+    List<QueueEntryEntity> findPendingByCategoryForUpdate(
+            @Param("category") QueueCategory category,
+            Pageable pageable);
 
     /**
      * Fail all pending queue rows for a given entity and command type (e.g. supersede stale work).

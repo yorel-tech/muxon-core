@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package infron.workflow.v1;
+
+import "job_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.onetattva.infron.grpc.workflow.v1";
+option java_outer_classname = "ContentLibraryWorkflowProto";
+
+// Content library workflow operations. Implemented by services/orchestrator.
+service ContentLibraryWorkflowService {
+  rpc ReplicateContentItem(ReplicateContentItemRequest) returns (JobResponse);
+  rpc ImportContentItem(ImportContentItemRequest)       returns (JobResponse);
+  rpc DeleteContentItem(DeleteContentItemRequest)       returns (JobResponse);
+}
+
+// ── Request messages ──────────────────────────────────────────────────────────
+
+message ReplicateContentItemRequest {
+  string content_item_id   = 1;
+  string source_grant_id   = 2;
+  string target_grant_id   = 3;
+  string correlation_id    = 4;
+}
+
+message ImportContentItemRequest {
+  string content_item_id   = 1;
+  string grant_id          = 2;
+  string correlation_id    = 3;
+}
+
+message DeleteContentItemRequest {
+  string content_item_id   = 1;
+  string grant_id          = 2;
+  string correlation_id    = 3;
+}

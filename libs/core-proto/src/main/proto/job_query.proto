@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package infron.workflow.v1;
+
+import "job_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.onetattva.infron.grpc.workflow.v1";
+option java_outer_classname = "JobQueryProto";
+
+// Implemented by services/orchestrator. Exposed to core-services for the /api/v1/jobs REST endpoints.
+service JobQueryService {
+  // Get full details of a single job (including task count and overall progress).
+  rpc GetJob(GetJobRequest) returns (JobResponse);
+
+  // List jobs with optional filters. Use entity_id to scope to a specific entity.
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+
+  // Request cancellation of a job. Returns accepted=true if the request was accepted.
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+}
