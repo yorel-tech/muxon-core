@@ -21,7 +21,7 @@ import java.util.UUID;
  * Updates the {@code vm} table based on events published by the worker via {@code EntityEventQueue}.
  *
  * <p>This replaces the direct VM state updates that were previously performed by the orchestrator's
- * {@code VmOrchestrator} (which directly called {@code vmRepository.save()}).
+ * the legacy orchestrator VM poller (which directly called {@code vmRepository.save()}).
  */
 @Component
 public class VmEntityEventHandler {

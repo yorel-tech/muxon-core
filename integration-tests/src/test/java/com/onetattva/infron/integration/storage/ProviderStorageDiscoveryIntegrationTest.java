@@ -7,12 +7,16 @@ import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import com.onetattva.infron.core.services.storage.ProviderStorageDiscoveryService;
 import com.onetattva.infron.core.services.storage.CapabilityMappingService;
 import com.onetattva.infron.api.model.ProviderType;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.TestAbortedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import com.onetattva.infron.core.CoreServicesApplication;
+import org.testcontainers.DockerClientFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,10 +28,17 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for provider storage discovery and normalization.
  */
-@SpringBootTest
+@SpringBootTest(classes = CoreServicesApplication.class)
 @ActiveProfiles("test")
 @Transactional
 public class ProviderStorageDiscoveryIntegrationTest {
+
+    @BeforeAll
+    static void requireDocker() {
+        if (!DockerClientFactory.instance().isDockerAvailable()) {
+            throw new TestAbortedException("Docker is not available; skipping SpringBootTest storage integration tests");
+        }
+    }
 
     @Autowired
     private ProviderStorageDiscoveryService discoveryService;

@@ -9,6 +9,8 @@ import com.onetattva.infron.db.model.ContentLibraryEntity;
 import com.onetattva.infron.db.model.JobEntity;
 import com.onetattva.infron.db.repository.ContentLibraryRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -21,6 +23,8 @@ import java.util.UUID;
  */
 @Service
 public class ContentLibrarySyncService {
+
+    private static final Logger log = LoggerFactory.getLogger(ContentLibrarySyncService.class);
 
     private static final int DEFAULT_TASK_TIMEOUT_SECONDS = 3600;
 
@@ -38,6 +42,16 @@ public class ContentLibrarySyncService {
     public ContentSyncResponse enqueueSync(UUID libraryId) {
         ContentLibraryEntity library = contentLibraryRepository.findById(libraryId)
                 .orElseThrow(() -> new IllegalArgumentException("Content library not found: " + libraryId));
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Content library sync: libraryId={}, type={}, tenantId={}, contentStorageId={}, "
+                            + "sourceConfigKeys={}",
+                    libraryId,
+                    library.getLibraryType(),
+                    library.getTenantId(),
+                    library.getContentStorageId(),
+                    library.getSourceConfig() != null ? library.getSourceConfig().keySet() : java.util.Set.of());
+        }
         if (!"remote".equals(library.getLibraryType().toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Sync applies only to remote content libraries");
         }
@@ -53,17 +67,20 @@ public class ContentLibrarySyncService {
         request.setParameters(Map.of("libraryId", libraryId.toString()));
         request.setMetadata(Map.of("kind", "CONTENT_LIBRARY_SYNC", "libraryId", libraryId.toString()));
         JobEntity job = taskOrchestrationService.createTask(request);
+        log.debug("Content library sync: created task jobId={} for libraryId={}", job.getId(), libraryId);
 
         library.setSyncStatus("in_progress");
         contentLibraryRepository.save(library);
 
         taskOrchestrationService.startTask(job.getId());
+        log.debug("Content library sync: task started jobId={}", job.getId());
 
         library.setSyncStatus("synced");
         library.setLastSyncedAt(Instant.now());
         contentLibraryRepository.save(library);
 
         taskOrchestrationService.completeTask(job.getId(), Map.of("libraryId", libraryId.toString(), "discoveredCount", 0));
+        log.debug("Content library sync: completed jobId={}, discoveredCount=0 (stub)", job.getId());
 
         ContentSyncResponse response = new ContentSyncResponse();
         response.setLibraryId(libraryId);

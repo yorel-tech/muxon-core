@@ -51,6 +51,7 @@ public class ContentItemUploadService {
     private final ContentLibraryRepository contentLibraryRepository;
     private final ContentStorageRepository contentStorageRepository;
     private final ContentStorageS3Uploader contentStorageS3Uploader;
+    private final ContentItemUploadCompletionHandler completionHandler;
     private final ConcurrentHashMap<UUID, UploadSession> sessions = new ConcurrentHashMap<>();
 
     public ContentItemUploadService(
@@ -61,7 +62,8 @@ public class ContentItemUploadService {
             ContentStoragePathResolver contentStoragePathResolver,
             ContentLibraryRepository contentLibraryRepository,
             ContentStorageRepository contentStorageRepository,
-            ContentStorageS3Uploader contentStorageS3Uploader) {
+            ContentStorageS3Uploader contentStorageS3Uploader,
+            ContentItemUploadCompletionHandler completionHandler) {
         this.contentLibraryService = contentLibraryService;
         this.contentItemService = contentItemService;
         this.contentItemRepository = contentItemRepository;
@@ -70,6 +72,7 @@ public class ContentItemUploadService {
         this.contentLibraryRepository = contentLibraryRepository;
         this.contentStorageRepository = contentStorageRepository;
         this.contentStorageS3Uploader = contentStorageS3Uploader;
+        this.completionHandler = completionHandler;
     }
 
     /**
@@ -317,6 +320,22 @@ public class ContentItemUploadService {
         ContentStorageEntity storage = contentStorageRepository
                 .findById(library.getContentStorageId())
                 .orElseThrow(() -> new EntityNotFoundException("Content storage not found for library: " + libraryId));
+
+        if ("vm_template".equalsIgnoreCase(item.getContentType())) {
+            try {
+                completionHandler.finalizeVmTemplateDiskUpload(
+                        library,
+                        storage,
+                        item,
+                        s.tempFile,
+                        s.totalSize,
+                        actualHex.toLowerCase(Locale.ROOT));
+                sessions.remove(uploadId);
+            } finally {
+                cleanupTemp(s.tempFile);
+            }
+            return;
+        }
 
         if (contentStorageS3Uploader.isS3(storage)) {
             try {

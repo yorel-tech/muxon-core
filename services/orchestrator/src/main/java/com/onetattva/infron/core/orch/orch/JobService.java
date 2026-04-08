@@ -70,6 +70,15 @@ public class JobService {
         Map<String, Object> enriched = new java.util.HashMap<>(taskPayload != null ? taskPayload : Map.of());
         enriched.put("jobId", job.getId().toString());
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Job {} enqueue: queueType={}, correlationId={}, payloadSummary={}",
+                    job.getId(),
+                    queueType,
+                    correlationId,
+                    summarizePayloadForLog(enriched));
+        }
+
         UUID taskId = commandQueue.sendCommand(CommandMessage.builder()
                 .queueType(queueType)
                 .entityType(com.onetattva.infron.api.model.EntityType.valueOf(entityType.name()))
@@ -80,7 +89,7 @@ public class JobService {
                 .actorType("SYSTEM")
                 .build());
 
-        log.debug("Enqueued task {} for job {}", taskId, job.getId());
+        log.debug("Enqueued task {} for job {} (queueType={})", taskId, job.getId(), queueType);
 
         return toResponse(job);
     }
@@ -131,6 +140,28 @@ public class JobService {
             return jobRepository.findByStatus(status, pageable);
         }
         return jobRepository.findAll(pageable);
+    }
+
+    /**
+     * Safe, compact description of task payload for DEBUG logs (no credentials; large JSON as length only).
+     */
+    static String summarizePayloadForLog(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) {
+            return "{}";
+        }
+        Map<String, Object> copy = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : payload.entrySet()) {
+            String k = e.getKey();
+            Object v = e.getValue();
+            if ("specJson".equals(k) && v instanceof String s) {
+                copy.put(k, "chars=" + s.length());
+            } else if ("isoContentItemIds".equals(k) && v instanceof java.util.List<?> list) {
+                copy.put(k, "count=" + list.size() + " " + list);
+            } else {
+                copy.put(k, v);
+            }
+        }
+        return copy.toString();
     }
 
     public static JobResponse toResponse(JobEntity job) {

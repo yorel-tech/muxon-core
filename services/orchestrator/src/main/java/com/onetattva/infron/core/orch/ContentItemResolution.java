@@ -6,19 +6,19 @@ import com.onetattva.infron.db.model.ContentItemEntity;
 import java.util.Locale;
 import java.util.Map;
 
-final class ContentItemResolution {
+public final class ContentItemResolution {
 
     private ContentItemResolution() {
     }
 
-    static void assertAvailableTemplate(ContentItemEntity item) {
+    public static void assertAvailableTemplate(ContentItemEntity item) {
         if (!"vm_template".equalsIgnoreCase(item.getContentType())) {
             throw new IllegalStateException("Content item is not a vm_template: " + item.getId());
         }
         assertAvailable(item);
     }
 
-    static void assertAvailableIso(ContentItemEntity item) {
+    public static void assertAvailableIso(ContentItemEntity item) {
         if (!"iso".equalsIgnoreCase(item.getContentType())) {
             throw new IllegalStateException("Content item is not an iso: " + item.getId());
         }
@@ -34,7 +34,7 @@ final class ContentItemResolution {
         }
     }
 
-    static IsoAttachment toIsoAttachment(ContentItemEntity item) {
+    public static IsoAttachment toIsoAttachment(ContentItemEntity item) {
         Map<String, String> md = item.getMetadata();
         String device = meta(md, "deviceName");
         boolean bootable = parseBool(meta(md, "bootable"));

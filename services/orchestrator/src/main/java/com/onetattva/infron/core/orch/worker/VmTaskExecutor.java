@@ -7,7 +7,6 @@ import com.onetattva.infron.core.spi.queue.*;
 import com.onetattva.infron.core.spi.queue.EntityEventQueue.EntityEventTypes;
 import com.onetattva.infron.core.spi.queue.TaskEventQueue.TaskEventTypes;
 import com.onetattva.infron.db.model.ContentItemEntity;
-import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.model.VmEntity;
 import com.onetattva.infron.db.repository.ContentItemRepository;
 import com.onetattva.infron.db.repository.QueueEntryRepository;
@@ -57,6 +56,15 @@ public class VmTaskExecutor {
 
     public void execute(CommandMessage entry) {
         String queueType = entry.queueType();
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM task start: commandId={}, queueType={}, entityId={}, correlationId={}, payloadKeys={}",
+                    entry.id(),
+                    queueType,
+                    entry.entityId(),
+                    entry.correlationId(),
+                    entry.payload() != null ? entry.payload().keySet() : List.of());
+        }
         try {
             publishTaskStarted(entry);
             switch (queueType) {
@@ -93,35 +101,46 @@ public class VmTaskExecutor {
 
         Optional<ProviderContext> contextOpt = providerRegistry.createContextForTenantDatacenter(vm.getTenantDatacenterGrantId());
         if (contextOpt.isEmpty()) {
+            log.debug("VM create: no provider context for grantId={} vmId={}", vm.getTenantDatacenterGrantId(), vmId);
             failTask(entry, "Failed to create provider context");
             return;
         }
         VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(vm.getTenantDatacenterGrantId())
                 .orElse(null);
         if (provider == null) {
+            log.debug("VM create: no VmProvider bean for grantId={} vmId={}", vm.getTenantDatacenterGrantId(), vmId);
             failTask(entry, "No provider available for datacenter");
             return;
         }
 
         // Resolve spec — prefer payload (already enriched by gRPC request), fallback to VM entity
         String specJson = vm.getSpec();
+        boolean specFromPayload = false;
         if (specJson == null || specJson.isEmpty()) {
             Object specPayload = entry.payload() != null ? entry.payload().get("specJson") : null;
             specJson = specPayload instanceof String s ? s : "{}";
+            specFromPayload = specPayload instanceof String;
         }
 
         String sourceImagePath = null;
+        String sourceImageResolution = "none";
         List<IsoAttachment> isoAttachments = new ArrayList<>();
         try {
             // Prefer sourceImagePath from payload (passed by gRPC request)
             Object payloadPath = entry.payload() != null ? entry.payload().get("sourceImagePath") : null;
             if (payloadPath != null && !payloadPath.toString().isBlank()) {
                 sourceImagePath = payloadPath.toString();
+                sourceImageResolution = "payload.sourceImagePath";
             } else if (vm.getContentItemId() != null) {
                 ContentItemEntity tpl = contentItemRepository.findById(vm.getContentItemId())
                         .orElseThrow(() -> new IllegalStateException("Template not found: " + vm.getContentItemId()));
                 ContentItemResolution.assertAvailableTemplate(tpl);
-                sourceImagePath = tpl.getProviderRelativePath();
+                // vm_template content items are directories (template.json + disks/). Providers need a disk image path.
+                // We use disk-0 as the boot disk by convention.
+                String rel = tpl.getProviderRelativePath();
+                String baseDir = java.nio.file.Path.of(rel).getParent().toString().replace('\\', '/');
+                sourceImagePath = baseDir + "/disks/disk-0.qcow2";
+                sourceImageResolution = "contentItem.template:" + vm.getContentItemId();
             }
 
             Object rawIsos = entry.payload() != null ? entry.payload().get("isoContentItemIds") : null;
@@ -149,6 +168,21 @@ public class VmTaskExecutor {
                 .correlationId(requestId).sourceImagePath(sourceImagePath)
                 .isoAttachments(isoAttachments).build();
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM create resolved: vmId={}, providerId={}, grantId={}, specSource={}, specJsonChars={}, "
+                            + "sourceImageResolution={}, sourceImagePath={}, isoAttachmentCount={}, "
+                            + "providerContextSummary={}",
+                    vmId,
+                    provider.id(),
+                    vm.getTenantDatacenterGrantId(),
+                    specFromPayload ? "queuePayload" : "vmEntity",
+                    specJson != null ? specJson.length() : 0,
+                    sourceImageResolution,
+                    sourceImagePath,
+                    isoAttachments.size(),
+                    summarizeProviderContext(contextOpt.get()));
+        }
         log.info("Creating VM {} with provider {}", vmId, provider.id());
         VmCreationResult result = provider.createVm(createRequest).join();
 
@@ -182,6 +216,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM start: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmOperationRequest opRequest = VmOperationRequest.builder()
                 .vmId(vmId).externalVmId(vm.getExternalId()).correlationId(correlationId(entry)).build();
         VmOperationResult result = provider.startVm(opRequest).join();
@@ -207,6 +249,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM stop: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmOperationRequest opRequest = VmOperationRequest.builder()
                 .vmId(vmId).externalVmId(vm.getExternalId()).correlationId(correlationId(entry)).build();
         VmOperationResult result = provider.stopVm(opRequest).join();
@@ -232,6 +282,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM restart: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmOperationRequest opRequest = VmOperationRequest.builder()
                 .vmId(vmId).externalVmId(vm.getExternalId()).correlationId(correlationId(entry)).build();
         VmOperationResult result = provider.restartVm(opRequest).join();
@@ -257,6 +315,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM suspend: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmOperationRequest opRequest = VmOperationRequest.builder()
                 .vmId(vmId).externalVmId(vm.getExternalId()).correlationId(correlationId(entry)).build();
         VmOperationResult result = provider.suspendVm(opRequest).join();
@@ -282,6 +348,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM resume: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmOperationRequest opRequest = VmOperationRequest.builder()
                 .vmId(vmId).externalVmId(vm.getExternalId()).correlationId(correlationId(entry)).build();
         VmOperationResult result = provider.resumeVm(opRequest).join();
@@ -307,6 +381,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM delete: vmId={}, externalVmIdSet={}, grantId={}, providerId={}",
+                    vmId,
+                    vm.getExternalId() != null && !vm.getExternalId().isBlank(),
+                    vm.getTenantDatacenterGrantId(),
+                    provider.id());
+        }
         VmDeletionRequest delRequest = VmDeletionRequest.builder()
                 .vmId(vmId).correlationId(correlationId(entry)).build();
         VmDeletionResult result = provider.deleteVm(delRequest).join();
@@ -329,6 +411,12 @@ public class VmTaskExecutor {
         // Placeholder — migration requires provider-level support (e.g. live migration).
         // Emit operation.failed for now so the job status reflects correctly.
         UUID vmId = entry.entityId();
+        Object targetNode = entry.payload() != null ? entry.payload().get("targetNodeId") : null;
+        log.debug(
+                "VM migrate (not implemented): vmId={}, commandId={}, targetNodeIdPayload={}",
+                vmId,
+                entry.id(),
+                targetNode);
         publishEntityEvent(EntityEventTypes.VM_OPERATION_FAILED, vmId, entry.id(),
                 Map.of("operation", "MIGRATE", "message", "Migration not yet implemented by provider"));
         failTask(entry, "Migration not yet implemented");
@@ -355,6 +443,18 @@ public class VmTaskExecutor {
         if (provider == null) return;
 
         IsoAttachment att = ContentItemResolution.toIsoAttachment(isoItem);
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM attachIso: vmId={}, isoContentItemId={}, isoPath={}, deviceName={}, bootable={}, "
+                            + "providerId={}, providerContextSummary={}",
+                    vmId,
+                    isoItem.getId(),
+                    att.isoPath(),
+                    att.deviceName(),
+                    att.bootable(),
+                    provider.id(),
+                    summarizeProviderContext(contextOpt.get()));
+        }
         VmIsoAttachProviderRequest req = new VmIsoAttachProviderRequest(
                 vmId, vm.getExternalId(), att.isoPath(), att.deviceName(), att.bootable(),
                 contextOpt.get(), correlationId(entry));
@@ -380,6 +480,14 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM detachIso: vmId={}, deviceName={}, providerId={}, providerContextSummary={}",
+                    vmId,
+                    rawDevice,
+                    provider.id(),
+                    summarizeProviderContext(contextOpt.get()));
+        }
         VmIsoDetachProviderRequest req = new VmIsoDetachProviderRequest(
                 vmId, vm.getExternalId(), rawDevice.toString(), contextOpt.get(), correlationId(entry));
         VmOperationResult result = provider.detachIso(req).join();
@@ -411,6 +519,17 @@ public class VmTaskExecutor {
         VmProvider provider = resolveProvider(vm, entry);
         if (provider == null) return;
 
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM publishTemplate: vmId={}, contentItemId={}, templateRelPath={}, targetName={}, "
+                            + "providerId={}, providerContextSummary={}",
+                    vmId,
+                    item.getId(),
+                    item.getProviderRelativePath(),
+                    item.getName(),
+                    provider.id(),
+                    summarizeProviderContext(contextOpt.get()));
+        }
         VmTemplateExportRequest exportReq = new VmTemplateExportRequest(
                 vm.getExternalId(), item.getProviderRelativePath(), item.getName(),
                 contextOpt.get(), correlationId(entry));
@@ -456,6 +575,16 @@ public class VmTaskExecutor {
 
         VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(grantId).orElse(null);
         if (provider == null) { failTask(entry, "No provider for this VM"); return; }
+
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM console resolve: vmId={}, grantId={}, externalIdSet={}, nodeIdSet={}, providerId={}",
+                    vmId,
+                    grantId,
+                    externalId != null && !externalId.isBlank(),
+                    nodeId != null,
+                    provider.id());
+        }
 
         VmConsoleConnectionInfo info;
         try {
@@ -547,5 +676,24 @@ public class VmTaskExecutor {
 
     private String safeMessage(VmOperationResult result) {
         return result.message() != null ? result.message() : "Operation failed";
+    }
+
+    /** Placement + metadata only (no credentials). */
+    private static String summarizeProviderContext(ProviderContext ctx) {
+        if (ctx == null) {
+            return "null";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("type=").append(ctx.getProviderType());
+        ctx.getPlacementInfo().ifPresent(p -> {
+            if (p.preferences() != null && !p.preferences().isEmpty()) {
+                sb.append(", preferences=").append(p.preferences());
+            }
+        });
+        Map<String, Object> meta = ctx.getMetadata();
+        if (meta != null && !meta.isEmpty()) {
+            sb.append(", meta=").append(meta);
+        }
+        return sb.toString();
     }
 }

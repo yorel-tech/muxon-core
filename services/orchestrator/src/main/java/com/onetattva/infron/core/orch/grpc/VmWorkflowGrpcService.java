@@ -41,6 +41,15 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
             if (!request.getIsoContentIdsList().isEmpty()) {
                 payload.put("isoContentItemIds", request.getIsoContentIdsList());
             }
+            log.debug(
+                    "VM workflow gRPC createVM: vmId={}, correlationId={}, grantId={}, specJsonChars={}, "
+                            + "sourceImagePathSet={}, isoContentIdCount={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    request.getTenantDatacenterGrantId(),
+                    request.getSpecJson() != null ? request.getSpecJson().length() : 0,
+                    !request.getSourceImagePath().isBlank(),
+                    request.getIsoContentIdsList().size());
             return jobService.createJob(
                     JobType.VM_CREATE, EntityType.VM,
                     UUID.fromString(request.getVmId()),
@@ -52,6 +61,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void deleteVM(DeleteVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC deleteVM: vmId={}, correlationId={}, externalIdSet={}, grantIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getExternalId().isBlank(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_DELETE, EntityType.VM,
@@ -64,6 +79,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void powerOnVM(PowerOnVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC powerOnVM: vmId={}, correlationId={}, grantIdSet={}, externalIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_START, EntityType.VM,
@@ -76,6 +97,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void powerOffVM(PowerOffVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC powerOffVM: vmId={}, correlationId={}, grantIdSet={}, externalIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_STOP, EntityType.VM,
@@ -88,6 +115,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void restartVM(RestartVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC restartVM: vmId={}, correlationId={}, grantIdSet={}, externalIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_RESTART, EntityType.VM,
@@ -100,6 +133,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void suspendVM(SuspendVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC suspendVM: vmId={}, correlationId={}, grantIdSet={}, externalIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_SUSPEND, EntityType.VM,
@@ -112,6 +151,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void resumeVM(ResumeVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC resumeVM: vmId={}, correlationId={}, grantIdSet={}, externalIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             return jobService.createJob(
                     JobType.VM_RESUME, EntityType.VM,
@@ -124,6 +169,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void migrateVM(MigrateVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC migrateVM: vmId={}, correlationId={}, targetNodeIdSet={}, grantIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getTargetNodeId().isBlank(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             if (!request.getTargetNodeId().isBlank()) {
                 payload.put("targetNodeId", request.getTargetNodeId());
@@ -139,6 +190,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void attachIso(AttachIsoVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC attachIso: vmId={}, correlationId={}, isoContentItemId={}, grantIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    request.getIsoContentId(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             payload.put("isoContentItemId", request.getIsoContentId());
             return jobService.createJob(
@@ -152,6 +209,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void detachIso(DetachIsoVMRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC detachIso: vmId={}, correlationId={}, deviceName={}, grantIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    request.getDeviceName(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             payload.put("deviceName", request.getDeviceName());
             return jobService.createJob(
@@ -165,6 +228,12 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void publishVMTemplate(PublishVMTemplateRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC publishVMTemplate: vmId={}, correlationId={}, contentItemId={}, grantIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    request.getContentItemId(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = simpleVmPayload(request.getExternalId(), request.getGrantId());
             payload.put("contentItemId", request.getContentItemId());
             return jobService.createJob(
@@ -178,6 +247,14 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
     @Override
     public void resolveConsole(ResolveConsoleRequest request, StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "VM workflow gRPC resolveConsole: vmId={}, correlationId={}, grantIdSet={}, "
+                            + "externalIdSet={}, nodeIdSet={}",
+                    request.getVmId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank(),
+                    !request.getExternalId().isBlank(),
+                    !request.getNodeId().isBlank());
             Map<String, Object> payload = new HashMap<>();
             payload.put("tenantDatacenterGrantId", request.getGrantId());
             payload.put("externalId", request.getExternalId());

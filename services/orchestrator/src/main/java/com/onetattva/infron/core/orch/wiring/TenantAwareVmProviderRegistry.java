@@ -70,9 +70,25 @@ public class TenantAwareVmProviderRegistry {
     public Optional<com.onetattva.infron.core.providers.ProviderContext> createContextForTenantDatacenter(UUID tenantDatacenterGrantId) {
         Optional<String> providerIdOpt = grantResolver.resolveProviderId(tenantDatacenterGrantId);
         if (providerIdOpt.isEmpty()) {
+            logger.debug("createContext: no provider id for tenantDatacenterGrantId={}", tenantDatacenterGrantId);
             return Optional.empty();
         }
-        return createContextForProvider(UUID.fromString(providerIdOpt.get()), tenantDatacenterGrantId);
+        Optional<com.onetattva.infron.core.providers.ProviderContext> ctx =
+                createContextForProvider(UUID.fromString(providerIdOpt.get()), tenantDatacenterGrantId);
+        if (ctx.isEmpty()) {
+            logger.debug(
+                    "createContext: failed for tenantDatacenterGrantId={}, providerId={}",
+                    tenantDatacenterGrantId,
+                    providerIdOpt.get());
+        } else if (logger.isDebugEnabled()) {
+            logger.debug(
+                    "createContext: grantId={}, providerId={}, type={}, metadata={}",
+                    tenantDatacenterGrantId,
+                    providerIdOpt.get(),
+                    ctx.get().getProviderType(),
+                    ctx.get().getMetadata());
+        }
+        return ctx;
     }
 
     private Optional<com.onetattva.infron.core.providers.ProviderContext> createContextForProvider(UUID providerId, UUID tenantDatacenterGrantId) {

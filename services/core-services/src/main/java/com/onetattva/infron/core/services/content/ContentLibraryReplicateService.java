@@ -101,6 +101,16 @@ public class ContentLibraryReplicateService {
     public ContentReplicateResponse replicateRemoteLibraryToContentStore(UUID libraryId) {
         ContentLibraryEntity library = contentLibraryRepository.findById(libraryId)
                 .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Content library replicate-to-store: libraryId={}, type={}, tenantId={}, contentStorageId={}, "
+                            + "sourceConfigKeys={}",
+                    libraryId,
+                    library.getLibraryType(),
+                    library.getTenantId(),
+                    library.getContentStorageId(),
+                    library.getSourceConfig() != null ? library.getSourceConfig().keySet() : java.util.Set.of());
+        }
         if (!"remote".equals(library.getLibraryType().toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Replicate to content store applies only to remote libraries");
         }
@@ -118,6 +128,10 @@ public class ContentLibraryReplicateService {
         JobEntity job = taskOrchestrationService.createTask(request);
 
         List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+        log.debug(
+                "Content library replicate-to-store: marking {} items replicating, jobId={}",
+                items.size(),
+                job.getId());
         for (ContentItemEntity item : items) {
             item.setContentStatus("replicating");
             contentItemRepository.save(item);
@@ -154,6 +168,13 @@ public class ContentLibraryReplicateService {
                         "Library is not published to datacenter: " + datacenterId));
 
         String storageClassName = mapping.getStorageClassName();
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "Content library datacenter replicate start: libraryId={}, datacenterId={}, storageClassName={}",
+                    libraryId,
+                    datacenterId,
+                    storageClassName);
+        }
         if (storageClassName == null || storageClassName.isBlank()) {
             throw new IllegalArgumentException(
                     "This publish record has no storage class. Unpublish and publish again, choosing a datacenter "
@@ -186,6 +207,14 @@ public class ContentLibraryReplicateService {
         }
 
         ProviderEntity provider = datacenter.getNodeCluster().getProvider();
+        log.debug(
+                "Content library datacenter replicate path: libraryId={}, datacenterId={}, providerId={}, "
+                        + "providerType={}, matchedPoolCount={}",
+                libraryId,
+                datacenterId,
+                provider.getId(),
+                provider.getType(),
+                scoped.size());
         if (ProviderType.PROXMOX.equals(provider.getType())) {
             return enqueueProxmoxDatacenterReplicate(
                     library,
@@ -215,6 +244,12 @@ public class ContentLibraryReplicateService {
                             + "Pools that match only by type (e.g. RBD) cannot receive filesystem replication from "
                             + "core-services.");
         }
+        log.debug(
+                "Content library filesystem replicate: libraryId={}, datacenterId={}, poolRootCount={}, poolRoots={}",
+                libraryId,
+                datacenterId,
+                poolRoots.size(),
+                poolRoots);
 
         TaskCreateRequest request = new TaskCreateRequest();
         request.setOperation(JobType.CONTENT_DATACENTER_REPLICATE);
@@ -377,6 +412,13 @@ public class ContentLibraryReplicateService {
                 job.getId(),
                 commandId,
                 storagePoolIds);
+        log.debug(
+                "Proxmox datacenter replicate command metadata: commandId={}, artifactRoot={}, jobId={}, "
+                        + "executionTimeoutSec={}",
+                commandId,
+                artifactRoot,
+                job.getId(),
+                DEFAULT_TASK_TIMEOUT_SECONDS);
 
         mapping.setReplicateStatus("replicating");
         contentLibraryDatacenterRepository.save(mapping);

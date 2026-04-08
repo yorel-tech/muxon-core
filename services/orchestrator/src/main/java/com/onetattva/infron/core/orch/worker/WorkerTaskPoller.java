@@ -40,6 +40,13 @@ public class WorkerTaskPoller {
             }
             log.debug("Worker claimed {} VM command(s)", entries.size());
             for (CommandMessage entry : entries) {
+                if (log.isDebugEnabled()) {
+                    log.debug(
+                            "Worker dispatch VM task: commandId={}, queueType={}, entityId={}",
+                            entry.id(),
+                            entry.queueType(),
+                            entry.entityId());
+                }
                 vmTaskExecutor.execute(entry);
             }
         } catch (Exception e) {

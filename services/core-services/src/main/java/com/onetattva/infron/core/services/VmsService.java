@@ -43,6 +43,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.URI;
@@ -62,6 +64,8 @@ import java.util.UUID;
 
 @Service
 public class VmsService {
+
+    private static final Logger log = LoggerFactory.getLogger(VmsService.class);
 
     @Autowired
     private VmRepository vmRepository;
@@ -119,12 +123,24 @@ public class VmsService {
 
         boolean usesCl = request.getContentItemId() != null
                 || (request.getIsoContentItemIds() != null && !request.getIsoContentItemIds().isEmpty());
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM create request: tenantId={}, grantId={}, name={}, usesContentLibrary={}, "
+                            + "templateContentItemId={}, isoContentItemCount={}",
+                    tenantId,
+                    request.getTenantDatacenterGrantId(),
+                    request.getName(),
+                    usesCl,
+                    request.getContentItemId(),
+                    request.getIsoContentItemIds() != null ? request.getIsoContentItemIds().size() : 0);
+        }
         if (usesCl) {
             requireContentLibraryRead(tenantId);
         }
 
+        ContentItemEntity tpl = null;
         if (request.getContentItemId() != null) {
-            ContentItemEntity tpl = contentItemRepository.findById(request.getContentItemId())
+            tpl = contentItemRepository.findById(request.getContentItemId())
                     .orElseThrow(() -> new EntityNotFoundException("Content item not found: " + request.getContentItemId()));
             assertContentItemReadableByTenant(tenantId, tpl);
             if (!"vm_template".equalsIgnoreCase(tpl.getContentType())) {
@@ -156,7 +172,11 @@ public class VmsService {
         VmEntity vm = new VmEntity();
         vm.setTenantDatacenterGrantId(grant.getId());
         vm.setName(request.getName());
-        vm.setSpec(vmSpecToJson(request.getSpec()));
+        VmSpec finalSpec = request.getSpec();
+        if (tpl != null) {
+            finalSpec = mergeTemplateIntoVmSpec(tpl, request.getSpec());
+        }
+        vm.setSpec(vmSpecToJson(finalSpec));
         vm.setStatus(com.onetattva.infron.api.enums.VmStatus.PENDING);
         vm.setPowerState(com.onetattva.infron.api.enums.VmPowerState.UNKNOWN);
         vm.setCreatedAt(Instant.now());
@@ -173,7 +193,18 @@ public class VmsService {
 
         // Dispatch VM creation workflow to orchestrator via gRPC
         CreateVMRequest grpcRequest = buildGrpcCreateRequest(saved, request);
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "VM create dispatch gRPC: vmId={}, correlationId={}, grantId={}, specJsonChars={}, "
+                            + "isoIdsInGrpc={}",
+                    saved.getId(),
+                    grpcRequest.getCorrelationId(),
+                    grpcRequest.getTenantDatacenterGrantId(),
+                    grpcRequest.getSpecJson() != null ? grpcRequest.getSpecJson().length() : 0,
+                    grpcRequest.getIsoContentIdsList().size());
+        }
         JobResponse jobResponse = vmWorkflowStub.createVM(grpcRequest);
+        log.debug("VM create orchestrator accepted: vmId={}, jobId={}", saved.getId(), jobResponse.getJobId());
 
         VmCreateResponse response = new VmCreateResponse();
         response.setId(saved.getId());
@@ -249,11 +280,17 @@ public class VmsService {
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.STOPPED) {
             throw new IllegalStateException("VM must be stopped to start");
         }
-        JobResponse job = vmWorkflowStub.powerOnVM(PowerOnVMRequest.newBuilder()
+        PowerOnVMRequest grpc = PowerOnVMRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
                 .setGrantId(vm.getTenantDatacenterGrantId().toString())
-                .build());
+                .build();
+        log.debug(
+                "VM start gRPC: vmId={}, grantId={}, externalIdSet={}",
+                vmId,
+                vm.getTenantDatacenterGrantId(),
+                vm.getExternalId() != null && !vm.getExternalId().isBlank());
+        JobResponse job = vmWorkflowStub.powerOnVM(grpc);
         return buildOperationResponse(vmId, "VM start initiated — job: " + job.getJobId());
     }
 
@@ -262,6 +299,11 @@ public class VmsService {
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
             throw new IllegalStateException("VM must be running to stop");
         }
+        log.debug(
+                "VM stop gRPC: vmId={}, grantId={}, externalIdSet={}",
+                vmId,
+                vm.getTenantDatacenterGrantId(),
+                vm.getExternalId() != null && !vm.getExternalId().isBlank());
         JobResponse job = vmWorkflowStub.powerOffVM(PowerOffVMRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
@@ -308,6 +350,11 @@ public class VmsService {
 
     public VmOperationResponse deleteVm(UUID tenantId, UUID vmId) {
         VmEntity vm = requireVmForTenant(tenantId, vmId);
+        log.debug(
+                "VM delete gRPC: vmId={}, grantId={}, externalIdSet={}",
+                vmId,
+                vm.getTenantDatacenterGrantId(),
+                vm.getExternalId() != null && !vm.getExternalId().isBlank());
         JobResponse job = vmWorkflowStub.deleteVM(DeleteVMRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
@@ -485,6 +532,12 @@ public class VmsService {
         vm.setAttachedIsoItemIds(attached);
         vm.setUpdatedAt(Instant.now());
         vmRepository.save(vm);
+        log.debug(
+                "VM attachIso gRPC: vmId={}, isoContentItemId={}, grantId={}, externalIdSet={}",
+                vmId,
+                isoId,
+                vm.getTenantDatacenterGrantId(),
+                vm.getExternalId() != null && !vm.getExternalId().isBlank());
         JobResponse job = vmWorkflowStub.attachIso(AttachIsoVMRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
@@ -508,6 +561,12 @@ public class VmsService {
                 vmRepository.save(vm);
             }
         }
+        log.debug(
+                "VM detachIso gRPC: vmId={}, deviceName={}, grantId={}, externalIdSet={}",
+                vmId,
+                deviceName,
+                vm.getTenantDatacenterGrantId(),
+                vm.getExternalId() != null && !vm.getExternalId().isBlank());
         JobResponse detachJob = vmWorkflowStub.detachIso(DetachIsoVMRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
@@ -542,12 +601,19 @@ public class VmsService {
         contentLibraryProviderPathBuilder.applyProviderPaths(saved);
         saved = contentItemRepository.save(saved);
 
-        JobResponse publishJob = vmWorkflowStub.publishVMTemplate(PublishVMTemplateRequest.newBuilder()
+        PublishVMTemplateRequest pubGrpc = PublishVMTemplateRequest.newBuilder()
                 .setVmId(vm.getId().toString())
                 .setExternalId(vm.getExternalId() != null ? vm.getExternalId() : "")
                 .setGrantId(vm.getTenantDatacenterGrantId().toString())
                 .setContentItemId(saved.getId().toString())
-                .build());
+                .build();
+        log.debug(
+                "VM publish template gRPC: vmId={}, contentItemId={}, libraryId={}, grantId={}",
+                vmId,
+                saved.getId(),
+                request.getLibraryId(),
+                vm.getTenantDatacenterGrantId());
+        JobResponse publishJob = vmWorkflowStub.publishVMTemplate(pubGrpc);
 
         VmPublishTemplateResponse response = new VmPublishTemplateResponse();
         response.setContentItemId(saved.getId());
@@ -662,6 +728,81 @@ public class VmsService {
             request.getIsoContentItemIds().forEach(id -> b.addIsoContentIds(id.toString()));
         }
         return b.build();
+    }
+
+    /**
+     * Merge a vm_template content item into the VM spec.
+     *
+     * - templateSpec.compute -> vmSpec.compute
+     * - templateSpec.disks   -> vmSpec.storage.disks (by index)
+     * - request spec can override by increasing resources (never decrease below template minimums)
+     */
+    private VmSpec mergeTemplateIntoVmSpec(ContentItemEntity templateItem, VmSpec requestSpec) {
+        if (templateItem.getTemplateSpec() == null) {
+            throw new IllegalStateException("Template content item is missing template_spec in database");
+        }
+        VmTemplateSpec tpl = objectMapper.convertValue(templateItem.getTemplateSpec(), VmTemplateSpec.class);
+        if (tpl.getSpec() == null || tpl.getSpec().getCompute() == null) {
+            throw new IllegalStateException("templateSpec.spec.compute is required");
+        }
+        List<VmTemplateDiskSpec> tplDisks = tpl.getSpec().getDisks();
+        if (tplDisks == null || tplDisks.isEmpty()) {
+            throw new IllegalStateException("templateSpec.spec.disks must have at least 1 disk");
+        }
+
+        VmSpec out = new VmSpec();
+
+        // Compute
+        ComputeSpec compute = new ComputeSpec();
+        int tplCpus = tpl.getSpec().getCompute().getCpuCores();
+        int tplMem = tpl.getSpec().getCompute().getMemoryMB();
+
+        Integer reqCpusObj = requestSpec != null && requestSpec.getCompute() != null ? requestSpec.getCompute().getCpus() : null;
+        Integer reqMemObj = requestSpec != null && requestSpec.getCompute() != null ? requestSpec.getCompute().getMemorySizeMb() : null;
+        int reqCpus = reqCpusObj != null ? reqCpusObj : tplCpus;
+        int reqMem = reqMemObj != null ? reqMemObj : tplMem;
+
+        if (reqCpus < tplCpus) {
+            throw new IllegalArgumentException("spec.compute.cpus cannot be less than template cpuCores (" + tplCpus + ")");
+        }
+        if (reqMem < tplMem) {
+            throw new IllegalArgumentException("spec.compute.memorySizeMb cannot be less than template memoryMB (" + tplMem + ")");
+        }
+        compute.setCpus(reqCpus);
+        compute.setMemorySizeMb(reqMem);
+        out.setCompute(compute);
+
+        // Storage disks
+        StorageSpec storage = new StorageSpec();
+        List<DiskSpec> reqDisks = requestSpec != null && requestSpec.getStorage() != null ? requestSpec.getStorage().getDisks() : null;
+        java.util.ArrayList<DiskSpec> disks = new java.util.ArrayList<>();
+        for (int i = 0; i < tplDisks.size(); i++) {
+            VmTemplateDiskSpec td = tplDisks.get(i);
+            long tplSizeMb = (td.getSizeBytes() + (1024L * 1024L - 1)) / (1024L * 1024L);
+            Integer reqSizeMbObj = (reqDisks != null && i < reqDisks.size() && reqDisks.get(i) != null) ? reqDisks.get(i).getSizeMb() : null;
+            long reqSizeMb = reqSizeMbObj != null ? reqSizeMbObj.longValue() : tplSizeMb;
+            if (reqSizeMb < tplSizeMb) {
+                throw new IllegalArgumentException("spec.storage.disks[" + i + "].sizeMb cannot be less than template disk size");
+            }
+            DiskSpec d = new DiskSpec();
+            d.setSizeMb((int) reqSizeMb);
+            if (reqDisks != null && i < reqDisks.size() && reqDisks.get(i) != null) {
+                d.setStorageClass(reqDisks.get(i).getStorageClass());
+            }
+            disks.add(d);
+        }
+        storage.setDisks(disks);
+        if (requestSpec != null && requestSpec.getStorage() != null) {
+            storage.setVmStorageClass(requestSpec.getStorage().getVmStorageClass());
+        }
+        out.setStorage(storage);
+
+        // Pass-through (network/os) from request if present
+        if (requestSpec != null) {
+            out.setNetwork(requestSpec.getNetwork());
+            out.setOs(requestSpec.getOs());
+        }
+        return out;
     }
 
     private CommandMessage buildStartCommand(VmEntity vm) {

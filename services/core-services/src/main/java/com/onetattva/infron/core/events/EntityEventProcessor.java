@@ -17,7 +17,7 @@ import java.util.List;
  *
  * <p>This is the <strong>only</strong> component in {@code core-services} that updates entity tables
  * in response to worker-reported state changes. Previously this was done by the orchestrator's
- * {@code VmOrchestrator} via direct {@code vmRepository.save()} calls — that violation is now removed.
+ * legacy VM polling path via direct {@code vmRepository.save()} calls — that violation is now removed.
  *
  * <p>Entity state machine transitions (e.g. VM PENDING → ACTIVE) happen exclusively here.
  */

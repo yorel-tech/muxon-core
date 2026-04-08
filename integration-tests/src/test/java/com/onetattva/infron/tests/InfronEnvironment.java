@@ -6,7 +6,9 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.utility.DockerImageName;
+import org.opentest4j.TestAbortedException;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -89,6 +91,9 @@ public class InfronEnvironment {
     }
 
     public synchronized void startInfrastructure() throws Exception {
+        if (!DockerClientFactory.instance().isDockerAvailable()) {
+            throw new TestAbortedException("Docker is not available; skipping container-based integration tests");
+        }
         if (initialized.get()) {
             return; // Already initialized
         }

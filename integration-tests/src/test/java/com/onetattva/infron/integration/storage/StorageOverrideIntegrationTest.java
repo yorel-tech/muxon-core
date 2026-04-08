@@ -7,12 +7,16 @@ import com.onetattva.infron.db.repository.ProviderStorageRepository;
 import com.onetattva.infron.db.repository.StorageClassRepository;
 import com.onetattva.infron.db.repository.StorageOverrideRepository;
 import com.onetattva.infron.core.services.storage.scheduler.StorageOverrideResolver;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.TestAbortedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import com.onetattva.infron.core.CoreServicesApplication;
+import org.testcontainers.DockerClientFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -23,10 +27,17 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for storage overrides functionality.
  */
-@SpringBootTest
+@SpringBootTest(classes = CoreServicesApplication.class)
 @ActiveProfiles("test")
 @Transactional
 public class StorageOverrideIntegrationTest {
+
+    @BeforeAll
+    static void requireDocker() {
+        if (!DockerClientFactory.instance().isDockerAvailable()) {
+            throw new TestAbortedException("Docker is not available; skipping SpringBootTest storage integration tests");
+        }
+    }
 
     @Autowired
     private StorageOverrideResolver overrideResolver;

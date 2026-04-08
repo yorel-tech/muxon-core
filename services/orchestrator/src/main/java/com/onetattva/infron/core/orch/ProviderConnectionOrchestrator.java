@@ -788,6 +788,15 @@ public class ProviderConnectionOrchestrator {
                 jobId,
                 libraryId,
                 datacenterId);
+        if (logger.isDebugEnabled()) {
+            logger.debug(
+                    "Content datacenter replicate config: commandId={}, artifactRoot={}, storagePoolIds={}, "
+                            + "executionTimeoutSec={}",
+                    entry.id(),
+                    artifactRootStr,
+                    storagePoolIdsRaw,
+                    execTimeoutSec);
+        }
 
         if (jobId == null
                 || libraryId == null
@@ -824,6 +833,19 @@ public class ProviderConnectionOrchestrator {
                     proxmoxStorageUploader.authenticate(entity.getEndpoint(), entity.getCredentials());
 
             List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+            if (logger.isDebugEnabled()) {
+                long available = items.stream()
+                        .filter(i -> "available".equalsIgnoreCase(i.getContentStatus()))
+                        .count();
+                logger.debug(
+                        "Content datacenter replicate upload phase: providerId={}, providerType={}, "
+                                + "endpoint={}, libraryItemCount={}, availableItemCount={}",
+                        providerId,
+                        entity.getType(),
+                        entity.getEndpoint(),
+                        items.size(),
+                        available);
+            }
             int uploadCount = 0;
             for (String poolIdRaw : storagePoolIdsRaw.split(",")) {
                 String storagePoolId = poolIdRaw.trim();

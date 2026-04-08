@@ -32,6 +32,13 @@ public class ContentLibraryWorkflowGrpcService
     public void replicateContentItem(ReplicateContentItemRequest request,
                                      StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "Content library workflow gRPC replicateContentItem: contentItemId={}, correlationId={}, "
+                            + "sourceGrantIdSet={}, targetGrantIdSet={}",
+                    request.getContentItemId(),
+                    request.getCorrelationId(),
+                    !request.getSourceGrantId().isBlank(),
+                    !request.getTargetGrantId().isBlank());
             Map<String, Object> payload = new HashMap<>();
             payload.put("sourceGrantId", request.getSourceGrantId());
             payload.put("targetGrantId", request.getTargetGrantId());
@@ -48,6 +55,11 @@ public class ContentLibraryWorkflowGrpcService
     public void importContentItem(ImportContentItemRequest request,
                                   StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "Content library workflow gRPC importContentItem: contentItemId={}, correlationId={}, grantIdSet={}",
+                    request.getContentItemId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = new HashMap<>();
             payload.put("grantId", request.getGrantId());
             return jobService.createJob(
@@ -63,6 +75,11 @@ public class ContentLibraryWorkflowGrpcService
     public void deleteContentItem(DeleteContentItemRequest request,
                                   StreamObserver<JobResponse> responseObserver) {
         handleRequest(responseObserver, () -> {
+            log.debug(
+                    "Content library workflow gRPC deleteContentItem: contentItemId={}, correlationId={}, grantIdSet={}",
+                    request.getContentItemId(),
+                    request.getCorrelationId(),
+                    !request.getGrantId().isBlank());
             Map<String, Object> payload = new HashMap<>();
             payload.put("grantId", request.getGrantId());
             return jobService.createJob(

@@ -1,26 +1,79 @@
 package com.onetattva.infron.core.services.content;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.onetattva.infron.api.model.ContentItem;
 import com.onetattva.infron.api.model.ContentItemList;
 import com.onetattva.infron.api.model.ContentItemStatus;
-import com.onetattva.infron.api.model.ContentType;
+import com.onetattva.infron.api.model.ContainerImageContentItem;
+import com.onetattva.infron.api.model.HelmChartContentItem;
+import com.onetattva.infron.api.model.IsoContentItem;
+import com.onetattva.infron.api.model.ScriptContentItem;
+import com.onetattva.infron.api.model.VmTemplateContentItem;
+import com.onetattva.infron.api.model.VmTemplateSpec;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Component
 public class ContentItemApiConverter {
 
+    private final ObjectMapper objectMapper;
+
+    public ContentItemApiConverter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     public ContentItem toApi(ContentItemEntity entity) {
-        ContentItem api = new ContentItem();
+        String type = entity.getContentType() == null ? "" : entity.getContentType().toLowerCase(Locale.ROOT);
+        Object api;
+
+        switch (type) {
+            case "vm_template" -> {
+                VmTemplateContentItem vm = new VmTemplateContentItem();
+                if (entity.getTemplateSpec() != null) {
+                    vm.setTemplateSpec(objectMapper.convertValue(entity.getTemplateSpec(), VmTemplateSpec.class));
+                }
+                api = vm;
+            }
+            case "iso" -> api = new IsoContentItem();
+            case "script" -> api = new ScriptContentItem();
+            case "container_image" -> api = new ContainerImageContentItem();
+            case "helm_chart" -> api = new HelmChartContentItem();
+            default -> api = new ScriptContentItem();
+        }
+
+        fillBase(api, entity);
+        return (ContentItem) api;
+    }
+
+    private static void fillBase(Object api, ContentItemEntity entity) {
+        if (api instanceof VmTemplateContentItem x) {
+            fillBase(x, entity);
+        } else if (api instanceof IsoContentItem x) {
+            fillBase(x, entity);
+        } else if (api instanceof ScriptContentItem x) {
+            fillBase(x, entity);
+        } else if (api instanceof ContainerImageContentItem x) {
+            fillBase(x, entity);
+        } else if (api instanceof HelmChartContentItem x) {
+            fillBase(x, entity);
+        } else {
+            throw new IllegalStateException("Unsupported content item api type: " + api.getClass().getName());
+        }
+    }
+
+    private static void fillBase(VmTemplateContentItem api, ContentItemEntity entity) {
         api.setId(entity.getId());
         api.setLibraryId(entity.getLibraryId());
         api.setName(entity.getName());
         api.setDescription(entity.getDescription());
-        api.setContentType(ContentType.fromValue(entity.getContentType()));
+        api.setContentType(entity.getContentType());
         api.setVersion(entity.getVersionLabel());
         api.setSizeBytes(entity.getSizeBytes());
         api.setChecksum(entity.getChecksum());
@@ -29,18 +82,100 @@ public class ContentItemApiConverter {
         api.setSourceItemId(entity.getSourceItemId());
         api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
         api.setMetadata(entity.getMetadata());
-        if (entity.getCreatedAt() != null) {
-            api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
-        }
-        if (entity.getUpdatedAt() != null) {
-            api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
-        }
-        if (entity.getLastReplicatedAt() != null) {
-            api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
-        }
+        if (entity.getCreatedAt() != null) api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getUpdatedAt() != null) api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
         api.setProviderRelativePath(entity.getProviderRelativePath());
         api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
-        return api;
+    }
+
+    private static void fillBase(IsoContentItem api, ContentItemEntity entity) {
+        api.setId(entity.getId());
+        api.setLibraryId(entity.getLibraryId());
+        api.setName(entity.getName());
+        api.setDescription(entity.getDescription());
+        api.setContentType(entity.getContentType());
+        api.setVersion(entity.getVersionLabel());
+        api.setSizeBytes(entity.getSizeBytes());
+        api.setChecksum(entity.getChecksum());
+        api.setChecksumAlgorithm(entity.getChecksumAlgorithm());
+        api.setSourceUrl(entity.getSourceUrl());
+        api.setSourceItemId(entity.getSourceItemId());
+        api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
+        api.setMetadata(entity.getMetadata());
+        if (entity.getCreatedAt() != null) api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getUpdatedAt() != null) api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
+        api.setProviderRelativePath(entity.getProviderRelativePath());
+        api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
+    }
+
+    private static void fillBase(ScriptContentItem api, ContentItemEntity entity) {
+        api.setId(entity.getId());
+        api.setLibraryId(entity.getLibraryId());
+        api.setName(entity.getName());
+        api.setDescription(entity.getDescription());
+        api.setContentType(entity.getContentType());
+        api.setVersion(entity.getVersionLabel());
+        api.setSizeBytes(entity.getSizeBytes());
+        api.setChecksum(entity.getChecksum());
+        api.setChecksumAlgorithm(entity.getChecksumAlgorithm());
+        api.setSourceUrl(entity.getSourceUrl());
+        api.setSourceItemId(entity.getSourceItemId());
+        api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
+        api.setMetadata(entity.getMetadata());
+        if (entity.getCreatedAt() != null) api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getUpdatedAt() != null) api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
+        api.setProviderRelativePath(entity.getProviderRelativePath());
+        api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
+    }
+
+    private static void fillBase(ContainerImageContentItem api, ContentItemEntity entity) {
+        api.setId(entity.getId());
+        api.setLibraryId(entity.getLibraryId());
+        api.setName(entity.getName());
+        api.setDescription(entity.getDescription());
+        api.setContentType(entity.getContentType());
+        api.setVersion(entity.getVersionLabel());
+        api.setSizeBytes(entity.getSizeBytes());
+        api.setChecksum(entity.getChecksum());
+        api.setChecksumAlgorithm(entity.getChecksumAlgorithm());
+        api.setSourceUrl(entity.getSourceUrl());
+        api.setSourceItemId(entity.getSourceItemId());
+        api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
+        api.setMetadata(entity.getMetadata());
+        if (entity.getCreatedAt() != null) api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getUpdatedAt() != null) api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
+        api.setProviderRelativePath(entity.getProviderRelativePath());
+        api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
+    }
+
+    private static void fillBase(HelmChartContentItem api, ContentItemEntity entity) {
+        api.setId(entity.getId());
+        api.setLibraryId(entity.getLibraryId());
+        api.setName(entity.getName());
+        api.setDescription(entity.getDescription());
+        api.setContentType(entity.getContentType());
+        api.setVersion(entity.getVersionLabel());
+        api.setSizeBytes(entity.getSizeBytes());
+        api.setChecksum(entity.getChecksum());
+        api.setChecksumAlgorithm(entity.getChecksumAlgorithm());
+        api.setSourceUrl(entity.getSourceUrl());
+        api.setSourceItemId(entity.getSourceItemId());
+        api.setContentStatus(ContentItemStatus.fromValue(entity.getContentStatus()));
+        api.setMetadata(entity.getMetadata());
+        if (entity.getCreatedAt() != null) api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getUpdatedAt() != null) api.setUpdatedAt(entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        if (entity.getLastReplicatedAt() != null) api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
+        api.setProviderRelativePath(entity.getProviderRelativePath());
+        api.setInfronInstanceSegment(entity.getInfronInstanceSegment());
+    }
+
+    Map<String, Object> toTemplateSpecMap(VmTemplateSpec spec) {
+        if (spec == null) return null;
+        return objectMapper.convertValue(spec, new TypeReference<Map<String, Object>>() {});
     }
 
     public ContentItemList toPagedList(Page<ContentItemEntity> page) {

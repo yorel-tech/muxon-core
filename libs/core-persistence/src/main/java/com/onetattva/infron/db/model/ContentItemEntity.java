@@ -65,6 +65,10 @@ public class ContentItemEntity {
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, String> metadata;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "template_spec", columnDefinition = "jsonb")
+    private Map<String, Object> templateSpec;
+
     @Column(name = "provider_relative_path")
     private String providerRelativePath;
 
@@ -202,6 +206,14 @@ public class ContentItemEntity {
 
     public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata;
+    }
+
+    public Map<String, Object> getTemplateSpec() {
+        return templateSpec;
+    }
+
+    public void setTemplateSpec(Map<String, Object> templateSpec) {
+        this.templateSpec = templateSpec;
     }
 
     public String getProviderRelativePath() {

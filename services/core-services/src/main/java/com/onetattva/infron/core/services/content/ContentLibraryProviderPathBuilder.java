@@ -26,6 +26,10 @@ public class ContentLibraryProviderPathBuilder {
     }
 
     public String filenameForStorage(String itemName, String contentType) {
+        if (contentType != null && "vm_template".equalsIgnoreCase(contentType.trim())) {
+            // VM templates are directories of artifacts (template.json + disks/). Use a stable primary artifact name.
+            return "template.json";
+        }
         return ContentLibraryProviderPaths.filenameForStorage(itemName, contentType);
     }
 
