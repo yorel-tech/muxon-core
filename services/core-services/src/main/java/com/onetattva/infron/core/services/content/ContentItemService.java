@@ -25,14 +25,17 @@ public class ContentItemService {
     private final ContentItemRepository contentItemRepository;
     private final ContentItemApiConverter converter;
     private final VmTemplateValidator vmTemplateValidator;
+    private final ContentItemArtifactDeletionService contentItemArtifactDeletionService;
 
     public ContentItemService(
             ContentItemRepository contentItemRepository,
             ContentItemApiConverter converter,
-            VmTemplateValidator vmTemplateValidator) {
+            VmTemplateValidator vmTemplateValidator,
+            ContentItemArtifactDeletionService contentItemArtifactDeletionService) {
         this.contentItemRepository = contentItemRepository;
         this.converter = converter;
         this.vmTemplateValidator = vmTemplateValidator;
+        this.contentItemArtifactDeletionService = contentItemArtifactDeletionService;
     }
 
     public ContentItemList listByLibrary(UUID libraryId, Integer page, Integer perPage) {
@@ -148,15 +151,22 @@ public class ContentItemService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!contentItemRepository.existsById(id)) {
-            throw new EntityNotFoundException("Content item not found: " + id);
-        }
+        ContentItemEntity entity = contentItemRepository
+                .findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Content item not found: " + id));
+        contentItemArtifactDeletionService.deleteStoredArtifacts(entity);
         contentItemRepository.deleteById(id);
     }
 
     @Transactional
     public void deleteInLibrary(UUID libraryId, UUID itemId) {
-        assertItemInLibrary(libraryId, itemId);
+        ContentItemEntity entity = contentItemRepository
+                .findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("Content item not found: " + itemId));
+        if (!libraryId.equals(entity.getLibraryId())) {
+            throw new EntityNotFoundException("Content item not found: " + itemId);
+        }
+        contentItemArtifactDeletionService.deleteStoredArtifacts(entity);
         contentItemRepository.deleteById(itemId);
     }
 }

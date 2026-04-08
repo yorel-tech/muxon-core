@@ -1,7 +1,7 @@
 package com.onetattva.infron.core.services.content;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.onetattva.infron.api.model.VmTemplateDiskSpec;
 import com.onetattva.infron.api.model.VmTemplateSpec;
 import com.onetattva.infron.core.common.EntityNotFoundException;
