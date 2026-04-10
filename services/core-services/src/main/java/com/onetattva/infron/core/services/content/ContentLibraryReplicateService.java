@@ -12,16 +12,18 @@ import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
 import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import com.onetattva.infron.core.spi.queue.ProviderQueueMetadataKeys;
+import com.onetattva.infron.db.model.ContentItemDistributionEntity;
 import com.onetattva.infron.db.model.ContentItemEntity;
-import com.onetattva.infron.db.model.ContentLibraryDatacenterEntity;
+import com.onetattva.infron.db.model.ContentLibraryDistributionEntity;
 import com.onetattva.infron.db.model.ContentLibraryEntity;
 import com.onetattva.infron.db.model.ContentStorageEntity;
 import com.onetattva.infron.db.model.DatacenterEntity;
 import com.onetattva.infron.db.model.JobEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
+import com.onetattva.infron.db.repository.ContentItemDistributionRepository;
 import com.onetattva.infron.db.repository.ContentItemRepository;
-import com.onetattva.infron.db.repository.ContentLibraryDatacenterRepository;
+import com.onetattva.infron.db.repository.ContentLibraryDistributionRepository;
 import com.onetattva.infron.db.repository.ContentLibraryRepository;
 import com.onetattva.infron.db.repository.ContentStorageRepository;
 import com.onetattva.infron.db.repository.DatacenterRepository;
@@ -62,7 +64,8 @@ public class ContentLibraryReplicateService {
 
     private final ContentLibraryRepository contentLibraryRepository;
     private final ContentItemRepository contentItemRepository;
-    private final ContentLibraryDatacenterRepository contentLibraryDatacenterRepository;
+    private final ContentLibraryDistributionRepository contentLibraryDistributionRepository;
+    private final ContentItemDistributionRepository contentItemDistributionRepository;
     private final ContentStorageRepository contentStorageRepository;
     private final DatacenterRepository datacenterRepository;
     private final TaskOrchestrationService taskOrchestrationService;
@@ -75,7 +78,8 @@ public class ContentLibraryReplicateService {
     public ContentLibraryReplicateService(
             ContentLibraryRepository contentLibraryRepository,
             ContentItemRepository contentItemRepository,
-            ContentLibraryDatacenterRepository contentLibraryDatacenterRepository,
+            ContentLibraryDistributionRepository contentLibraryDistributionRepository,
+            ContentItemDistributionRepository contentItemDistributionRepository,
             ContentStorageRepository contentStorageRepository,
             DatacenterRepository datacenterRepository,
             TaskOrchestrationService taskOrchestrationService,
@@ -86,7 +90,8 @@ public class ContentLibraryReplicateService {
             CommandQueue commandQueue) {
         this.contentLibraryRepository = contentLibraryRepository;
         this.contentItemRepository = contentItemRepository;
-        this.contentLibraryDatacenterRepository = contentLibraryDatacenterRepository;
+        this.contentLibraryDistributionRepository = contentLibraryDistributionRepository;
+        this.contentItemDistributionRepository = contentItemDistributionRepository;
         this.contentStorageRepository = contentStorageRepository;
         this.datacenterRepository = datacenterRepository;
         this.taskOrchestrationService = taskOrchestrationService;
@@ -158,20 +163,24 @@ public class ContentLibraryReplicateService {
     }
 
     /**
-     * Copies each {@code available} item under the same relative paths as in content-storage into every discovered
-     * provider pool that matches the published storage class and exposes {@value #PROVIDER_STORAGE_HOST_PATH_CAP}.
+     * Replicate library artifacts to provider storage for a publish mapping ({@code content_library_distribution} row).
      */
-    public ContentReplicateResponse replicateToProviderStorage(UUID libraryId, UUID datacenterId) {
-        ContentLibraryDatacenterEntity mapping = contentLibraryDatacenterRepository
-                .findByLibraryIdAndDatacenterId(libraryId, datacenterId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Library is not published to datacenter: " + datacenterId));
+    @Transactional
+    public ContentReplicateResponse replicateToProviderStorage(UUID libraryId, UUID distributionId) {
+        ContentLibraryDistributionEntity mapping = contentLibraryDistributionRepository
+                .findById(distributionId)
+                .orElseThrow(() -> new EntityNotFoundException("Distribution mapping not found: " + distributionId));
+        if (!mapping.getLibraryId().equals(libraryId)) {
+            throw new EntityNotFoundException("Distribution mapping not found for this library");
+        }
+        UUID datacenterId = mapping.getDatacenterId();
 
         String storageClassName = mapping.getStorageClassName();
         if (log.isDebugEnabled()) {
             log.debug(
-                    "Content library datacenter replicate start: libraryId={}, datacenterId={}, storageClassName={}",
+                    "Content library datacenter replicate start: libraryId={}, distributionId={}, datacenterId={}, storageClassName={}",
                     libraryId,
+                    distributionId,
                     datacenterId,
                     storageClassName);
         }
@@ -251,6 +260,8 @@ public class ContentLibraryReplicateService {
                 poolRoots.size(),
                 poolRoots);
 
+        seedDistributionReplication(mapping, libraryId);
+
         TaskCreateRequest request = new TaskCreateRequest();
         request.setOperation(JobType.CONTENT_DATACENTER_REPLICATE);
         request.setEntityType(EntityType.PROVIDER);
@@ -259,16 +270,15 @@ public class ContentLibraryReplicateService {
         request.setParameters(Map.of(
                 "libraryId", libraryId.toString(),
                 "datacenterId", datacenterId.toString(),
+                "distributionId", distributionId.toString(),
                 "storageClassName", storageClassName));
         request.setMetadata(Map.of(
                 "kind", "CONTENT_DATACENTER_REPLICATE",
                 "libraryId", libraryId.toString(),
                 "datacenterId", datacenterId.toString(),
+                "distributionId", distributionId.toString(),
                 "storageClassName", storageClassName));
         JobEntity job = taskOrchestrationService.createTask(request);
-
-        mapping.setReplicateStatus("replicating");
-        contentLibraryDatacenterRepository.save(mapping);
 
         taskOrchestrationService.startTask(job.getId());
 
@@ -282,27 +292,32 @@ public class ContentLibraryReplicateService {
                 totalCopies += copyLibraryArtifactsToPool(library, poolRoot);
                 poolPaths.add(poolRoot.toString());
             }
+            markAllItemDistributionsReady(distributionId, libraryId);
             mapping.setReplicateStatus("available");
+            mapping.setProgressPercent(100);
             mapping.setLastReplicatedAt(Instant.now());
-            contentLibraryDatacenterRepository.save(mapping);
+            mapping.setErrorMessage(null);
+            contentLibraryDistributionRepository.save(mapping);
             taskOrchestrationService.completeTask(
                     job.getId(),
                     Map.of(
                             "libraryId", libraryId.toString(),
                             "datacenterId", datacenterId.toString(),
+                            "distributionId", distributionId.toString(),
                             "storageClassName", storageClassName,
                             "poolCount", poolRoots.size(),
                             "fileCopies", totalCopies,
                             "poolPaths", poolPaths));
         } catch (Exception e) {
             log.error(
-                    "Datacenter replication failed for library {} datacenter {}: {}",
+                    "Datacenter replication failed for library {} distribution {}: {}",
                     libraryId,
-                    datacenterId,
+                    distributionId,
                     e.getMessage(),
                     e);
             mapping.setReplicateStatus("failed");
-            contentLibraryDatacenterRepository.save(mapping);
+            mapping.setErrorMessage(e.getMessage());
+            contentLibraryDistributionRepository.save(mapping);
             taskOrchestrationService.failTask(job.getId(), e.getMessage());
             if (e instanceof RuntimeException re) {
                 throw re;
@@ -319,12 +334,74 @@ public class ContentLibraryReplicateService {
         return response;
     }
 
+    private void seedDistributionReplication(ContentLibraryDistributionEntity mapping, UUID libraryId) {
+        UUID distributionId = mapping.getId();
+        contentItemDistributionRepository.deleteByDistributionId(distributionId);
+        List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+        for (ContentItemEntity item : items) {
+            if (!"available".equalsIgnoreCase(item.getContentStatus())) {
+                continue;
+            }
+            ContentItemDistributionEntity row = new ContentItemDistributionEntity();
+            row.setContentItemId(item.getId());
+            row.setDistributionId(distributionId);
+            row.setStatus("PENDING");
+            row.setChecksumVerified(false);
+            row.setRetryCount(0);
+            contentItemDistributionRepository.save(row);
+        }
+        mapping.setReplicateStatus("replicating");
+        mapping.setProgressPercent(0);
+        mapping.setErrorMessage(null);
+        contentLibraryDistributionRepository.save(mapping);
+    }
+
+    private void markAllItemDistributionsReady(UUID distributionId, UUID libraryId) {
+        List<ContentItemDistributionEntity> rows =
+                contentItemDistributionRepository.findByDistributionIdOrderByContentItemId(distributionId);
+        Path artifactRoot = resolveArtifactRoot(libraryId);
+        for (ContentItemDistributionEntity row : rows) {
+            ContentItemEntity item = contentItemRepository.findById(row.getContentItemId()).orElse(null);
+            if (item == null) {
+                continue;
+            }
+            contentLibraryProviderPathBuilder.applyProviderPaths(item);
+            String rel = item.getProviderRelativePath();
+            long size = 0L;
+            if (rel != null && !rel.isBlank()) {
+                Path src = artifactRoot.resolve(rel).normalize();
+                if (src.startsWith(artifactRoot) && Files.isRegularFile(src)) {
+                    try {
+                        size = Files.size(src);
+                    } catch (IOException ignored) {
+                        size = item.getSizeBytes() != null ? item.getSizeBytes() : 0L;
+                    }
+                }
+            }
+            row.setStatus("READY");
+            row.setChecksumVerified(true);
+            row.setSizeBytes(size > 0 ? size : item.getSizeBytes());
+            row.setErrorMessage(null);
+            contentItemDistributionRepository.save(row);
+        }
+    }
+
+    private Path resolveArtifactRoot(UUID libraryId) {
+        ContentLibraryEntity library = contentLibraryRepository
+                .findById(libraryId)
+                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+        ContentStorageEntity storage = contentStorageRepository
+                .findById(library.getContentStorageId())
+                .orElseThrow(() -> new EntityNotFoundException("Content storage not found for library: " + libraryId));
+        return contentStoragePathResolver.artifactRootForStorage(storage).toAbsolutePath().normalize();
+    }
+
     /**
      * Queues Proxmox API upload work to the orchestrator (no {@code host_path} on pools).
      */
     private ContentReplicateResponse enqueueProxmoxDatacenterReplicate(
             ContentLibraryEntity library,
-            ContentLibraryDatacenterEntity mapping,
+            ContentLibraryDistributionEntity mapping,
             UUID libraryId,
             UUID datacenterId,
             String storageClassName,
@@ -360,6 +437,9 @@ public class ContentLibraryReplicateService {
                     "Matched Proxmox pools have no external storage ids; run storage discovery.");
         }
 
+        seedDistributionReplication(mapping, libraryId);
+        UUID distributionId = mapping.getId();
+
         TaskCreateRequest request = new TaskCreateRequest();
         request.setOperation(JobType.CONTENT_DATACENTER_REPLICATE);
         request.setEntityType(EntityType.PROVIDER);
@@ -368,12 +448,14 @@ public class ContentLibraryReplicateService {
         request.setParameters(Map.of(
                 "libraryId", libraryId.toString(),
                 "datacenterId", datacenterId.toString(),
+                "distributionId", distributionId.toString(),
                 "storageClassName", storageClassName,
                 "providerId", providerId.toString()));
         request.setMetadata(Map.of(
                 "kind", "CONTENT_DATACENTER_REPLICATE",
                 "libraryId", libraryId.toString(),
                 "datacenterId", datacenterId.toString(),
+                "distributionId", distributionId.toString(),
                 "storageClassName", storageClassName,
                 "providerId", providerId.toString()));
 
@@ -387,6 +469,7 @@ public class ContentLibraryReplicateService {
                 String.valueOf(DEFAULT_TASK_TIMEOUT_SECONDS));
         metadata.put(ProviderQueueMetadataKeys.LIBRARY_ID, libraryId.toString());
         metadata.put(ProviderQueueMetadataKeys.DATACENTER_ID, datacenterId.toString());
+        metadata.put(ProviderQueueMetadataKeys.DISTRIBUTION_ID, distributionId.toString());
         metadata.put(ProviderQueueMetadataKeys.ARTIFACT_ROOT, artifactRoot.toString());
         metadata.put(ProviderQueueMetadataKeys.STORAGE_POOL_IDS, storagePoolIds);
 
@@ -406,9 +489,10 @@ public class ContentLibraryReplicateService {
 
         UUID commandId = commandQueue.sendCommand(command);
         log.info(
-                "Proxmox datacenter replicate enqueued: libraryId={}, datacenterId={}, jobId={}, commandId={}, pools={}",
+                "Proxmox datacenter replicate enqueued: libraryId={}, datacenterId={}, distributionId={}, jobId={}, commandId={}, pools={}",
                 libraryId,
                 datacenterId,
+                distributionId,
                 job.getId(),
                 commandId,
                 storagePoolIds);
@@ -419,9 +503,6 @@ public class ContentLibraryReplicateService {
                 artifactRoot,
                 job.getId(),
                 DEFAULT_TASK_TIMEOUT_SECONDS);
-
-        mapping.setReplicateStatus("replicating");
-        contentLibraryDatacenterRepository.save(mapping);
 
         ContentReplicateResponse response = new ContentReplicateResponse();
         response.setLibraryId(libraryId);

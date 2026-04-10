@@ -34,6 +34,13 @@ components:
       schema:
         type: string
         format: uuid
+    distributionId:
+      name: distributionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     ContentLibraryType:
@@ -486,30 +493,36 @@ components:
           properties:
             templateSpec:
               $ref: '#/components/schemas/VmTemplateSpec'
+      # Hint for Java: subclass ContentItemCreateBase (requires openapiNormalizer REF_AS_PARENT_IN_ALLOF=true in build).
+      x-java-extends: ContentItemCreateBase
 
     IsoContentItemCreate:
       allOf:
         - $ref: '#/components/schemas/ContentItemCreateBase'
         - type: object
           additionalProperties: false
+      x-java-extends: ContentItemCreateBase
 
     ScriptContentItemCreate:
       allOf:
         - $ref: '#/components/schemas/ContentItemCreateBase'
         - type: object
           additionalProperties: false
+      x-java-extends: ContentItemCreateBase
 
     ContainerImageContentItemCreate:
       allOf:
         - $ref: '#/components/schemas/ContentItemCreateBase'
         - type: object
           additionalProperties: false
+      x-java-extends: ContentItemCreateBase
 
     HelmChartContentItemCreate:
       allOf:
         - $ref: '#/components/schemas/ContentItemCreateBase'
         - type: object
           additionalProperties: false
+      x-java-extends: ContentItemCreateBase
 
     ContentItemCreate:
       oneOf:
@@ -616,9 +629,9 @@ components:
           description: Datacenter storage class; replication uses provider pools that match this class.
       additionalProperties: false
 
-    ContentLibraryDatacenter:
+    ContentLibraryDistribution:
       type: object
-      required: [id, libraryId, datacenterId, replicateStatus, createdAt, updatedAt]
+      required: [id, libraryId, datacenterId, replicateStatus, progressPercent, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -640,6 +653,15 @@ components:
         replicateStatus:
           type: string
           enum: [pending, replicating, available, failed]
+        progressPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Replication progress for this publish mapping (0–100).
+        errorMessage:
+          type: string
+          nullable: true
+          description: Last replication failure message, if any.
         lastReplicatedAt:
           type: string
           format: date-time
@@ -651,13 +673,64 @@ components:
           type: string
           format: date-time
 
-    ContentLibraryDatacenterList:
+    ContentLibraryDistributionList:
       type: object
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/ContentLibraryDatacenter'
+            $ref: '#/components/schemas/ContentLibraryDistribution'
+
+    ContentItemDistribution:
+      type: object
+      required: [id, contentItemId, distributionId, status, checksumVerified, retryCount, lastUpdatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        contentItemId:
+          type: string
+          format: uuid
+        distributionId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Content item display name (joined on read).
+        contentType:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COPYING, READY, FAILED]
+        checksumVerified:
+          type: boolean
+        sizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        retryCount:
+          type: integer
+        lastUpdatedAt:
+          type: string
+          format: date-time
+
+    ContentItemDistributionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentItemDistribution'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        perPage:
+          type: integer
 
     ContentItemDownloadLink:
       type: object
@@ -913,7 +986,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentLibraryDatacenter'
+                $ref: '#/components/schemas/ContentLibraryDistribution'
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
@@ -921,13 +994,13 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /platform/content-libraries/{libraryId}/datacenters:
+  /platform/content-libraries/{libraryId}/distributions:
     parameters:
       - $ref: '#/components/parameters/libraryId'
     get:
       tags: [PlatformContentLibraries]
-      summary: List datacenters this library is published to
-      operationId: listPlatformContentLibraryDatacenters
+      summary: List datacenter publish mappings (distributions) for this library
+      operationId: listPlatformContentLibraryDistributions
       security:
         - BearerAuth: []
       responses:
@@ -936,20 +1009,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentLibraryDatacenterList'
+                $ref: '#/components/schemas/ContentLibraryDistributionList'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /platform/content-libraries/{libraryId}/datacenters/{datacenterId}:
+  /platform/content-libraries/{libraryId}/distributions/{distributionId}:
     parameters:
       - $ref: '#/components/parameters/libraryId'
-      - $ref: '#/components/parameters/datacenterId'
+      - $ref: '#/components/parameters/distributionId'
     delete:
       tags: [PlatformContentLibraries]
-      summary: Unpublish library from datacenter
-      operationId: unpublishPlatformContentLibraryDatacenter
+      summary: Unpublish library from datacenter (remove distribution mapping)
+      operationId: unpublishPlatformContentLibraryDistribution
       security:
         - BearerAuth: []
       responses:
@@ -960,14 +1033,14 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /platform/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+  /platform/content-libraries/{libraryId}/distributions/{distributionId}/replicate:
     parameters:
       - $ref: '#/components/parameters/libraryId'
-      - $ref: '#/components/parameters/datacenterId'
+      - $ref: '#/components/parameters/distributionId'
     post:
       tags: [PlatformContentLibraries]
       summary: Replicate content from content store to provider storage at datacenter
-      operationId: replicatePlatformContentLibraryDatacenter
+      operationId: replicatePlatformContentLibraryDistribution
       security:
         - BearerAuth: []
       responses:
@@ -977,6 +1050,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentReplicateResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /platform/content-libraries/{libraryId}/distributions/{distributionId}/items:
+    parameters:
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/distributionId'
+    get:
+      tags: [PlatformContentLibraries]
+      summary: List per-item replication status for a distribution
+      operationId: listPlatformContentLibraryDistributionItems
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, COPYING, READY, FAILED]
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated item distribution rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemDistributionList'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
@@ -1399,7 +1503,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentLibraryDatacenter'
+                $ref: '#/components/schemas/ContentLibraryDistribution'
         '400':
           $ref: './commons.yaml#/components/responses/BadRequest'
         '401':
@@ -1407,14 +1511,14 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters:
+  /tenants/{tenantId}/content-libraries/{libraryId}/distributions:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
     get:
       tags: [TenantContentLibraries]
-      summary: List datacenters this library is published to
-      operationId: listTenantContentLibraryDatacenters
+      summary: List datacenter publish mappings (distributions) for this library
+      operationId: listTenantContentLibraryDistributions
       security:
         - BearerAuth: []
       responses:
@@ -1423,21 +1527,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentLibraryDatacenterList'
+                $ref: '#/components/schemas/ContentLibraryDistributionList'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}:
+  /tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
-      - $ref: '#/components/parameters/datacenterId'
+      - $ref: '#/components/parameters/distributionId'
     delete:
       tags: [TenantContentLibraries]
-      summary: Unpublish library from datacenter
-      operationId: unpublishTenantContentLibraryDatacenter
+      summary: Unpublish library from datacenter (remove distribution mapping)
+      operationId: unpublishTenantContentLibraryDistribution
       security:
         - BearerAuth: []
       responses:
@@ -1448,15 +1552,15 @@ paths:
         '404':
           $ref: './commons.yaml#/components/responses/NotFound'
 
-  /tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
+  /tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}/replicate:
     parameters:
       - $ref: './commons.yaml#/components/parameters/tenantId'
       - $ref: '#/components/parameters/libraryId'
-      - $ref: '#/components/parameters/datacenterId'
+      - $ref: '#/components/parameters/distributionId'
     post:
       tags: [TenantContentLibraries]
       summary: Replicate content from content store to provider storage at datacenter
-      operationId: replicateTenantContentLibraryDatacenter
+      operationId: replicateTenantContentLibraryDistribution
       security:
         - BearerAuth: []
       responses:
@@ -1466,6 +1570,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentReplicateResponse'
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}/items:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/libraryId'
+      - $ref: '#/components/parameters/distributionId'
+    get:
+      tags: [TenantContentLibraries]
+      summary: List per-item replication status for a distribution
+      operationId: listTenantContentLibraryDistributionItems
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, COPYING, READY, FAILED]
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated item distribution rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemDistributionList'
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '404':

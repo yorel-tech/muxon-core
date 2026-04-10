@@ -33,6 +33,9 @@ public class EntityEventProcessor {
     @Autowired
     private VmEntityEventHandler vmEventHandler;
 
+    @Autowired
+    private ContentLibraryEntityEventHandler contentLibraryEntityEventHandler;
+
     @Scheduled(fixedDelay = 2000)
     public void processEntityEvents() {
         List<EntityEventMessage> events = entityEventQueue.pollEntityEvents(POLL_BATCH);
@@ -55,8 +58,22 @@ public class EntityEventProcessor {
     private void dispatch(EntityEventMessage event) {
         if (event.entityType() == EntityType.VM) {
             dispatchVmEvent(event);
+        } else if (event.entityType() == EntityType.CONTENT_LIBRARY) {
+            dispatchContentLibraryEvent(event);
         } else {
             log.debug("No handler for entity type {} (event {})", event.entityType(), event.eventType());
+        }
+    }
+
+    private void dispatchContentLibraryEvent(EntityEventMessage event) {
+        switch (event.eventType()) {
+            case EntityEventTypes.CL_DISTRIBUTION_ITEM_UPDATED -> contentLibraryEntityEventHandler.onItemUpdated(event);
+            case EntityEventTypes.CL_DISTRIBUTION_COMPLETED -> contentLibraryEntityEventHandler.onCompleted(event);
+            case EntityEventTypes.CL_DISTRIBUTION_FAILED -> contentLibraryEntityEventHandler.onFailed(event);
+            default -> log.debug(
+                    "Unhandled content library event type '{}' for entity {}",
+                    event.eventType(),
+                    event.entityId());
         }
     }
 

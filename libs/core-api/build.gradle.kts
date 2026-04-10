@@ -96,6 +96,8 @@ tasks.named<GenerateTask>("openApiGenerate") {
     description = "Generate client from bundled OpenAPI"
     inputSpec.set(bundledOpenApi.get().asFile.absolutePath)
     outputDir.set(openApiOutputDir.get().asFile.absolutePath)
+    // Treat first $ref in allOf as Java superclass so VmTemplateContentItemCreate extends ContentItemCreateBase.
+    openapiNormalizer.set(mapOf("REF_AS_PARENT_IN_ALLOF" to "true"))
 
     apiPackage.set("com.onetattva.infron.api")
     modelPackage.set("com.onetattva.infron.api.model")

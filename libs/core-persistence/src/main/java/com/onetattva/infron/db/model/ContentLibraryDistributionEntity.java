@@ -14,8 +14,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "content_library_datacenter")
-public class ContentLibraryDatacenterEntity {
+@Table(name = "content_library_distribution")
+public class ContentLibraryDistributionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -36,6 +36,12 @@ public class ContentLibraryDatacenterEntity {
 
     @Column(name = "last_replicated_at")
     private Instant lastReplicatedAt;
+
+    @Column(name = "progress_percent", nullable = false)
+    private int progressPercent;
+
+    @Column(name = "error_message")
+    private String errorMessage;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -104,6 +110,22 @@ public class ContentLibraryDatacenterEntity {
 
     public void setLastReplicatedAt(Instant lastReplicatedAt) {
         this.lastReplicatedAt = lastReplicatedAt;
+    }
+
+    public int getProgressPercent() {
+        return progressPercent;
+    }
+
+    public void setProgressPercent(int progressPercent) {
+        this.progressPercent = progressPercent;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
     public Instant getCreatedAt() {

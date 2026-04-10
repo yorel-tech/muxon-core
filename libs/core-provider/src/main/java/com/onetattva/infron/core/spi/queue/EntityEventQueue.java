@@ -60,5 +60,10 @@ public interface EntityEventQueue {
         String VM_DELETION_FAILED   = "vm.deletion.failed";
         String VM_OPERATION_FAILED  = "vm.operation.failed";
         String VM_MIGRATED          = "vm.migrated";
+
+        // Content library distribution (replication to a datacenter)
+        String CL_DISTRIBUTION_ITEM_UPDATED = "content_library_distribution.item_updated";
+        String CL_DISTRIBUTION_COMPLETED    = "content_library_distribution.completed";
+        String CL_DISTRIBUTION_FAILED       = "content_library_distribution.failed";
     }
 }

@@ -1,10 +1,11 @@
 package com.onetattva.infron.core.controllers;
 
 import com.onetattva.infron.api.PlatformContentLibrariesApi;
+import com.onetattva.infron.api.model.ContentItemDistributionList;
 import com.onetattva.infron.api.model.ContentLibrary;
 import com.onetattva.infron.api.model.ContentLibraryCreate;
-import com.onetattva.infron.api.model.ContentLibraryDatacenter;
-import com.onetattva.infron.api.model.ContentLibraryDatacenterList;
+import com.onetattva.infron.api.model.ContentLibraryDistribution;
+import com.onetattva.infron.api.model.ContentLibraryDistributionList;
 import com.onetattva.infron.api.model.ContentLibraryList;
 import com.onetattva.infron.api.model.ContentLibraryUpdate;
 import com.onetattva.infron.api.model.ContentReplicateResponse;
@@ -12,6 +13,7 @@ import com.onetattva.infron.api.model.ContentSyncResponse;
 import com.onetattva.infron.api.model.PublishRequest;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.RequiresPermission;
+import com.onetattva.infron.core.services.content.ContentLibraryDistributionItemService;
 import com.onetattva.infron.core.services.content.ContentLibraryPublishService;
 import com.onetattva.infron.core.services.content.ContentLibraryReplicateService;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
@@ -28,16 +30,19 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
     private final ContentLibrarySyncService contentLibrarySyncService;
     private final ContentLibraryReplicateService contentLibraryReplicateService;
     private final ContentLibraryPublishService contentLibraryPublishService;
+    private final ContentLibraryDistributionItemService contentLibraryDistributionItemService;
 
     public PlatformContentLibrariesController(
             ContentLibraryService contentLibraryService,
             ContentLibrarySyncService contentLibrarySyncService,
             ContentLibraryReplicateService contentLibraryReplicateService,
-            ContentLibraryPublishService contentLibraryPublishService) {
+            ContentLibraryPublishService contentLibraryPublishService,
+            ContentLibraryDistributionItemService contentLibraryDistributionItemService) {
         this.contentLibraryService = contentLibraryService;
         this.contentLibrarySyncService = contentLibrarySyncService;
         this.contentLibraryReplicateService = contentLibraryReplicateService;
         this.contentLibraryPublishService = contentLibraryPublishService;
+        this.contentLibraryDistributionItemService = contentLibraryDistributionItemService;
     }
 
     @Override
@@ -68,13 +73,21 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
-    public ResponseEntity<ContentLibraryDatacenterList> listPlatformContentLibraryDatacenters(UUID libraryId) {
+    public ResponseEntity<ContentLibraryDistributionList> listPlatformContentLibraryDistributions(UUID libraryId) {
         return ResponseEntity.ok(contentLibraryPublishService.listForPlatformLibrary(libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
+    public ResponseEntity<ContentItemDistributionList> listPlatformContentLibraryDistributionItems(
+            UUID libraryId, UUID distributionId, String status, Integer page, Integer perPage) {
+        return ResponseEntity.ok(contentLibraryDistributionItemService.listForPlatformLibrary(
+                libraryId, distributionId, status, page, perPage));
+    }
+
+    @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<ContentLibraryDatacenter> publishPlatformContentLibrary(
+    public ResponseEntity<ContentLibraryDistribution> publishPlatformContentLibrary(
             UUID libraryId, PublishRequest publishRequest) {
         return ResponseEntity.status(201)
                 .body(contentLibraryPublishService.publishPlatform(libraryId, publishRequest));
@@ -98,11 +111,11 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<ContentReplicateResponse> replicatePlatformContentLibraryDatacenter(
-            UUID libraryId, UUID datacenterId) {
+    public ResponseEntity<ContentReplicateResponse> replicatePlatformContentLibraryDistribution(
+            UUID libraryId, UUID distributionId) {
         contentLibraryService.requirePlatformLibrary(libraryId);
         return ResponseEntity.accepted()
-                .body(contentLibraryReplicateService.replicateToProviderStorage(libraryId, datacenterId));
+                .body(contentLibraryReplicateService.replicateToProviderStorage(libraryId, distributionId));
     }
 
     @Override
@@ -114,8 +127,8 @@ public class PlatformContentLibrariesController implements PlatformContentLibrar
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<Void> unpublishPlatformContentLibraryDatacenter(UUID libraryId, UUID datacenterId) {
-        contentLibraryPublishService.unpublishPlatform(libraryId, datacenterId);
+    public ResponseEntity<Void> unpublishPlatformContentLibraryDistribution(UUID libraryId, UUID distributionId) {
+        contentLibraryPublishService.unpublishPlatform(libraryId, distributionId);
         return ResponseEntity.noContent().build();
     }
 

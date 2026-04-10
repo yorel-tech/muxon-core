@@ -16,6 +16,8 @@ import com.onetattva.infron.api.enums.JobStatus;
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.spi.queue.CommandMessage;
 import com.onetattva.infron.core.spi.queue.CommandQueue;
+import com.onetattva.infron.core.spi.queue.EntityEventQueue;
+import com.onetattva.infron.core.spi.queue.EntityEventQueue.EntityEventTypes;
 import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import com.onetattva.infron.core.spi.queue.ProviderQueueMetadataKeys;
 import com.onetattva.infron.db.model.ContentItemEntity;
@@ -24,7 +26,6 @@ import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
 import com.onetattva.infron.db.repository.ContentItemRepository;
-import com.onetattva.infron.db.repository.ContentLibraryDatacenterRepository;
 import com.onetattva.infron.db.repository.JobRepository;
 import com.onetattva.infron.db.repository.NodeClusterRepository;
 import com.onetattva.infron.db.repository.NodeRepository;
@@ -103,7 +104,7 @@ public class ProviderConnectionOrchestrator {
     private ContentItemRepository contentItemRepository;
 
     @Autowired
-    private ContentLibraryDatacenterRepository contentLibraryDatacenterRepository;
+    private EntityEventQueue entityEventQueue;
 
     @Value("${infron.provider.storage-discovery-execution-timeout-seconds:300}")
     private int defaultStorageDiscoveryExecutionTimeoutSeconds;
@@ -776,18 +777,20 @@ public class ProviderConnectionOrchestrator {
         UUID jobId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.JOB_ID));
         UUID libraryId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.LIBRARY_ID));
         UUID datacenterId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.DATACENTER_ID));
+        UUID distributionId = parseUuid(entry.metadata().get(ProviderQueueMetadataKeys.DISTRIBUTION_ID));
         String artifactRootStr = entry.metadata().get(ProviderQueueMetadataKeys.ARTIFACT_ROOT);
         String storagePoolIdsRaw = entry.metadata().get(ProviderQueueMetadataKeys.STORAGE_POOL_IDS);
         int execTimeoutSec = parseExecutionTimeoutSeconds(
                 entry.metadata().get(ProviderQueueMetadataKeys.EXECUTION_TIMEOUT_SECONDS));
 
         logger.info(
-                "Content datacenter replicate claimed: commandId={}, providerId={}, jobId={}, libraryId={}, datacenterId={}",
+                "Content datacenter replicate claimed: commandId={}, providerId={}, jobId={}, libraryId={}, datacenterId={}, distributionId={}",
                 entry.id(),
                 providerId,
                 jobId,
                 libraryId,
-                datacenterId);
+                datacenterId,
+                distributionId);
         if (logger.isDebugEnabled()) {
             logger.debug(
                     "Content datacenter replicate config: commandId={}, artifactRoot={}, storagePoolIds={}, "
@@ -801,11 +804,14 @@ public class ProviderConnectionOrchestrator {
         if (jobId == null
                 || libraryId == null
                 || datacenterId == null
+                || distributionId == null
                 || artifactRootStr == null
                 || artifactRootStr.isBlank()
                 || storagePoolIdsRaw == null
                 || storagePoolIdsRaw.isBlank()) {
-            String msg = "Content datacenter replicate missing required metadata (jobId, libraryId, datacenterId, artifactRoot, storagePoolIds)";
+            String msg =
+                    "Content datacenter replicate missing required metadata (jobId, libraryId, datacenterId, "
+                            + "distributionId, artifactRoot, storagePoolIds)";
             failContentDatacenterReplicateJob(jobId, msg);
             commandQueue.markFailed(entry.id(), msg);
             return;
@@ -815,12 +821,14 @@ public class ProviderConnectionOrchestrator {
         if (entity == null) {
             String msg = "Provider not found: " + providerId;
             failContentDatacenterReplicateJob(jobId, msg);
+            publishDistributionFailed(distributionId, entry.id(), msg, 0);
             commandQueue.markFailed(entry.id(), msg);
             return;
         }
         if (!ProviderType.PROXMOX.equals(entity.getType())) {
             String msg = "Content datacenter replicate is only supported for Proxmox providers (got " + entity.getType() + ")";
             failContentDatacenterReplicateJob(jobId, msg);
+            publishDistributionFailed(distributionId, entry.id(), msg, 0);
             commandQueue.markFailed(entry.id(), msg);
             return;
         }
@@ -833,10 +841,10 @@ public class ProviderConnectionOrchestrator {
                     proxmoxStorageUploader.authenticate(entity.getEndpoint(), entity.getCredentials());
 
             List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+            List<ContentItemEntity> available = items.stream()
+                    .filter(i -> "available".equalsIgnoreCase(i.getContentStatus()))
+                    .toList();
             if (logger.isDebugEnabled()) {
-                long available = items.stream()
-                        .filter(i -> "available".equalsIgnoreCase(i.getContentStatus()))
-                        .count();
                 logger.debug(
                         "Content datacenter replicate upload phase: providerId={}, providerType={}, "
                                 + "endpoint={}, libraryItemCount={}, availableItemCount={}",
@@ -844,9 +852,10 @@ public class ProviderConnectionOrchestrator {
                         entity.getType(),
                         entity.getEndpoint(),
                         items.size(),
-                        available);
+                        available.size());
             }
-            int uploadCount = 0;
+
+            List<ProviderStorageEntity> poolEntities = new ArrayList<>();
             for (String poolIdRaw : storagePoolIdsRaw.split(",")) {
                 String storagePoolId = poolIdRaw.trim();
                 if (storagePoolId.isEmpty()) {
@@ -860,23 +869,39 @@ public class ProviderConnectionOrchestrator {
                 if (nodeName == null || nodeName.isBlank()) {
                     throw new IllegalStateException("Provider storage " + storagePoolId + " has no node id (run inventory sync)");
                 }
+                poolEntities.add(ps);
+            }
+            if (poolEntities.isEmpty()) {
+                throw new IllegalStateException("No valid storage pools in metadata");
+            }
 
-                for (ContentItemEntity item : items) {
-                    if (!"available".equalsIgnoreCase(item.getContentStatus())) {
-                        continue;
-                    }
-                    String rel = item.getProviderRelativePath();
-                    if (rel == null || rel.isBlank()) {
-                        throw new IllegalStateException("Content item " + item.getId() + " has no provider relative path");
-                    }
-                    Path src = artifactRoot.resolve(rel).normalize();
-                    if (!src.startsWith(artifactRoot)) {
-                        throw new IllegalStateException("Refusing to read outside artifact root: " + src);
-                    }
-                    if (!Files.isRegularFile(src)) {
-                        throw new IllegalStateException("Missing artifact file for item " + item.getId() + " at " + src);
-                    }
-                    String leaf = src.getFileName().toString();
+            int uploadCount = 0;
+            int n = available.size();
+            int done = 0;
+            if (n == 0) {
+                completeContentDatacenterReplicateJob(jobId, libraryId, datacenterId, 0);
+                publishDistributionCompleted(distributionId, entry.id());
+                commandQueue.markCompleted(entry.id());
+                return;
+            }
+            for (ContentItemEntity item : available) {
+                String rel = item.getProviderRelativePath();
+                if (rel == null || rel.isBlank()) {
+                    throw new IllegalStateException("Content item " + item.getId() + " has no provider relative path");
+                }
+                Path src = artifactRoot.resolve(rel).normalize();
+                if (!src.startsWith(artifactRoot)) {
+                    throw new IllegalStateException("Refusing to read outside artifact root: " + src);
+                }
+                if (!Files.isRegularFile(src)) {
+                    throw new IllegalStateException("Missing artifact file for item " + item.getId() + " at " + src);
+                }
+                String leaf = src.getFileName().toString();
+                long sizeBytes = Files.size(src);
+
+                for (ProviderStorageEntity ps : poolEntities) {
+                    String storagePoolId = ps.getExternalId().trim();
+                    String nodeName = ps.getNodeId();
                     String proxmoxContent = ProxmoxStorageUploader.resolveProxmoxContentTypeForItem(
                             item.getContentType(), leaf);
                     ensureStorageAcceptsProxmoxContent(ps, proxmoxContent);
@@ -895,16 +920,22 @@ public class ProviderConnectionOrchestrator {
                             entity.getEndpoint(), session, nodeName, upid, execTimeoutSec);
                     uploadCount++;
                 }
+
+                done++;
+                int progressPercent = n == 0 ? 100 : (done * 100 / n);
+                publishDistributionItemUpdated(
+                        distributionId,
+                        entry.id(),
+                        item.getId(),
+                        "READY",
+                        sizeBytes,
+                        true,
+                        null,
+                        progressPercent);
             }
 
             completeContentDatacenterReplicateJob(jobId, libraryId, datacenterId, uploadCount);
-            contentLibraryDatacenterRepository
-                    .findByLibraryIdAndDatacenterId(libraryId, datacenterId)
-                    .ifPresent(m -> {
-                        m.setReplicateStatus("available");
-                        m.setLastReplicatedAt(Instant.now());
-                        contentLibraryDatacenterRepository.save(m);
-                    });
+            publishDistributionCompleted(distributionId, entry.id());
             logger.info(
                     "Content datacenter replicate completed: commandId={}, jobId={}, uploadCount={}",
                     entry.id(),
@@ -915,13 +946,70 @@ public class ProviderConnectionOrchestrator {
             String msg = e.getMessage() != null ? e.getMessage() : "Content datacenter replicate failed";
             logger.error("Content datacenter replicate failed: providerId={}, jobId={}", providerId, jobId, e);
             failContentDatacenterReplicateJob(jobId, msg);
-            contentLibraryDatacenterRepository
-                    .findByLibraryIdAndDatacenterId(libraryId, datacenterId)
-                    .ifPresent(m -> {
-                        m.setReplicateStatus("failed");
-                        contentLibraryDatacenterRepository.save(m);
-                    });
+            publishDistributionFailed(distributionId, entry.id(), msg, 0);
             commandQueue.markFailed(entry.id(), msg);
+        }
+    }
+
+    private void publishDistributionItemUpdated(
+            UUID distributionId,
+            UUID taskId,
+            UUID contentItemId,
+            String status,
+            long sizeBytes,
+            boolean checksumVerified,
+            String errorMessage,
+            int progressPercent) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("contentItemId", contentItemId.toString());
+            payload.put("status", status);
+            payload.put("sizeBytes", sizeBytes);
+            payload.put("checksumVerified", checksumVerified);
+            if (errorMessage != null) {
+                payload.put("errorMessage", errorMessage);
+            }
+            payload.put("progressPercent", progressPercent);
+            entityEventQueue.publishEntityEvent(
+                    EntityType.CONTENT_LIBRARY,
+                    distributionId,
+                    EntityEventTypes.CL_DISTRIBUTION_ITEM_UPDATED,
+                    taskId,
+                    payload);
+        } catch (Exception ex) {
+            logger.warn("Failed to publish CL_DISTRIBUTION_ITEM_UPDATED: {}", ex.getMessage());
+        }
+    }
+
+    private void publishDistributionCompleted(UUID distributionId, UUID taskId) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("progressPercent", 100);
+            payload.put("lastReplicatedAt", Instant.now().toString());
+            entityEventQueue.publishEntityEvent(
+                    EntityType.CONTENT_LIBRARY,
+                    distributionId,
+                    EntityEventTypes.CL_DISTRIBUTION_COMPLETED,
+                    taskId,
+                    payload);
+        } catch (Exception ex) {
+            logger.warn("Failed to publish CL_DISTRIBUTION_COMPLETED: {}", ex.getMessage());
+        }
+    }
+
+    private void publishDistributionFailed(UUID distributionId, UUID taskId, String errorMessage, int progressPercent) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("errorMessage", errorMessage != null ? errorMessage : "unknown");
+            payload.put("progressPercent", progressPercent);
+            entityEventQueue.publishEntityEvent(
+                    EntityType.CONTENT_LIBRARY,
+                    distributionId,
+                    EntityEventTypes.CL_DISTRIBUTION_FAILED,
+                    taskId,
+                    payload);
+        } catch (Exception ex) {
+            logger.warn("Failed to publish CL_DISTRIBUTION_FAILED: {}", ex.getMessage());
         }
     }
 

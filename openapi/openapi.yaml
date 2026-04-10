@@ -316,12 +316,14 @@ paths:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1replicate'
   /api/v1/platform/content-libraries/{libraryId}/publish:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1publish'
-  /api/v1/platform/content-libraries/{libraryId}/datacenters:
-    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters'
-  /api/v1/platform/content-libraries/{libraryId}/datacenters/{datacenterId}:
-    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}'
-  /api/v1/platform/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
-    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}~1replicate'
+  /api/v1/platform/content-libraries/{libraryId}/distributions:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1distributions'
+  /api/v1/platform/content-libraries/{libraryId}/distributions/{distributionId}:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1distributions~1{distributionId}'
+  /api/v1/platform/content-libraries/{libraryId}/distributions/{distributionId}/replicate:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1distributions~1{distributionId}~1replicate'
+  /api/v1/platform/content-libraries/{libraryId}/distributions/{distributionId}/items:
+    $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1distributions~1{distributionId}~1items'
   /api/v1/platform/content-libraries/{libraryId}/items:
     $ref: './content_library.yaml#/paths/~1platform~1content-libraries~1{libraryId}~1items'
   /api/v1/platform/content-libraries/{libraryId}/items/{itemId}:
@@ -340,12 +342,14 @@ paths:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/publish:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1publish'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}'
-  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/datacenters/{datacenterId}/replicate:
-    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1datacenters~1{datacenterId}~1replicate'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/distributions:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1distributions'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1distributions~1{distributionId}'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}/replicate:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1distributions~1{distributionId}~1replicate'
+  /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/distributions/{distributionId}/items:
+    $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1distributions~1{distributionId}~1items'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items:
     $ref: './content_library.yaml#/paths/~1tenants~1{tenantId}~1content-libraries~1{libraryId}~1items'
   /api/v1/tenants/{tenantId}/content-libraries/{libraryId}/items/{itemId}:

@@ -1,9 +1,9 @@
 package com.onetattva.infron.core.services.content;
 
-import com.onetattva.infron.api.model.ContentLibraryDatacenter;
-import com.onetattva.infron.api.model.ContentLibraryDatacenterList;
+import com.onetattva.infron.api.model.ContentLibraryDistribution;
+import com.onetattva.infron.api.model.ContentLibraryDistributionList;
 import com.onetattva.infron.api.model.EntityReference;
-import com.onetattva.infron.db.model.ContentLibraryDatacenterEntity;
+import com.onetattva.infron.db.model.ContentLibraryDistributionEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneOffset;
@@ -11,14 +11,14 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
-public class ContentLibraryDatacenterApiConverter {
+public class ContentLibraryDistributionApiConverter {
 
-    public ContentLibraryDatacenter toApi(ContentLibraryDatacenterEntity entity) {
+    public ContentLibraryDistribution toApi(ContentLibraryDistributionEntity entity) {
         return toApi(entity, null);
     }
 
-    public ContentLibraryDatacenter toApi(ContentLibraryDatacenterEntity entity, EntityReference datacenterRef) {
-        ContentLibraryDatacenter api = new ContentLibraryDatacenter();
+    public ContentLibraryDistribution toApi(ContentLibraryDistributionEntity entity, EntityReference datacenterRef) {
+        ContentLibraryDistribution api = new ContentLibraryDistribution();
         api.setId(entity.getId());
         api.setLibraryId(entity.getLibraryId());
         api.setDatacenterId(entity.getDatacenterId());
@@ -30,7 +30,9 @@ public class ContentLibraryDatacenterApiConverter {
             ref.setId(entity.getDatacenterId());
             api.setDatacenter(ref);
         }
-        api.setReplicateStatus(ContentLibraryDatacenter.ReplicateStatusEnum.fromValue(entity.getReplicateStatus()));
+        api.setReplicateStatus(ContentLibraryDistribution.ReplicateStatusEnum.fromValue(entity.getReplicateStatus()));
+        api.setProgressPercent(entity.getProgressPercent());
+        api.setErrorMessage(entity.getErrorMessage());
         if (entity.getLastReplicatedAt() != null) {
             api.setLastReplicatedAt(entity.getLastReplicatedAt().atOffset(ZoneOffset.UTC));
         }
@@ -43,15 +45,15 @@ public class ContentLibraryDatacenterApiConverter {
         return api;
     }
 
-    public ContentLibraryDatacenterList toList(List<ContentLibraryDatacenterEntity> entities) {
-        ContentLibraryDatacenterList list = new ContentLibraryDatacenterList();
+    public ContentLibraryDistributionList toList(List<ContentLibraryDistributionEntity> entities) {
+        ContentLibraryDistributionList list = new ContentLibraryDistributionList();
         list.setItems(entities.stream().map(this::toApi).toList());
         return list;
     }
 
-    public ContentLibraryDatacenterList toList(
-            List<ContentLibraryDatacenterEntity> entities, java.util.Map<UUID, String> datacenterNamesById) {
-        ContentLibraryDatacenterList list = new ContentLibraryDatacenterList();
+    public ContentLibraryDistributionList toList(
+            List<ContentLibraryDistributionEntity> entities, java.util.Map<UUID, String> datacenterNamesById) {
+        ContentLibraryDistributionList list = new ContentLibraryDistributionList();
         list.setItems(entities.stream()
                 .map(e -> {
                     String name = datacenterNamesById != null

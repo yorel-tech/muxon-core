@@ -10,6 +10,8 @@ import com.onetattva.infron.core.common.EntityNotFoundException;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.repository.ContentItemRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +23,8 @@ import java.util.UUID;
 
 @Service
 public class ContentItemService {
+
+    private static final Logger log = LoggerFactory.getLogger(ContentItemService.class);
 
     private final ContentItemRepository contentItemRepository;
     private final ContentItemApiConverter converter;
@@ -79,8 +83,20 @@ public class ContentItemService {
         if (body.getContentType() == null || body.getContentType().isBlank()) {
             throw new IllegalArgumentException("contentType is required");
         }
+        log.debug(
+                "create content item: libraryId={} contentType={} payloadType={}",
+                libraryId,
+                body.getContentType(),
+                body.getClass().getName());
+
         if (!(body instanceof ContentItemCreateBase base)) {
-            throw new IllegalArgumentException("Invalid content item create payload");
+            String msg =
+                    "Invalid content item create payload: unsupported Java type "
+                            + body.getClass().getName()
+                            + " for contentType="
+                            + body.getContentType();
+            log.warn("{} libraryId={}", msg, libraryId);
+            throw new IllegalArgumentException(msg);
         }
         ContentItemEntity entity = new ContentItemEntity();
         entity.setLibraryId(libraryId);
@@ -100,7 +116,6 @@ public class ContentItemService {
                 throw new IllegalArgumentException("vm_template item must include templateSpec");
             }
             vmTemplateValidator.validate(vmBody.getTemplateSpec());
-            // Persist as JSONB (Map) so we can query efficiently and regenerate template.json later.
             entity.setTemplateSpec(converter.toTemplateSpecMap(vmBody.getTemplateSpec()));
         }
 

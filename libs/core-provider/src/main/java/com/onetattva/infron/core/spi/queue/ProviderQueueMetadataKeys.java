@@ -25,4 +25,7 @@ public final class ProviderQueueMetadataKeys {
     public static final String LIBRARY_ID = "libraryId";
 
     public static final String DATACENTER_ID = "datacenterId";
+
+    /** {@link java.util.UUID} of {@code content_library_distribution} row (core-services owns this table). */
+    public static final String DISTRIBUTION_ID = "distributionId";
 }

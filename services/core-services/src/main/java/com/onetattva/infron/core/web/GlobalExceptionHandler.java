@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -166,6 +167,34 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * JSON body could not be deserialized (schema mismatch, unknown fields if enforced, malformed JSON).
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, WebRequest request) {
+
+        Throwable root = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
+        String rootMessage = root.getMessage() != null ? root.getMessage() : root.getClass().getSimpleName();
+        logger.warn(
+                "Unreadable request body: {} - Request: {}",
+                rootMessage,
+                request.getDescription(false));
+        logger.debug("Unreadable request body", ex);
+        auditService.logAction(
+                "validation:failed",
+                null,
+                Map.of("message", rootMessage, "type", root.getClass().getSimpleName()));
+
+        ErrorResponse error = new ErrorResponse(
+                "BAD_REQUEST",
+                "Invalid or unreadable request body",
+                System.currentTimeMillis(),
+                Map.of("cause", rootMessage));
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * Handle illegal argument / business validation exceptions.
      * Returns HTTP 400 Bad Request.
      */
@@ -174,6 +203,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex, WebRequest request) {
 
         logError("Bad request", ex, request);
+        logger.debug("Bad request detail", ex);
         auditService.logAction("validation:failed", null, Map.of("message", ex.getMessage() != null ? ex.getMessage() : ""));
 
         ErrorResponse error = new ErrorResponse(

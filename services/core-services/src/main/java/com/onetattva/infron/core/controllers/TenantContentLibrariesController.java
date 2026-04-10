@@ -1,16 +1,18 @@
 package com.onetattva.infron.core.controllers;
 
 import com.onetattva.infron.api.TenantContentLibrariesApi;
+import com.onetattva.infron.api.model.ContentItemDistributionList;
 import com.onetattva.infron.api.model.ContentLibrary;
 import com.onetattva.infron.api.model.ContentLibraryCreate;
-import com.onetattva.infron.api.model.ContentLibraryDatacenter;
-import com.onetattva.infron.api.model.ContentLibraryDatacenterList;
+import com.onetattva.infron.api.model.ContentLibraryDistribution;
+import com.onetattva.infron.api.model.ContentLibraryDistributionList;
 import com.onetattva.infron.api.model.ContentLibraryList;
 import com.onetattva.infron.api.model.ContentLibraryUpdate;
 import com.onetattva.infron.api.model.ContentReplicateResponse;
 import com.onetattva.infron.api.model.PublishRequest;
 import com.onetattva.infron.core.auth.Permission;
 import com.onetattva.infron.core.auth.RequiresPermission;
+import com.onetattva.infron.core.services.content.ContentLibraryDistributionItemService;
 import com.onetattva.infron.core.services.content.ContentLibraryPublishService;
 import com.onetattva.infron.core.services.content.ContentLibraryReplicateService;
 import com.onetattva.infron.core.services.content.ContentLibraryService;
@@ -25,14 +27,17 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
     private final ContentLibraryService contentLibraryService;
     private final ContentLibraryPublishService contentLibraryPublishService;
     private final ContentLibraryReplicateService contentLibraryReplicateService;
+    private final ContentLibraryDistributionItemService contentLibraryDistributionItemService;
 
     public TenantContentLibrariesController(
             ContentLibraryService contentLibraryService,
             ContentLibraryPublishService contentLibraryPublishService,
-            ContentLibraryReplicateService contentLibraryReplicateService) {
+            ContentLibraryReplicateService contentLibraryReplicateService,
+            ContentLibraryDistributionItemService contentLibraryDistributionItemService) {
         this.contentLibraryService = contentLibraryService;
         this.contentLibraryPublishService = contentLibraryPublishService;
         this.contentLibraryReplicateService = contentLibraryReplicateService;
+        this.contentLibraryDistributionItemService = contentLibraryDistributionItemService;
     }
 
     @Override
@@ -65,15 +70,24 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
-    public ResponseEntity<ContentLibraryDatacenterList> listTenantContentLibraryDatacenters(
+    public ResponseEntity<ContentLibraryDistributionList> listTenantContentLibraryDistributions(
             UUID tenantId, UUID libraryId) {
         contentLibraryService.requireReadAccess(tenantId, libraryId);
         return ResponseEntity.ok(contentLibraryPublishService.listForTenantLibrary(tenantId, libraryId));
     }
 
     @Override
+    @RequiresPermission(Permission.CONTENT_LIBRARY_READ)
+    public ResponseEntity<ContentItemDistributionList> listTenantContentLibraryDistributionItems(
+            UUID tenantId, UUID libraryId, UUID distributionId, String status, Integer page, Integer perPage) {
+        contentLibraryService.requireReadAccess(tenantId, libraryId);
+        return ResponseEntity.ok(contentLibraryDistributionItemService.listForTenantLibrary(
+                tenantId, libraryId, distributionId, status, page, perPage));
+    }
+
+    @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<ContentLibraryDatacenter> publishTenantContentLibrary(
+    public ResponseEntity<ContentLibraryDistribution> publishTenantContentLibrary(
             UUID tenantId, UUID libraryId, PublishRequest publishRequest) {
         return ResponseEntity.status(201)
                 .body(contentLibraryPublishService.publishTenant(tenantId, libraryId, publishRequest));
@@ -88,18 +102,18 @@ public class TenantContentLibrariesController implements TenantContentLibrariesA
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<ContentReplicateResponse> replicateTenantContentLibraryDatacenter(
-            UUID tenantId, UUID libraryId, UUID datacenterId) {
+    public ResponseEntity<ContentReplicateResponse> replicateTenantContentLibraryDistribution(
+            UUID tenantId, UUID libraryId, UUID distributionId) {
         contentLibraryService.requireWriteAccess(tenantId, libraryId);
         return ResponseEntity.accepted()
-                .body(contentLibraryReplicateService.replicateToProviderStorage(libraryId, datacenterId));
+                .body(contentLibraryReplicateService.replicateToProviderStorage(libraryId, distributionId));
     }
 
     @Override
     @RequiresPermission(Permission.CONTENT_LIBRARY_WRITE)
-    public ResponseEntity<Void> unpublishTenantContentLibraryDatacenter(
-            UUID tenantId, UUID libraryId, UUID datacenterId) {
-        contentLibraryPublishService.unpublishTenant(tenantId, libraryId, datacenterId);
+    public ResponseEntity<Void> unpublishTenantContentLibraryDistribution(
+            UUID tenantId, UUID libraryId, UUID distributionId) {
+        contentLibraryPublishService.unpublishTenant(tenantId, libraryId, distributionId);
         return ResponseEntity.noContent().build();
     }
 

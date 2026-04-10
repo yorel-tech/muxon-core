@@ -11,7 +11,8 @@ public enum EntityType {
     NODE("NODE"),
     PROVIDER("PROVIDER"),
     DATACENTER("DATACENTER"),
-    TENANT("TENANT");
+    TENANT("TENANT"),
+    CONTENT_LIBRARY("CONTENT_LIBRARY");
 
     private final String value;
 
