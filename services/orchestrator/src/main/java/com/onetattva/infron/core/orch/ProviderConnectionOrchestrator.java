@@ -20,11 +20,13 @@ import com.onetattva.infron.core.spi.queue.EntityEventQueue;
 import com.onetattva.infron.core.spi.queue.EntityEventQueue.EntityEventTypes;
 import com.onetattva.infron.core.spi.queue.ProviderQueueCommands;
 import com.onetattva.infron.core.spi.queue.ProviderQueueMetadataKeys;
+import com.onetattva.infron.db.model.ContentItemDistributionEntity;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.NodeClusterEntity;
 import com.onetattva.infron.db.model.NodeEntity;
 import com.onetattva.infron.db.model.ProviderEntity;
 import com.onetattva.infron.db.model.ProviderStorageEntity;
+import com.onetattva.infron.db.repository.ContentItemDistributionRepository;
 import com.onetattva.infron.db.repository.ContentItemRepository;
 import com.onetattva.infron.db.repository.JobRepository;
 import com.onetattva.infron.db.repository.NodeClusterRepository;
@@ -55,6 +57,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * Orchestrator worker that executes provider connection tests.
@@ -102,6 +105,9 @@ public class ProviderConnectionOrchestrator {
 
     @Autowired
     private ContentItemRepository contentItemRepository;
+
+    @Autowired
+    private ContentItemDistributionRepository contentItemDistributionRepository;
 
     @Autowired
     private EntityEventQueue entityEventQueue;
@@ -844,15 +850,24 @@ public class ProviderConnectionOrchestrator {
             List<ContentItemEntity> available = items.stream()
                     .filter(i -> "available".equalsIgnoreCase(i.getContentStatus()))
                     .toList();
+            Map<UUID, String> distributionItemStatus = contentItemDistributionRepository
+                    .findByDistributionIdOrderByContentItemId(distributionId)
+                    .stream()
+                    .collect(
+                            Collectors.toUnmodifiableMap(
+                                    ContentItemDistributionEntity::getContentItemId,
+                                    ContentItemDistributionEntity::getStatus,
+                                    (a, b) -> b));
             if (logger.isDebugEnabled()) {
                 logger.debug(
                         "Content datacenter replicate upload phase: providerId={}, providerType={}, "
-                                + "endpoint={}, libraryItemCount={}, availableItemCount={}",
+                                + "endpoint={}, libraryItemCount={}, availableItemCount={}, distributionRowCount={}",
                         providerId,
                         entity.getType(),
                         entity.getEndpoint(),
                         items.size(),
-                        available.size());
+                        available.size(),
+                        distributionItemStatus.size());
             }
 
             List<ProviderStorageEntity> poolEntities = new ArrayList<>();
@@ -898,6 +913,41 @@ public class ProviderConnectionOrchestrator {
                 }
                 String leaf = src.getFileName().toString();
                 long sizeBytes = Files.size(src);
+
+                String rowStatus = distributionItemStatus.get(item.getId());
+                if (rowStatus != null && "READY".equalsIgnoreCase(rowStatus)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                                "Skipping Proxmox upload (already READY for this distribution): contentItemId={}, path={}",
+                                item.getId(),
+                                src);
+                    }
+                    done++;
+                    continue;
+                }
+
+                if (skipProxmoxVmTemplateMetadataUpload(item.getContentType(), leaf)) {
+                    if (logger.isInfoEnabled()) {
+                        logger.info(
+                                "Skipping Proxmox upload for VM template metadata file (not accepted as import): "
+                                        + "contentItemId={}, leaf={}, path={}",
+                                item.getId(),
+                                leaf,
+                                src);
+                    }
+                    done++;
+                    int progressPercent = n == 0 ? 100 : (done * 100 / n);
+                    publishDistributionItemUpdated(
+                            distributionId,
+                            entry.id(),
+                            item.getId(),
+                            "READY",
+                            sizeBytes,
+                            true,
+                            null,
+                            progressPercent);
+                    continue;
+                }
 
                 for (ProviderStorageEntity ps : poolEntities) {
                     String storagePoolId = ps.getExternalId().trim();
@@ -1050,6 +1100,20 @@ public class ProviderConnectionOrchestrator {
                             + "; allowed: "
                             + types);
         }
+    }
+
+    /**
+     * Proxmox {@code import} uploads reject arbitrary extensions (e.g. {@code .json}). VM template
+     * catalog metadata stays on the artifact side; disk images/archives are pushed to PVE.
+     */
+    private static boolean skipProxmoxVmTemplateMetadataUpload(String catalogContentType, String leafFilename) {
+        if (catalogContentType == null || leafFilename == null) {
+            return false;
+        }
+        if (!"vm_template".equalsIgnoreCase(catalogContentType.trim())) {
+            return false;
+        }
+        return "template.json".equalsIgnoreCase(leafFilename.trim());
     }
 
     private void markContentDatacenterReplicateJobRunning(UUID jobId) {

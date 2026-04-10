@@ -222,7 +222,10 @@ public final class ProxmoxStorageUploader {
         conn.disconnect();
 
         if (status < 200 || status >= 300) {
-            throw new IOException("Proxmox upload failed HTTP " + status + ": " + responseBody);
+            throw new IOException(
+                    "Proxmox upload failed HTTP " + status + " (uploadFilename=" + uploadFilename
+                            + ", localFile=" + localFile.toAbsolutePath()
+                            + ", proxmoxContent=" + proxmoxContent + "): " + responseBody);
         }
         JsonNode root = JSON.readTree(responseBody);
         JsonNode data = root.get("data");

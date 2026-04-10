@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -289,7 +290,7 @@ public class ContentLibraryReplicateService {
                 if (!Files.isDirectory(poolRoot)) {
                     throw new IllegalArgumentException("Provider pool path is not a directory: " + poolRoot);
                 }
-                totalCopies += copyLibraryArtifactsToPool(library, poolRoot);
+                totalCopies += copyLibraryArtifactsToPool(library, poolRoot, distributionId);
                 poolPaths.add(poolRoot.toString());
             }
             markAllItemDistributionsReady(distributionId, libraryId);
@@ -334,26 +335,74 @@ public class ContentLibraryReplicateService {
         return response;
     }
 
+    /**
+     * Ensures {@code content_item_distribution} rows exist for every available library artifact, without
+     * deleting existing rows (idempotent retry). READY rows are left unchanged; FAILED / PENDING / COPYING are
+     * reset to PENDING for another upload attempt; new catalog items get a new PENDING row. Rows for items
+     * that are no longer {@code available} are removed.
+     */
     private void seedDistributionReplication(ContentLibraryDistributionEntity mapping, UUID libraryId) {
         UUID distributionId = mapping.getId();
-        contentItemDistributionRepository.deleteByDistributionId(distributionId);
         List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
-        for (ContentItemEntity item : items) {
-            if (!"available".equalsIgnoreCase(item.getContentStatus())) {
-                continue;
+        Set<UUID> eligibleIds =
+                items.stream()
+                        .filter(i -> "available".equalsIgnoreCase(i.getContentStatus()))
+                        .map(ContentItemEntity::getId)
+                        .collect(Collectors.toSet());
+
+        List<ContentItemDistributionEntity> existing =
+                contentItemDistributionRepository.findByDistributionIdOrderByContentItemId(distributionId);
+        for (ContentItemDistributionEntity row : existing) {
+            if (!eligibleIds.contains(row.getContentItemId())) {
+                contentItemDistributionRepository.delete(row);
             }
-            ContentItemDistributionEntity row = new ContentItemDistributionEntity();
-            row.setContentItemId(item.getId());
-            row.setDistributionId(distributionId);
-            row.setStatus("PENDING");
-            row.setChecksumVerified(false);
-            row.setRetryCount(0);
-            contentItemDistributionRepository.save(row);
         }
+
+        for (UUID itemId : eligibleIds) {
+            Optional<ContentItemDistributionEntity> opt =
+                    contentItemDistributionRepository.findByDistributionIdAndContentItemId(distributionId, itemId);
+            if (opt.isEmpty()) {
+                ContentItemDistributionEntity row = new ContentItemDistributionEntity();
+                row.setContentItemId(itemId);
+                row.setDistributionId(distributionId);
+                row.setStatus("PENDING");
+                row.setChecksumVerified(false);
+                row.setRetryCount(0);
+                contentItemDistributionRepository.save(row);
+            } else {
+                ContentItemDistributionEntity row = opt.get();
+                String st = row.getStatus();
+                if ("READY".equalsIgnoreCase(st)) {
+                    continue;
+                }
+                if ("FAILED".equalsIgnoreCase(st)
+                        || "PENDING".equalsIgnoreCase(st)
+                        || "COPYING".equalsIgnoreCase(st)) {
+                    row.setStatus("PENDING");
+                    row.setErrorMessage(null);
+                    contentItemDistributionRepository.save(row);
+                }
+            }
+        }
+
         mapping.setReplicateStatus("replicating");
-        mapping.setProgressPercent(0);
         mapping.setErrorMessage(null);
+        applyDistributionProgressFromItemRows(mapping);
         contentLibraryDistributionRepository.save(mapping);
+    }
+
+    /** Terminal progress: READY + FAILED rows over total (matches distribution item event recomputation). */
+    private void applyDistributionProgressFromItemRows(ContentLibraryDistributionEntity mapping) {
+        UUID distributionId = mapping.getId();
+        long total = contentItemDistributionRepository.countByDistributionId(distributionId);
+        if (total <= 0) {
+            mapping.setProgressPercent(0);
+            return;
+        }
+        long terminal = contentItemDistributionRepository.countByDistributionIdAndStatus(distributionId, "READY")
+                + contentItemDistributionRepository.countByDistributionIdAndStatus(distributionId, "FAILED");
+        int pct = (int) ((terminal * 100L) / total);
+        mapping.setProgressPercent(Math.min(100, Math.max(0, pct)));
     }
 
     private void markAllItemDistributionsReady(UUID distributionId, UUID libraryId) {
@@ -524,7 +573,8 @@ public class ContentLibraryReplicateService {
     /**
      * Copies files preserving {@code providerRelativePath} under {@code poolRoot} (same layout as under content-storage).
      */
-    private int copyLibraryArtifactsToPool(ContentLibraryEntity library, Path poolRoot) throws IOException {
+    private int copyLibraryArtifactsToPool(ContentLibraryEntity library, Path poolRoot, UUID distributionId)
+            throws IOException {
         UUID libraryId = library.getId();
         ContentStorageEntity storage = contentStorageRepository
                 .findById(library.getContentStorageId())
@@ -537,9 +587,22 @@ public class ContentLibraryReplicateService {
 
         Path artifactRoot = contentStoragePathResolver.artifactRootForStorage(storage).toAbsolutePath().normalize();
         List<ContentItemEntity> items = contentItemRepository.findByLibraryId(libraryId);
+        Map<UUID, String> distStatus =
+                contentItemDistributionRepository.findByDistributionIdOrderByContentItemId(distributionId).stream()
+                        .collect(Collectors.toMap(
+                                ContentItemDistributionEntity::getContentItemId,
+                                ContentItemDistributionEntity::getStatus,
+                                (a, b) -> b));
         int replicated = 0;
         for (ContentItemEntity item : items) {
             if (!"available".equalsIgnoreCase(item.getContentStatus())) {
+                continue;
+            }
+            String rowStatus = distStatus.get(item.getId());
+            if (rowStatus != null && "READY".equalsIgnoreCase(rowStatus)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Skipping pool copy (item already READY for distribution): contentItemId={}", item.getId());
+                }
                 continue;
             }
             contentLibraryProviderPathBuilder.applyProviderPaths(item);
