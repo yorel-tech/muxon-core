@@ -48,6 +48,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import java.math.BigInteger;
 import java.net.URI;
@@ -64,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @Service
 public class VmsService {
@@ -121,6 +124,9 @@ public class VmsService {
 
     @Autowired
     private TransactionalGrantProviderResolver grantProviderResolver;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Each console-resolve poll runs in {@link TransactionDefinition#PROPAGATION_REQUIRES_NEW} so
@@ -395,7 +401,48 @@ public class VmsService {
         if (userId == null) {
             throw new AccessDeniedException("User identity is required to open a VM console");
         }
-        long active = consoleSessionRepository.countByUserIdAndStatus(userId, ConsoleSessionStatus.ACTIVE);
+
+        TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
+                .findById(vm.getTenantDatacenterGrantId())
+                .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found"));
+        UUID infronTenantId = grant.getTenant().getId();
+        if (!infronTenantId.equals(tenantId)) {
+            throw new AccessDeniedException("VM tenant mismatch");
+        }
+
+        Instant now = Instant.now();
+        Optional<ConsoleSessionEntity> existingForVmUser = consoleSessionRepository.findByVmIdAndUserId(vm.getId(), userId);
+        if (existingForVmUser.isPresent()) {
+            ConsoleSessionEntity session = existingForVmUser.get();
+            if (!tenantId.equals(session.getTenantId())) {
+                throw new AccessDeniedException("VM tenant mismatch");
+            }
+            if (session.getStatus() == ConsoleSessionStatus.ACTIVE && session.getExpiresAt().isAfter(now)) {
+                UUID sessionId = session.getId();
+                TransactionTemplate touchTx = new TransactionTemplate(transactionManager);
+                touchTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                touchTx.executeWithoutResult(status -> consoleSessionRepository
+                        .findById(sessionId)
+                        .filter(row -> row.getStatus() == ConsoleSessionStatus.ACTIVE
+                                && row.getExpiresAt().isAfter(now)
+                                && tenantId.equals(row.getTenantId()))
+                        .ifPresent(row -> {
+                            row.setLastActivityAt(Instant.now());
+                            consoleSessionRepository.save(row);
+                        }));
+                log.info(
+                        "VM console API: returning existing session vmId={} tenantId={} userId={} sessionId={} expiresAt={}",
+                        vmId,
+                        tenantId,
+                        userId,
+                        sessionId,
+                        session.getExpiresAt());
+                return buildVmConsoleResponseFromSession(session);
+            }
+        }
+
+        long active = consoleSessionRepository.countByUserIdAndStatusAndExpiresAtAfter(
+                userId, ConsoleSessionStatus.ACTIVE, now);
         if (active >= infronConsoleProperties.getMaxSessionsPerUser()) {
             throw new IllegalStateException("Maximum number of active console sessions reached; close an existing session and retry");
         }
@@ -406,14 +453,6 @@ public class VmsService {
                 userId,
                 active,
                 infronConsoleProperties.getMaxSessionsPerUser());
-
-        TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
-                .findById(vm.getTenantDatacenterGrantId())
-                .orElseThrow(() -> new EntityNotFoundException("Tenant datacenter grant not found"));
-        UUID infronTenantId = grant.getTenant().getId();
-        if (!infronTenantId.equals(tenantId)) {
-            throw new AccessDeniedException("VM tenant mismatch");
-        }
 
         String vmProviderId = grantProviderResolver
                 .resolveProviderId(vm.getTenantDatacenterGrantId())
@@ -489,24 +528,43 @@ public class VmsService {
         int timeoutMinutes = resolveConsoleTimeoutMinutes(tenantId);
         Instant expiresAt = Instant.now().plus(timeoutMinutes, ChronoUnit.MINUTES);
 
-        ConsoleSessionEntity session = new ConsoleSessionEntity();
-        session.setVmId(vm.getId());
-        session.setTenantId(tenantId);
-        session.setUserId(userId);
-        session.setToken(token);
-        session.setConsoleType(mapPersistenceConsoleType(consoleType));
-        session.setHypervisorHost(host);
-        session.setHypervisorPort(port);
-        session.setHypervisorPassword(hypervisorPassword);
-        session.setTls(tls);
-        session.setStatus(ConsoleSessionStatus.ACTIVE);
-        session.setExpiresAt(expiresAt);
-        session.setCreatedAt(Instant.now());
-        session.setLastActivityAt(Instant.now());
-
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        tx.executeWithoutResult(status -> consoleSessionRepository.save(session));
+        tx.executeWithoutResult(status -> {
+            ConsoleSessionEntity session = consoleSessionRepository
+                    .findByVmIdAndUserId(vm.getId(), userId)
+                    .orElseGet(() -> {
+                        ConsoleSessionEntity created = new ConsoleSessionEntity();
+                        created.setVmId(vm.getId());
+                        created.setTenantId(tenantId);
+                        created.setUserId(userId);
+                        return created;
+                    });
+            if (!tenantId.equals(session.getTenantId())) {
+                throw new AccessDeniedException("VM tenant mismatch");
+            }
+            session.setToken(token);
+            session.setConsoleType(mapPersistenceConsoleType(consoleType));
+            session.setHypervisorHost(host);
+            session.setHypervisorPort(port);
+            session.setHypervisorPassword(hypervisorPassword);
+            session.setTls(tls);
+            putIfPresentString(resolved, VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_URL, session::setUpstreamWsUrl);
+            putIfPresentString(resolved, VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_COOKIE, session::setUpstreamWsCookie);
+            putIfPresentString(resolved, VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_CSRF, session::setUpstreamWsCsrf);
+            putIfPresentString(
+                    resolved,
+                    VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_AUTHORIZATION,
+                    session::setUpstreamWsAuthorization);
+            session.setStatus(ConsoleSessionStatus.ACTIVE);
+            session.setExpiresAt(expiresAt);
+            session.setClosedAt(null);
+            if (session.getCreatedAt() == null) {
+                session.setCreatedAt(Instant.now());
+            }
+            session.setLastActivityAt(Instant.now());
+            consoleSessionRepository.save(session);
+        });
 
         VmConsoleResponse response = new VmConsoleResponse();
         response.setUrl(URI.create(buildConsoleProxyWsUrl(token)));
@@ -526,6 +584,16 @@ public class VmsService {
                 tls,
                 token.length(),
                 expiresAt);
+        return response;
+    }
+
+    private VmConsoleResponse buildVmConsoleResponseFromSession(ConsoleSessionEntity session) {
+        VmConsoleResponse response = new VmConsoleResponse();
+        response.setUrl(URI.create(buildConsoleProxyWsUrl(session.getToken())));
+        response.setToken(session.getToken());
+        response.setExpiresAt(session.getExpiresAt().atOffset(ZoneOffset.UTC));
+        response.setConsoleType(mapApiConsoleTypeFromPersistence(session.getConsoleType()));
+        response.setRemotePassword(session.getHypervisorPassword());
         return response;
     }
 
@@ -556,22 +624,43 @@ public class VmsService {
 
     private Map<String, Object> waitForConsoleResolve(UUID commandId, int timeoutSeconds) {
         Instant deadline = Instant.now().plusSeconds(timeoutSeconds);
+        int pollCount = 0;
         while (Instant.now().isBefore(deadline)) {
-            Optional<QueueEntryEntity> opt =
-                    queueEntryPollReadTemplate.execute(status -> queueEntryRepository.findById(commandId));
+            pollCount++;
+            
+            // REQUIRES_NEW + clear() forces fresh DB read bypassing all Hibernate caches
+            Optional<QueueEntryEntity> opt = queueEntryPollReadTemplate.execute(status -> {
+                entityManager.clear();
+                return queueEntryRepository.findById(commandId);
+            });
+            
             if (opt.isEmpty()) {
                 throw new IllegalStateException("Console resolve command disappeared");
             }
             QueueEntryEntity row = opt.get();
-            if (row.getStatus() == QueueStatus.COMPLETED) {
+            QueueStatus rowStatus = row.getStatus();
+            
+            if (pollCount == 1 || pollCount % 25 == 0 || rowStatus == QueueStatus.COMPLETED || rowStatus == QueueStatus.FAILED) {
+                log.info(
+                        "VM console API: poll #{} commandId={} status={} hasPayload={} payloadKeys={}",
+                        pollCount,
+                        commandId,
+                        rowStatus,
+                        row.getPayload() != null,
+                        row.getPayload() != null ? row.getPayload().keySet() : null);
+            }
+            
+            if (rowStatus == QueueStatus.COMPLETED) {
                 Map<String, Object> p = row.getPayload();
                 if (p == null) {
                     throw new IllegalStateException("Console resolve completed without payload");
                 }
+                log.info("VM console API: poll loop exiting after {} iterations with COMPLETED", pollCount);
                 return p;
             }
-            if (row.getStatus() == QueueStatus.FAILED) {
+            if (rowStatus == QueueStatus.FAILED) {
                 String msg = row.getErrorMessage();
+                log.warn("VM console API: poll loop exiting after {} iterations with FAILED: {}", pollCount, msg);
                 throw new IllegalStateException(
                         msg != null && !msg.isBlank() ? msg : "Console resolution failed");
             }
@@ -582,6 +671,11 @@ public class VmsService {
                 throw new IllegalStateException("Interrupted while waiting for console resolution", e);
             }
         }
+        log.error(
+                "VM console API: poll loop timeout after {} iterations ({} sec) commandId={} - orchestrator may not be running or on different DB",
+                pollCount,
+                timeoutSeconds,
+                commandId);
         throw new IllegalStateException(
                 "Console resolution timed out after " + timeoutSeconds + "s; ensure the orchestrator is running");
     }
@@ -1105,6 +1199,17 @@ public class VmsService {
         return null;
     }
 
+    private static void putIfPresentString(Map<String, Object> resolved, String key, Consumer<String> setter) {
+        Object v = resolved.get(key);
+        if (v == null) {
+            return;
+        }
+        String s = v.toString();
+        if (!s.isBlank()) {
+            setter.accept(s);
+        }
+    }
+
     private String generateRequestId() {
         return "req-" + UUID.randomUUID().toString().substring(0, 8);
     }
@@ -1140,6 +1245,15 @@ public class VmsService {
             case VNC -> ConsoleSessionConsoleType.VNC;
             case SPICE -> ConsoleSessionConsoleType.SPICE;
             case SERIAL -> ConsoleSessionConsoleType.SERIAL;
+        };
+    }
+
+    private static com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum mapApiConsoleTypeFromPersistence(
+            ConsoleSessionConsoleType type) {
+        return switch (type) {
+            case VNC -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.VNC;
+            case SPICE -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.SPICE;
+            case SERIAL -> com.onetattva.infron.api.model.VmConsoleResponse.ConsoleTypeEnum.SERIAL;
         };
     }
 

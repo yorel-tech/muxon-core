@@ -21,4 +21,10 @@ public final class VmConsoleResolvePayloadKeys {
     public static final String PORT = "port";
     public static final String TLS = "tls";
     public static final String PASSWORD = "password";
+
+    /** When set, console-proxy dials this WebSocket instead of raw TCP to host:port (Proxmox {@code vncwebsocket}). */
+    public static final String UPSTREAM_WEB_SOCKET_URL = "upstreamWebSocketUrl";
+    public static final String UPSTREAM_WEB_SOCKET_COOKIE = "upstreamWebSocketCookie";
+    public static final String UPSTREAM_WEB_SOCKET_CSRF = "upstreamWebSocketCsrfToken";
+    public static final String UPSTREAM_WEB_SOCKET_AUTHORIZATION = "upstreamWebSocketAuthorization";
 }

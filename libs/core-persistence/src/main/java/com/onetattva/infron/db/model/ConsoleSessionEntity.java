@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.type.PostgreSQLEnumJdbcType;
 
@@ -16,7 +17,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "console_session")
+@Table(
+        name = "console_session",
+        uniqueConstraints =
+                @UniqueConstraint(name = "uq_console_session_vm_user", columnNames = {"vm_id", "user_id"}))
 public class ConsoleSessionEntity {
 
     @Id
@@ -52,6 +56,18 @@ public class ConsoleSessionEntity {
 
     @Column(name = "tls", nullable = false)
     private boolean tls;
+
+    @Column(name = "upstream_ws_url")
+    private String upstreamWsUrl;
+
+    @Column(name = "upstream_ws_cookie")
+    private String upstreamWsCookie;
+
+    @Column(name = "upstream_ws_csrf")
+    private String upstreamWsCsrf;
+
+    @Column(name = "upstream_ws_authorization")
+    private String upstreamWsAuthorization;
 
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
@@ -159,6 +175,38 @@ public class ConsoleSessionEntity {
 
     public void setTls(boolean tls) {
         this.tls = tls;
+    }
+
+    public String getUpstreamWsUrl() {
+        return upstreamWsUrl;
+    }
+
+    public void setUpstreamWsUrl(String upstreamWsUrl) {
+        this.upstreamWsUrl = upstreamWsUrl;
+    }
+
+    public String getUpstreamWsCookie() {
+        return upstreamWsCookie;
+    }
+
+    public void setUpstreamWsCookie(String upstreamWsCookie) {
+        this.upstreamWsCookie = upstreamWsCookie;
+    }
+
+    public String getUpstreamWsCsrf() {
+        return upstreamWsCsrf;
+    }
+
+    public void setUpstreamWsCsrf(String upstreamWsCsrf) {
+        this.upstreamWsCsrf = upstreamWsCsrf;
+    }
+
+    public String getUpstreamWsAuthorization() {
+        return upstreamWsAuthorization;
+    }
+
+    public void setUpstreamWsAuthorization(String upstreamWsAuthorization) {
+        this.upstreamWsAuthorization = upstreamWsAuthorization;
     }
 
     public ConsoleSessionStatus getStatus() {

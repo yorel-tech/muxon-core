@@ -1180,33 +1180,124 @@ public class LibvirtVmProvider implements VmProvider {
         return connection.domainLookupByUUIDString(vmId.toString());
     }
 
-    private static final Pattern GRAPHICS_TYPE = Pattern.compile("<graphics[^>]*type='(vnc|spice)'", Pattern.CASE_INSENSITIVE);
-    private static final Pattern GRAPHICS_PORT = Pattern.compile("port='(-?\\d+)'");
-    private static final Pattern GRAPHICS_AUTOPORT = Pattern.compile("autoport='(yes|no)'", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_TYPE_ATTR = Pattern.compile("type=['\"](vnc|spice)['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_PORT_ATTR = Pattern.compile("port=['\"](-?\\d+)['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_AUTOPORT_ATTR = Pattern.compile("autoport=['\"](yes|no)['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_LISTEN_ATTR = Pattern.compile("listen=['\"]([^'\"]*)['\"]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern GRAPHICS_LISTEN_CHILD_ADDRESS = Pattern.compile(
+            "<listen\\s[^>]*address=['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
+
+    private static int indexOfIgnoreCase(String haystack, String needle) {
+        return indexOfIgnoreCase(haystack, needle, 0);
+    }
+
+    private static int indexOfIgnoreCase(String haystack, String needle, int fromIndex) {
+        return haystack.toLowerCase(Locale.ROOT).indexOf(needle.toLowerCase(Locale.ROOT), fromIndex);
+    }
+
+    /**
+     * First {@code <graphics>...</graphics>} or self-closing {@code <graphics .../>} starting at {@code start}.
+     * Quote-aware so nested {@code <listen/>} does not truncate the block early.
+     */
+    private static String extractGraphicsBlockFrom(String xml, int start) {
+        int i = start + "<graphics".length();
+        boolean inSingle = false;
+        boolean inDouble = false;
+        while (i < xml.length()) {
+            char c = xml.charAt(i);
+            if (c == '\'' && !inDouble) {
+                inSingle = !inSingle;
+            } else if (c == '"' && !inSingle) {
+                inDouble = !inDouble;
+            } else if (!inSingle && !inDouble) {
+                if (c == '/' && i + 1 < xml.length() && xml.charAt(i + 1) == '>') {
+                    return xml.substring(start, i + 2);
+                }
+                if (c == '>') {
+                    int close = indexOfIgnoreCase(xml, "</graphics>", i);
+                    if (close < 0) {
+                        return xml.substring(start, i + 1);
+                    }
+                    return xml.substring(start, close + "</graphics>".length());
+                }
+            }
+            i++;
+        }
+        return null;
+    }
 
     private static VmConsoleConnectionInfo parseGraphicsFromXml(String xml, String hypervisorHost) {
-        Matcher typeM = GRAPHICS_TYPE.matcher(xml);
-        if (!typeM.find()) {
-            throw new IllegalStateException("No VNC/SPICE graphics device found in domain XML");
+        int search = 0;
+        while (search < xml.length()) {
+            int gStart = indexOfIgnoreCase(xml, "<graphics", search);
+            if (gStart < 0) {
+                throw new IllegalStateException("No VNC/SPICE graphics device found in domain XML");
+            }
+            String block = extractGraphicsBlockFrom(xml, gStart);
+            if (block == null) {
+                search = gStart + 1;
+                continue;
+            }
+            Matcher typeM = GRAPHICS_TYPE_ATTR.matcher(block);
+            if (!typeM.find()) {
+                search = gStart + 1;
+                continue;
+            }
+            String gType = typeM.group(1).toLowerCase(Locale.ROOT);
+            VmConsoleType consoleType = "spice".equals(gType) ? VmConsoleType.SPICE : VmConsoleType.VNC;
+
+            Matcher portM = GRAPHICS_PORT_ATTR.matcher(block);
+            int port = -1;
+            if (portM.find()) {
+                port = Integer.parseInt(portM.group(1));
+            }
+            Matcher autoM = GRAPHICS_AUTOPORT_ATTR.matcher(block);
+            boolean autoport = !autoM.find() || "yes".equalsIgnoreCase(autoM.group(1));
+            if (port <= 0 && autoport) {
+                throw new IllegalStateException(
+                        "VM uses autoport without a fixed graphics port; start the VM or assign a fixed VNC/SPICE port");
+            }
+            if (port <= 0) {
+                port = 5900;
+            }
+
+            String listenAddr = null;
+            Matcher childListen = GRAPHICS_LISTEN_CHILD_ADDRESS.matcher(block);
+            if (childListen.find()) {
+                listenAddr = childListen.group(1).trim();
+            } else {
+                Matcher listenM = GRAPHICS_LISTEN_ATTR.matcher(block);
+                if (listenM.find()) {
+                    listenAddr = listenM.group(1).trim();
+                }
+            }
+
+            String connectHost = resolveConsoleConnectHost(hypervisorHost, listenAddr, port);
+            return new VmConsoleConnectionInfo(consoleType, connectHost, port, null, false, null);
         }
-        String gType = typeM.group(1).toLowerCase(Locale.ROOT);
-        VmConsoleType consoleType = "spice".equals(gType) ? VmConsoleType.SPICE : VmConsoleType.VNC;
-        Matcher portM = GRAPHICS_PORT.matcher(xml);
-        int port = -1;
-        if (portM.find()) {
-            port = Integer.parseInt(portM.group(1));
+        throw new IllegalStateException("No VNC/SPICE graphics device found in domain XML");
+    }
+
+    /**
+     * Qemu binds VNC/SPICE to {@code listenAddr}. Remote console-proxy must use a host where that port is reachable.
+     */
+    private static String resolveConsoleConnectHost(String hypervisorHost, String listenAddr, int port) {
+        if (listenAddr == null || listenAddr.isEmpty()) {
+            return hypervisorHost;
         }
-        Matcher autoM = GRAPHICS_AUTOPORT.matcher(xml);
-        boolean autoport = !autoM.find() || "yes".equalsIgnoreCase(autoM.group(1));
-        if (port <= 0 && autoport) {
+        String a = listenAddr.toLowerCase(Locale.ROOT);
+        if ("0.0.0.0".equals(a) || "::".equals(a) || "[::]".equals(a)) {
+            return hypervisorHost;
+        }
+        if ("127.0.0.1".equals(a) || "::1".equals(a) || "localhost".equals(a)) {
             throw new IllegalStateException(
-                    "VM uses autoport without a fixed graphics port; start the VM or assign a fixed VNC/SPICE port");
+                    "VM graphics listens only on loopback (" + listenAddr + ":" + port + "). "
+                            + "A remote console-proxy cannot reach that address. "
+                            + "Reconfigure the VM to listen on all interfaces or on the hypervisor's reachable IP "
+                            + "(e.g. `virsh edit <name>`: on the <graphics> line set listen='0.0.0.0' or the node IP), "
+                            + "ensure the VM is running, and open the VNC port in the hypervisor firewall.");
         }
-        if (port <= 0) {
-            port = "spice".equals(gType) ? 5900 : 5900;
-        }
-        // Libvirt graphics typically listens on hypervisor; plain TCP (no TLS) for standard VNC.
-        return new VmConsoleConnectionInfo(consoleType, hypervisorHost, port, null, false, null);
+        return listenAddr;
     }
 
     /**

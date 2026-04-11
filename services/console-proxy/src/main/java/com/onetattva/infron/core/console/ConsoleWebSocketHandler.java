@@ -17,15 +17,20 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URI;
+import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
- * Binary WebSocket bridge to hypervisor VNC/SPICE TCP (or TLS) port.
+ * Binary WebSocket bridge: raw TCP/TLS to hypervisor VNC/SPICE, or (Proxmox) client WebSocket to
+ * {@code /api2/json/.../vncwebsocket} with PVE auth headers.
  */
 @Component
 public class ConsoleWebSocketHandler extends BinaryWebSocketHandler {
@@ -34,22 +39,26 @@ public class ConsoleWebSocketHandler extends BinaryWebSocketHandler {
 
     private static final String ATTR_SOCKET = "hypervisorSocket";
     private static final String ATTR_UPSTREAM = "upstreamFuture";
+    private static final String ATTR_UPSTREAM_WS = "upstreamPveWebSocket";
     private static final String ATTR_SESSION_ROW_ID = "consoleSessionDbId";
 
     private final ConsoleSessionRepository consoleSessionRepository;
     private final ConsoleProxyProperties properties;
     private final VncProxyService vncProxyService;
     private final SpiceProxyService spiceProxyService;
+    private final ConsoleUpstreamWebSocketService upstreamWebSocketService;
     private final ExecutorService relayExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public ConsoleWebSocketHandler(ConsoleSessionRepository consoleSessionRepository,
                                    ConsoleProxyProperties properties,
                                    VncProxyService vncProxyService,
-                                   SpiceProxyService spiceProxyService) {
+                                   SpiceProxyService spiceProxyService,
+                                   ConsoleUpstreamWebSocketService upstreamWebSocketService) {
         this.consoleSessionRepository = consoleSessionRepository;
         this.properties = properties;
         this.vncProxyService = vncProxyService;
         this.spiceProxyService = spiceProxyService;
+        this.upstreamWebSocketService = upstreamWebSocketService;
     }
 
     @Override
@@ -76,6 +85,27 @@ public class ConsoleWebSocketHandler extends BinaryWebSocketHandler {
         row.setLastActivityAt(now);
         consoleSessionRepository.save(row);
 
+        if (row.getUpstreamWsUrl() != null && !row.getUpstreamWsUrl().isBlank()) {
+            try {
+                WebSocket upstreamWs = upstreamWebSocketService.connect(row, properties, session);
+                session.getAttributes().put(ATTR_UPSTREAM_WS, upstreamWs);
+                session.getAttributes().put(ATTR_SESSION_ROW_ID, row.getId());
+                log.info(
+                        "Console WebSocket established (upstream WS) for vm {} user {}",
+                        row.getVmId(),
+                        row.getUserId());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Upstream WebSocket interrupted: {}", e.getMessage());
+                session.close(CloseStatus.SERVER_ERROR.withReason("hypervisor unreachable"));
+            } catch (ExecutionException | TimeoutException e) {
+                Throwable c = e.getCause() != null ? e.getCause() : e;
+                log.warn("Failed upstream Proxmox WebSocket: {}", c.getMessage());
+                session.close(CloseStatus.SERVER_ERROR.withReason("hypervisor unreachable"));
+            }
+            return;
+        }
+
         Socket socket;
         try {
             socket = row.getConsoleType() == ConsoleSessionConsoleType.SPICE
@@ -98,6 +128,22 @@ public class ConsoleWebSocketHandler extends BinaryWebSocketHandler {
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) throws Exception {
+        WebSocket upstreamWs = (WebSocket) session.getAttributes().get(ATTR_UPSTREAM_WS);
+        if (upstreamWs != null) {
+            ByteBuffer payload = message.getPayload();
+            byte[] data = new byte[payload.remaining()];
+            payload.get(data);
+            upstreamWs.sendBinary(ByteBuffer.wrap(data), true).exceptionally(ex -> {
+                log.debug("Write to upstream WebSocket failed: {}", ex.getMessage());
+                try {
+                    session.close(CloseStatus.GOING_AWAY);
+                } catch (IOException ignored) {
+                }
+                return null;
+            });
+            return;
+        }
+
         Socket socket = (Socket) session.getAttributes().get(ATTR_SOCKET);
         if (socket == null || socket.isClosed()) {
             return;
@@ -154,6 +200,14 @@ public class ConsoleWebSocketHandler extends BinaryWebSocketHandler {
         Future<?> upstream = (Future<?>) wsSession.getAttributes().remove(ATTR_UPSTREAM);
         if (upstream != null) {
             upstream.cancel(true);
+        }
+        WebSocket upstreamWs = (WebSocket) wsSession.getAttributes().remove(ATTR_UPSTREAM_WS);
+        if (upstreamWs != null) {
+            try {
+                upstreamWs.sendClose(WebSocket.NORMAL_CLOSURE, "").get(5, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+            }
+            upstreamWs.abort();
         }
         Socket socket = (Socket) wsSession.getAttributes().remove(ATTR_SOCKET);
         if (socket != null) {

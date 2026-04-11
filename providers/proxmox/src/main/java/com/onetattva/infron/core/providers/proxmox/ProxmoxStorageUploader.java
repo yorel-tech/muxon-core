@@ -111,6 +111,29 @@ public final class ProxmoxStorageUploader {
         return base.substring(0, MAX_FILENAME_LEN);
     }
 
+    /**
+     * Proxmox UI / API WebSocket origin for the cluster (used as {@code Origin} on {@code vncwebsocket}).
+     */
+    public static String pveWebUiOrigin(String clusterEndpoint) {
+        return Endpoint.parse(clusterEndpoint).webUiOrigin();
+    }
+
+    /**
+     * {@code wss|ws://host:port/api2/json/nodes/{node}/qemu/{vmid}/vncwebsocket?port=...&vncticket=...}
+     */
+    public static String buildQemuVncWebSocketUrl(
+            String clusterEndpoint, String nodeName, int vmid, int vncPort, String vncticket) {
+        Objects.requireNonNull(clusterEndpoint, "clusterEndpoint");
+        Objects.requireNonNull(nodeName, "nodeName");
+        Objects.requireNonNull(vncticket, "vncticket");
+        Endpoint ep = Endpoint.parse(clusterEndpoint);
+        String scheme = ep.https ? "wss" : "ws";
+        String encNode = URLEncoder.encode(nodeName, StandardCharsets.UTF_8);
+        String encTicket = URLEncoder.encode(vncticket, StandardCharsets.UTF_8);
+        return scheme + "://" + ep.host + ":" + ep.port + "/api2/json/nodes/" + encNode + "/qemu/" + vmid
+                + "/vncwebsocket?port=" + vncPort + "&vncticket=" + encTicket;
+    }
+
     public PveAuthSession authenticate(String endpoint, Map<String, String> credentials) throws IOException {
         Objects.requireNonNull(endpoint, "endpoint");
         Objects.requireNonNull(credentials, "credentials");

@@ -798,12 +798,51 @@ public class ProxmoxVmProvider implements VmProvider {
                 if (proxy == null) {
                     throw new IllegalStateException("Proxmox returned empty VNC proxy response");
                 }
-                String host = resolveConsoleHost(provider, nodeName);
                 String password = proxy.getTicket() != null && !proxy.getTicket().isBlank()
                         ? proxy.getTicket()
                         : proxy.getPassword();
-                // Proxmox VNC proxy typically expects TLS on the proxy port.
-                return new VmConsoleConnectionInfo(VmConsoleType.VNC, host, proxy.getPort(), password, true, null);
+                if (password == null || password.isBlank()) {
+                    throw new IllegalStateException("Proxmox VNC proxy returned no vncticket");
+                }
+                int vncPort = proxy.getPort();
+                String endpoint = provider.getEndpoint();
+                String apiHost = resolveConsoleHost(provider, nodeName);
+                String wsUrl = ProxmoxStorageUploader.buildQemuVncWebSocketUrl(endpoint, nodeName, vmid, vncPort, password);
+
+                Map<String, String> credentials = ctx.getCredentials();
+                String apiToken = credentials != null ? credentials.get("apiToken") : null;
+                if (apiToken != null && !apiToken.isBlank()) {
+                    String authorization = apiToken.startsWith("PVEAPIToken=") ? apiToken : "PVEAPIToken=" + apiToken;
+                    return new VmConsoleConnectionInfo(
+                            VmConsoleType.VNC,
+                            apiHost,
+                            vncPort,
+                            password,
+                            true,
+                            null,
+                            wsUrl,
+                            null,
+                            null,
+                            authorization);
+                }
+
+                if (credentials == null || credentials.isEmpty()) {
+                    throw new IllegalStateException("Proxmox provider credentials are required for console (username/password or apiToken)");
+                }
+                ProxmoxStorageUploader uploader = new ProxmoxStorageUploader();
+                ProxmoxStorageUploader.PveAuthSession pveSession = uploader.authenticate(endpoint, credentials);
+                String cookie = "PVEAuthCookie=" + pveSession.pveAuthCookie();
+                return new VmConsoleConnectionInfo(
+                        VmConsoleType.VNC,
+                        apiHost,
+                        vncPort,
+                        password,
+                        true,
+                        null,
+                        wsUrl,
+                        cookie,
+                        pveSession.csrfToken(),
+                        null);
             } catch (Exception e) {
                 logger.error("Failed to obtain Proxmox VNC proxy for vm {}: {}", request.externalId(), e.getMessage(), e);
                 throw new IllegalStateException("Failed to obtain console from Proxmox: " + e.getMessage(), e);

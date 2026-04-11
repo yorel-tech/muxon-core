@@ -622,6 +622,20 @@ public class VmTaskExecutor {
         if (info.password() != null) {
             result.put(VmConsoleResolvePayloadKeys.PASSWORD, info.password());
         }
+        if (info.upstreamWebSocketUrl() != null && !info.upstreamWebSocketUrl().isBlank()) {
+            result.put(VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_URL, info.upstreamWebSocketUrl());
+        }
+        if (info.upstreamWebSocketCookie() != null && !info.upstreamWebSocketCookie().isBlank()) {
+            result.put(VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_COOKIE, info.upstreamWebSocketCookie());
+        }
+        if (info.upstreamWebSocketCsrfToken() != null && !info.upstreamWebSocketCsrfToken().isBlank()) {
+            result.put(VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_CSRF, info.upstreamWebSocketCsrfToken());
+        }
+        if (info.upstreamWebSocketAuthorization() != null && !info.upstreamWebSocketAuthorization().isBlank()) {
+            result.put(
+                    VmConsoleResolvePayloadKeys.UPSTREAM_WEB_SOCKET_AUTHORIZATION,
+                    info.upstreamWebSocketAuthorization());
+        }
 
         commandQueue.completeWithPayload(entry.id(), result);
         log.info(
