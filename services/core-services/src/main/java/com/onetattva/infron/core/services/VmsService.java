@@ -25,6 +25,7 @@ import com.onetattva.infron.db.model.TenantDatacenterGrantEntity;
 import com.onetattva.infron.db.model.UserRoleBindingViewEntity;
 import com.onetattva.infron.db.model.QueueEntryEntity;
 import com.onetattva.infron.db.model.VmEntity;
+import com.onetattva.infron.db.resolver.TransactionalGrantProviderResolver;
 import com.onetattva.infron.db.model.ContentItemEntity;
 import com.onetattva.infron.db.model.ContentLibraryEntity;
 import com.onetattva.infron.db.repository.*;
@@ -45,6 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.PostConstruct;
 
 import java.math.BigInteger;
 import java.net.URI;
@@ -115,6 +118,24 @@ public class VmsService {
 
     @Autowired
     private InfronConsoleProperties infronConsoleProperties;
+
+    @Autowired
+    private TransactionalGrantProviderResolver grantProviderResolver;
+
+    /**
+     * Each console-resolve poll runs in {@link TransactionDefinition#PROPAGATION_REQUIRES_NEW} so
+     * {@code findById} hits the database with a fresh persistence context. Otherwise Open-Session-in-View
+     * (or a single long-lived persistence context) can return the same managed {@link QueueEntryEntity}
+     * from the first read while the orchestrator updates the row.
+     */
+    private TransactionTemplate queueEntryPollReadTemplate;
+
+    @PostConstruct
+    void initQueueEntryPollReadTemplate() {
+        queueEntryPollReadTemplate = new TransactionTemplate(transactionManager);
+        queueEntryPollReadTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        queueEntryPollReadTemplate.setReadOnly(true);
+    }
 
     public VmCreateResponse createVm(UUID tenantId, VmCreateRequest request) {
         TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
@@ -364,6 +385,7 @@ public class VmsService {
     }
 
     public VmConsoleResponse getVmConsole(UUID tenantId, UUID vmId) {
+        log.info("VM console API: start tenantId={} vmId={}", tenantId, vmId);
         VmEntity vm = requireVmForTenant(tenantId, vmId);
 
         if (vm.getStatus() != com.onetattva.infron.api.enums.VmStatus.ACTIVE) {
@@ -377,6 +399,13 @@ public class VmsService {
         if (active >= infronConsoleProperties.getMaxSessionsPerUser()) {
             throw new IllegalStateException("Maximum number of active console sessions reached; close an existing session and retry");
         }
+        log.debug(
+                "VM console API: pre-resolve tenantId={} vmId={} userId={} activeSessions={}/{}",
+                tenantId,
+                vmId,
+                userId,
+                active,
+                infronConsoleProperties.getMaxSessionsPerUser());
 
         TenantDatacenterGrantEntity grant = tenantDatacenterGrantRepository
                 .findById(vm.getTenantDatacenterGrantId())
@@ -386,8 +415,13 @@ public class VmsService {
             throw new AccessDeniedException("VM tenant mismatch");
         }
 
+        String vmProviderId = grantProviderResolver
+                .resolveProviderId(vm.getTenantDatacenterGrantId())
+                .orElseThrow(() -> new IllegalStateException("No VM provider for this datacenter"));
+
         Map<String, Object> resolvePayload = new HashMap<>();
         resolvePayload.put(VmConsoleResolvePayloadKeys.TENANT_DATACENTER_GRANT_ID, vm.getTenantDatacenterGrantId().toString());
+        resolvePayload.put(VmConsoleResolvePayloadKeys.PROVIDER_ID, vmProviderId);
         resolvePayload.put(VmConsoleResolvePayloadKeys.EXTERNAL_ID, vm.getExternalId() != null ? vm.getExternalId() : "");
         resolvePayload.put(VmConsoleResolvePayloadKeys.NODE_ID, vm.getNodeId() != null ? vm.getNodeId().toString() : "");
 
@@ -405,9 +439,16 @@ public class VmsService {
                 .build();
 
         UUID commandId = commandQueue.sendCommand(consoleCommand);
+        log.info("VM console API: enqueued resolve commandId={} vmId={} tenantId={}", commandId, vmId, tenantId);
         Map<String, Object> resolved = waitForConsoleResolve(commandId, infronConsoleProperties.getResolveTimeoutSeconds());
+        log.info("VM console API: orchestrator returned payload for commandId={} vmId={}", commandId, vmId);
 
-        if (!Boolean.TRUE.equals(resolved.get(VmConsoleResolvePayloadKeys.RESOLVED))) {
+        if (!isTruthy(resolved.get(VmConsoleResolvePayloadKeys.RESOLVED))) {
+            log.warn(
+                    "VM console API: resolve payload missing truthy resolved flag commandId={} vmId={} keys={}",
+                    commandId,
+                    vmId,
+                    resolved != null ? resolved.keySet() : null);
             throw new IllegalStateException("Console resolution did not complete successfully");
         }
 
@@ -429,10 +470,20 @@ public class VmsService {
         }
         String host = hostObj.toString();
         int port = payloadPort(portObj);
-        boolean tls = Boolean.TRUE.equals(resolved.get(VmConsoleResolvePayloadKeys.TLS));
+        boolean tls = isTruthy(resolved.get(VmConsoleResolvePayloadKeys.TLS));
 
         Object pwObj = resolved.get(VmConsoleResolvePayloadKeys.PASSWORD);
         String hypervisorPassword = pwObj != null && !pwObj.toString().isEmpty() ? pwObj.toString() : null;
+
+        log.info(
+                "VM console API: resolved endpoint vmId={} commandId={} consoleType={} host={} port={} tls={} hasPassword={}",
+                vmId,
+                commandId,
+                consoleType,
+                host,
+                port,
+                tls,
+                hypervisorPassword != null);
 
         String token = new BigInteger(130, new SecureRandom()).toString(32);
         int timeoutMinutes = resolveConsoleTimeoutMinutes(tenantId);
@@ -463,6 +514,18 @@ public class VmsService {
         response.setExpiresAt(expiresAt.atOffset(ZoneOffset.UTC));
         response.setConsoleType(mapApiConsoleType(consoleType));
         response.setRemotePassword(hypervisorPassword);
+        log.info(
+                "VM console API: session ready vmId={} tenantId={} userId={} sessionRowSaved consoleType={} "
+                        + "hypervisorTarget={}:{} tls={} tokenLength={} expiresAt={}",
+                vmId,
+                tenantId,
+                userId,
+                consoleType,
+                host,
+                port,
+                tls,
+                token.length(),
+                expiresAt);
         return response;
     }
 
@@ -473,10 +536,29 @@ public class VmsService {
         return Integer.parseInt(portObj.toString());
     }
 
+    /** JSONB / Jackson may represent booleans as Boolean, or other truthy forms after round-trips. */
+    private static boolean isTruthy(Object v) {
+        if (v == null) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(v)) {
+            return true;
+        }
+        if (v instanceof Boolean b) {
+            return b;
+        }
+        if (v instanceof Number n) {
+            return n.intValue() != 0;
+        }
+        String s = v.toString().trim();
+        return "true".equalsIgnoreCase(s) || "1".equals(s);
+    }
+
     private Map<String, Object> waitForConsoleResolve(UUID commandId, int timeoutSeconds) {
         Instant deadline = Instant.now().plusSeconds(timeoutSeconds);
         while (Instant.now().isBefore(deadline)) {
-            Optional<QueueEntryEntity> opt = queueEntryRepository.findById(commandId);
+            Optional<QueueEntryEntity> opt =
+                    queueEntryPollReadTemplate.execute(status -> queueEntryRepository.findById(commandId));
             if (opt.isEmpty()) {
                 throw new IllegalStateException("Console resolve command disappeared");
             }

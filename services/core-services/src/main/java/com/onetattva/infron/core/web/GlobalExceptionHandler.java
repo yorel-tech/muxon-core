@@ -207,12 +207,33 @@ public class GlobalExceptionHandler {
         auditService.logAction("validation:failed", null, Map.of("message", ex.getMessage() != null ? ex.getMessage() : ""));
 
         ErrorResponse error = new ErrorResponse(
-            "BAD_REQUEST",
-            ex.getMessage(),
-            System.currentTimeMillis()
+                "BAD_REQUEST",
+                ex.getMessage(),
+                System.currentTimeMillis()
         );
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * Business / lifecycle violations (e.g. VM not running, console resolve incomplete).
+     * Exposed to clients so UIs are not stuck with a generic 500 body.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+            IllegalStateException ex, WebRequest request) {
+
+        logError("Illegal state", ex, request);
+        auditService.logAction("validation:failed", null, Map.of("message", ex.getMessage() != null ? ex.getMessage() : ""));
+
+        String msg = ex.getMessage() != null ? ex.getMessage() : "Request cannot be completed in the current state";
+        ErrorResponse error = new ErrorResponse(
+                "ILLEGAL_STATE",
+                msg,
+                System.currentTimeMillis()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     /**

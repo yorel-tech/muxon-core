@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -123,7 +124,12 @@ public class ContentLibraryService {
         entity.setSourceConfig(toMap(body.getSourceConfig()));
         entity.setContentStorageId(storageId);
         entity.setMetadata(body.getMetadata());
-        entity.setSyncStatus("never_synced");
+        if (body.getType() == ContentLibraryType.LOCAL) {
+            entity.setSyncStatus("synced");
+            entity.setLastSyncedAt(Instant.now());
+        } else {
+            entity.setSyncStatus("never_synced");
+        }
         return converter.toApi(contentLibraryRepository.save(entity));
     }
 

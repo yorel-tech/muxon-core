@@ -1,0 +1,3 @@
+# Run before DataSource is created so encrypted spring.datasource.password is decrypted
+org.springframework.context.ApplicationListener=\
+com.onetattva.infron.core.console.config.ConfigDecryptor

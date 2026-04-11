@@ -9,6 +9,8 @@ public final class VmConsoleResolvePayloadKeys {
     }
 
     public static final String TENANT_DATACENTER_GRANT_ID = "tenantDatacenterGrantId";
+    /** Hypervisor VM provider id (UUID string); set by API / gRPC so orchestrator can resolve the provider without traversing grant entities. */
+    public static final String PROVIDER_ID = "providerId";
     public static final String EXTERNAL_ID = "externalId";
     public static final String NODE_ID = "nodeId";
 

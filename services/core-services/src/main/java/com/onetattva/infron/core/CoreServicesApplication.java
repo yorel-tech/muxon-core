@@ -23,7 +23,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.onetattva.infron.core.info",
         "com.onetattva.infron.core.hateoas",
         "com.onetattva.infron.core.auth",
-        "com.onetattva.infron.core.web"})
+        "com.onetattva.infron.core.web",
+        "com.onetattva.infron.db.resolver"})
 public class CoreServicesApplication {
     public static void main(String[] args) {
         SpringApplication.run(CoreServicesApplication.class, args);

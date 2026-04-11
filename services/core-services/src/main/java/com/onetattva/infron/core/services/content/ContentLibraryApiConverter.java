@@ -36,7 +36,7 @@ public class ContentLibraryApiConverter {
             api.setSourceConfig(objectMapper.convertValue(entity.getSourceConfig(), ContentSourceConfig.class));
         }
         api.setContentStorageId(entity.getContentStorageId());
-        api.setSyncStatus(ContentSyncStatus.fromValue(entity.getSyncStatus()));
+        api.setSyncStatus(ContentSyncStatus.fromValue(effectiveSyncStatus(entity)));
         api.setMetadata(entity.getMetadata());
         if (entity.getCreatedAt() != null) {
             api.setCreatedAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
@@ -65,5 +65,20 @@ public class ContentLibraryApiConverter {
             return fallback;
         }
         return value.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Local libraries are backed by tenant/platform storage directly; they are not synced from an external catalog,
+     * so {@code never_synced} is misleading for API consumers.
+     */
+    private static String effectiveSyncStatus(ContentLibraryEntity entity) {
+        String raw = entity.getSyncStatus();
+        if (entity.getLibraryType() != null
+                && "local".equals(entity.getLibraryType().toLowerCase(Locale.ROOT))
+                && raw != null
+                && "never_synced".equalsIgnoreCase(raw)) {
+            return "synced";
+        }
+        return raw;
     }
 }

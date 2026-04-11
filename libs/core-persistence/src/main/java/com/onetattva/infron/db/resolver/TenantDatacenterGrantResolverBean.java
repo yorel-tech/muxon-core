@@ -1,4 +1,4 @@
-package com.onetattva.infron.core.orch.wiring;
+package com.onetattva.infron.db.resolver;
 
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.providers.TenantDatacenterGrantResolver;

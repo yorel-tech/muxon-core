@@ -3,6 +3,7 @@ package com.onetattva.infron.core.orch.grpc;
 import com.onetattva.infron.api.enums.EntityType;
 import com.onetattva.infron.api.enums.JobType;
 import com.onetattva.infron.core.orch.orch.JobService;
+import com.onetattva.infron.core.spi.queue.VmConsoleResolvePayloadKeys;
 import com.onetattva.infron.core.spi.queue.VmQueueCommands;
 import com.onetattva.infron.grpc.workflow.v1.*;
 import io.grpc.stub.StreamObserver;
@@ -249,16 +250,20 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
         handleRequest(responseObserver, () -> {
             log.debug(
                     "VM workflow gRPC resolveConsole: vmId={}, correlationId={}, grantIdSet={}, "
-                            + "externalIdSet={}, nodeIdSet={}",
+                            + "externalIdSet={}, nodeIdSet={}, providerIdSet={}",
                     request.getVmId(),
                     request.getCorrelationId(),
                     !request.getGrantId().isBlank(),
                     !request.getExternalId().isBlank(),
-                    !request.getNodeId().isBlank());
+                    !request.getNodeId().isBlank(),
+                    !request.getProviderId().isBlank());
             Map<String, Object> payload = new HashMap<>();
             payload.put("tenantDatacenterGrantId", request.getGrantId());
             payload.put("externalId", request.getExternalId());
             payload.put("nodeId", request.getNodeId());
+            if (!request.getProviderId().isBlank()) {
+                payload.put(VmConsoleResolvePayloadKeys.PROVIDER_ID, request.getProviderId());
+            }
             return jobService.createJob(
                     JobType.VM_CREATE, EntityType.VM,
                     UUID.fromString(request.getVmId()),

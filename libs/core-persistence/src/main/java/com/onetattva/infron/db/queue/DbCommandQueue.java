@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -65,6 +66,19 @@ public class DbCommandQueue implements CommandQueue {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompleted(UUID commandId) {
         repository.markCompleted(commandId, Instant.now());
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void completeWithPayload(UUID commandId, Map<String, Object> payload) {
+        QueueEntryEntity e = repository.findById(commandId)
+                .orElseThrow(() -> new IllegalStateException("Queue entry not found: " + commandId));
+        Instant now = Instant.now();
+        e.setPayload(payload);
+        e.setStatus(QueueStatus.COMPLETED);
+        e.setProcessedAt(now);
+        e.setUpdatedAt(now);
+        repository.save(e);
     }
 
     @Override

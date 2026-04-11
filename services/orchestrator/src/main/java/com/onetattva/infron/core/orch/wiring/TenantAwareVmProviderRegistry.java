@@ -2,8 +2,8 @@ package com.onetattva.infron.core.orch.wiring;
 
 import com.onetattva.infron.api.model.ProviderType;
 import com.onetattva.infron.core.providers.MockVmProvider;
-import com.onetattva.infron.core.providers.TenantDatacenterGrantResolver;
 import com.onetattva.infron.core.providers.VmProvider;
+import com.onetattva.infron.db.resolver.TransactionalGrantProviderResolver;
 import com.onetattva.infron.core.providers.libvirt.LibvirtVmProvider;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxNodeInventoryProvider;
 import com.onetattva.infron.core.providers.proxmox.ProxmoxVmProvider;
@@ -37,7 +37,7 @@ public class TenantAwareVmProviderRegistry {
     private static final Logger logger = LoggerFactory.getLogger(TenantAwareVmProviderRegistry.class);
     private static final long CACHE_TTL_MS = 300_000L;
 
-    private final TenantDatacenterGrantResolver grantResolver;
+    private final TransactionalGrantProviderResolver grantProviderResolver;
     private final ProviderRepository providerRepository;
     private final ProviderStorageRepository providerStorageRepository;
     private final NodeRepository nodeRepository;
@@ -55,12 +55,12 @@ public class TenantAwareVmProviderRegistry {
 
     private final Map<UUID, CachedEntry> cache = new ConcurrentHashMap<>();
 
-    public TenantAwareVmProviderRegistry(TenantDatacenterGrantResolver grantResolver,
+    public TenantAwareVmProviderRegistry(TransactionalGrantProviderResolver grantProviderResolver,
                                          ProviderRepository providerRepository,
                                          ProviderStorageRepository providerStorageRepository,
                                          NodeRepository nodeRepository,
                                          VmRepository vmRepository) {
-        this.grantResolver = grantResolver;
+        this.grantProviderResolver = grantProviderResolver;
         this.providerRepository = providerRepository;
         this.providerStorageRepository = providerStorageRepository;
         this.nodeRepository = nodeRepository;
@@ -68,7 +68,7 @@ public class TenantAwareVmProviderRegistry {
     }
 
     public Optional<com.onetattva.infron.core.providers.ProviderContext> createContextForTenantDatacenter(UUID tenantDatacenterGrantId) {
-        Optional<String> providerIdOpt = grantResolver.resolveProviderId(tenantDatacenterGrantId);
+        Optional<String> providerIdOpt = grantProviderResolver.resolveProviderId(tenantDatacenterGrantId);
         if (providerIdOpt.isEmpty()) {
             logger.debug("createContext: no provider id for tenantDatacenterGrantId={}", tenantDatacenterGrantId);
             return Optional.empty();
@@ -275,7 +275,7 @@ public class TenantAwareVmProviderRegistry {
     }
 
     public Optional<VmProvider> resolveProviderForTenantDatacenter(UUID tenantDatacenterGrantId) {
-        Optional<String> providerIdOpt = grantResolver.resolveProviderId(tenantDatacenterGrantId);
+        Optional<String> providerIdOpt = grantProviderResolver.resolveProviderId(tenantDatacenterGrantId);
         if (providerIdOpt.isEmpty()) {
             logger.warn("No provider found for tenant datacenter grant {}", tenantDatacenterGrantId);
             return Optional.empty();

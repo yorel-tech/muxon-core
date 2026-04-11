@@ -1,9 +1,16 @@
+---
 server:
   port: 8082
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+
 spring:
   application:
-    name: console-proxy
+    name: "console-proxy"
   datasource:
     url: "jdbc:postgresql://localhost:5432/infron"
     username: "infron"
@@ -12,10 +19,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: "none"
+    properties:
+      hibernate:
+        dialect: "org.hibernate.dialect.PostgreSQLDialect"
   flyway:
     enabled: false
 
 infron:
+  instanceName: "local"
+  instanceId: 19
   console:
     allowed-origins:
       - "http://localhost:4000"
@@ -25,4 +37,10 @@ infron:
 
 logging:
   level:
-    com.onetattva.infron: "INFO"
+    root: "INFO"
+    org.springframework: "INFO"
+    com.onetattva.infron: "DEBUG"
+  file:
+    name: "logs/infron-console-proxy.log"
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

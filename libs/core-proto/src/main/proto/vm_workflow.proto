@@ -116,4 +116,6 @@ message ResolveConsoleRequest {
   string grant_id                   = 3;
   string node_id                    = 4;  // empty for cluster-managed providers
   string correlation_id             = 5;
+  // VM provider UUID (same as provider table); required for console resolve without DB grant traversal in orchestrator.
+  string provider_id                = 6;
 }

@@ -3,6 +3,7 @@ package com.onetattva.infron.core.spi.queue;
 import com.onetattva.infron.api.model.EntityType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,6 +37,13 @@ public interface CommandQueue {
      * @param commandId id of the command returned by pollCommands or sendCommand
      */
     void markCompleted(UUID commandId);
+
+    /**
+     * Mark a command completed and persist the final payload in one transaction. Use this when the API
+     * polls on {@code COMPLETED} and reads {@code payload} (e.g. console resolve); otherwise a separate
+     * payload update plus {@link #markCompleted(UUID)} can commit status before payload is visible.
+     */
+    void completeWithPayload(UUID commandId, Map<String, Object> payload);
 
     /**
      * Mark a command as failed with an error message.

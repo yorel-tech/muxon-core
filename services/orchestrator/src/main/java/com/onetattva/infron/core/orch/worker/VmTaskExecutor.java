@@ -573,16 +573,28 @@ public class VmTaskExecutor {
             catch (IllegalArgumentException e) { failTask(entry, "Invalid nodeId"); return; }
         }
 
-        VmProvider provider = providerRegistry.resolveProviderForTenantDatacenter(grantId).orElse(null);
+        Object rawProviderId = payload.get(VmConsoleResolvePayloadKeys.PROVIDER_ID);
+        String providerIdStr = rawProviderId != null && !rawProviderId.toString().isBlank()
+                ? rawProviderId.toString()
+                : null;
+        VmProvider provider = null;
+        if (providerIdStr != null) {
+            provider = providerRegistry.getProviderById(providerIdStr).orElse(null);
+        }
+        if (provider == null) {
+            provider = providerRegistry.resolveProviderForTenantDatacenter(grantId).orElse(null);
+        }
         if (provider == null) { failTask(entry, "No provider for this VM"); return; }
 
         if (log.isDebugEnabled()) {
             log.debug(
-                    "VM console resolve: vmId={}, grantId={}, externalIdSet={}, nodeIdSet={}, providerId={}",
+                    "VM console resolve: vmId={}, grantId={}, externalIdSet={}, nodeIdSet={}, "
+                            + "payloadProviderId={}, vmProviderBeanId={}",
                     vmId,
                     grantId,
                     externalId != null && !externalId.isBlank(),
                     nodeId != null,
+                    providerIdStr,
                     provider.id());
         }
 
@@ -591,25 +603,35 @@ public class VmTaskExecutor {
             info = provider.getConsoleConnection(new VmConsoleRequest(vmId, grantId, externalId, nodeId)).join();
         } catch (Exception e) {
             Throwable c = e.getCause() != null ? e.getCause() : e;
+            log.warn(
+                    "VM console resolve failed: commandId={}, vmId={}, message={}",
+                    entry.id(),
+                    vmId,
+                    c.getMessage());
             failTask(entry, c.getMessage() != null ? c.getMessage() : "Provider error");
             return;
         }
 
-        // Write resolved connection info back into the queue entry payload so core-services can read it.
+        // Single commit for payload + COMPLETED so API pollers never see COMPLETED with a stale payload.
         Map<String, Object> result = new HashMap<>(payload);
         result.put(VmConsoleResolvePayloadKeys.RESOLVED, true);
         result.put(VmConsoleResolvePayloadKeys.CONSOLE_TYPE, info.consoleType().name());
         result.put(VmConsoleResolvePayloadKeys.HOST, info.host());
         result.put(VmConsoleResolvePayloadKeys.PORT, info.port());
         result.put(VmConsoleResolvePayloadKeys.TLS, info.tls());
-        if (info.password() != null) result.put(VmConsoleResolvePayloadKeys.PASSWORD, info.password());
+        if (info.password() != null) {
+            result.put(VmConsoleResolvePayloadKeys.PASSWORD, info.password());
+        }
 
-        queueEntryRepository.findById(entry.id()).ifPresent(qe -> {
-            qe.setPayload(result);
-            qe.setUpdatedAt(Instant.now());
-            queueEntryRepository.save(qe);
-        });
-        commandQueue.markCompleted(entry.id());
+        commandQueue.completeWithPayload(entry.id(), result);
+        log.info(
+                "VM console resolve succeeded: commandId={}, vmId={}, consoleType={}, host={}, port={}, tls={}",
+                entry.id(),
+                vmId,
+                info.consoleType(),
+                info.host(),
+                info.port(),
+                info.tls());
         // No task event for console resolve — it is a synchronous polling flow handled in VmsService.
     }
 
