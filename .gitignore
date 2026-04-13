@@ -157,3 +157,7 @@ storybook-static/
 # (Commit a template instead)
 # .env.example
 /services/core-services/src/main/resources/application.yaml
+
+# Docker / install secrets and local initial config (see compose/infron.yml)
+/secrets/
+/initial-config.yaml

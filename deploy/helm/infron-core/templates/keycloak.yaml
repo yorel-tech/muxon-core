@@ -1,0 +1,67 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: {{ .Values.keycloak.image | quote }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              export KEYCLOAK_ADMIN_PASSWORD="$(cat /run/secrets/{{ .Values.keycloak.adminSecretKey }})"
+              exec /opt/keycloak/bin/kc.sh start-dev --http-port={{ .Values.keycloak.port }} --import-realm
+          env:
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.keycloak.adminUsername | quote }}
+          ports:
+            - containerPort: {{ .Values.keycloak.port }}
+              name: http
+          volumeMounts:
+            - name: keycloak-secrets
+              mountPath: /run/secrets
+              readOnly: true
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.keycloak.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 12
+      volumes:
+        - name: keycloak-secrets
+          secret:
+            secretName: {{ .Values.keycloak.adminExistingSecret }}
+        - name: realm-import
+          configMap:
+            name: {{ include "infron-core.fullname" . }}-keycloak-realm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - port: {{ .Values.keycloak.port }}
+      targetPort: {{ .Values.keycloak.port }}
+      name: http
+{{- end }}

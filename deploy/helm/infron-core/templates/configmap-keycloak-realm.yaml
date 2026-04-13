@@ -1,0 +1,13 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "infron-core.fullname" . }}-keycloak-realm
+  labels:
+    app: keycloak
+    chart: {{ include "infron-core.chart" . }}
+    release: {{ .Release.Name }}
+data:
+  infron-dev.json: |
+{{ .Files.Get "files/realm-infron-dev.json" | trim | nindent 4 }}
+{{- end }}

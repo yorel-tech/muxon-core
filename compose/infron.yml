@@ -1,0 +1,105 @@
+# Infron Core — Docker Compose install
+#
+# Paths in this file are relative to this compose file's directory (compose/).
+#
+# Internal stack (bundled PostgreSQL + Keycloak):
+#   From repo root: infron-core/
+#     ./scripts/create-secrets.sh
+#     cp compose/initial-config.yaml.template ../initial-config.yaml   # edit URLs if needed
+#     docker compose -f compose/infron.yml --profile internal up -d
+#
+# External database / IdP only (no bundled postgres/keycloak):
+#     docker compose -f compose/infron.yml up -d
+#
+# See docs/admin-guide/install-core.md for full steps.
+
+name: infron
+
+services:
+  postgres:
+    profiles: [internal]
+    image: postgres:18
+    environment:
+      POSTGRES_USER: infron
+      POSTGRES_DB: infron
+      POSTGRES_PASSWORD_FILE: /run/secrets/infron-db-password
+    secrets:
+      - infron-db-password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infron -d infron"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  keycloak:
+    profiles: [internal]
+    image: quay.io/keycloak/keycloak:26.4.0
+    # Keycloak does not support *_FILE env vars; read admin password from the secret mount.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        export KEYCLOAK_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak-admin-password)"
+        exec /opt/keycloak/bin/kc.sh start-dev --http-port=8085 --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+    secrets:
+      - keycloak-admin-password
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8085; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  core-services:
+    image: ghcr.io/onetattva/infron-core/core-services:${INFRON_VERSION:-latest}
+    ports:
+      - "8080:8080"
+    secrets:
+      - infron-passphrase
+      - infron-oidc-secret
+      - infron-db-password
+    configs:
+      - source: initial_config
+        target: /etc/infron/initial-config.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      keycloak:
+        condition: service_healthy
+        required: false
+
+secrets:
+  infron-passphrase:
+    file: ../secrets/infron-passphrase
+  infron-oidc-secret:
+    file: ../secrets/infron-oidc-secret
+  infron-db-password:
+    file: ../secrets/infron-db-password
+  keycloak-admin-password:
+    file: ../secrets/keycloak-admin-password
+
+configs:
+  initial_config:
+    file: ../initial-config.yaml
+
+volumes:
+  postgres_data:

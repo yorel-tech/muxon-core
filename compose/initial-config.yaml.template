@@ -1,0 +1,34 @@
+# Copy to infron-core/initial-config.yaml and edit for your environment.
+#   cp compose/initial-config.yaml.template ../initial-config.yaml
+#
+# Internal profile (Docker): use service hostnames postgres and keycloak.
+# External: set datasource.url and system.idp.metadata.issuerUri to your endpoints.
+
+infron:
+  instanceName: "docker"
+  instanceId: 1
+
+  system:
+    systemAdminUserName: "admin@example.com"
+    idp:
+      name: "default-idp"
+      protocol: "OIDC"
+      metadata:
+        # Internal compose: Keycloak listens on 8085 in the container.
+        issuerUri: "http://keycloak:8085/realms/infron-dev"
+        clientId: "infron-api"
+        clientSecret: "provide-in-secrets"
+
+  tenants:
+    - name: "default"
+      idpName: "default-idp"
+      tenantAdminUserName: "admin@example.com"
+
+  datasource:
+    # Internal: host "postgres", DB "infron", user "infron"
+    # Password is NOT set here — it comes from the Docker secret infron-db-password
+    # (file ../secrets/infron-db-password), same value PostgreSQL uses.
+    url: jdbc:postgresql://postgres:5432/infron
+    username: infron
+    password: placeholder-not-used
+    driver-class-name: org.postgresql.Driver

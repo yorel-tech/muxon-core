@@ -19,3 +19,8 @@ Open, source-available foundation for private cloud control.
 docker compose -f compose/dev-stack.yml up -d
 ./gradlew :services:core-services:bootRun
 ```
+
+## Installation (operators)
+
+- [Install Infron Core](docs/admin-guide/install-core.md) — Docker Compose, Kubernetes/Helm, VM appliance, secrets, and `initial-config.yaml`
+- [Install Infron Nexus (enterprise)](docs/admin-guide/install-nexus.md) — Helm `infron-nexus` and nested `infron-core` values
