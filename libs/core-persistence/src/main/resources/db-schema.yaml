@@ -1,7 +1,7 @@
 version: "1.0"
 
 tables:
-  provider:
+  providers:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       name: { type: text, nullable: false }
@@ -15,12 +15,12 @@ tables:
       created_at: { type: timestamptz, nullable: true }
       updated_at: { type: timestamptz, nullable: true }
 
-  node_cluster:
+  node_clusters:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       name: { type: text, nullable: false }
       description: { type: text, nullable: true }
-      provider_id: { type: uuid, nullable: false, references: provider.id }
+      provider_id: { type: uuid, nullable: false, references: providers.id }
       external_id: { type: text, nullable: true }
       capacity: { type: jsonb, nullable: true }
       capabilities: { type: jsonb, nullable: true }
@@ -30,11 +30,11 @@ tables:
       created_at: { type: timestamptz, nullable: true }
       updated_at: { type: timestamptz, nullable: true }
 
-  node:
+  nodes:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      cluster_id: { type: uuid, nullable: true, references: node_cluster.id }
-      provider_id: { type: uuid, nullable: false, references: provider.id }
+      cluster_id: { type: uuid, nullable: true, references: node_clusters.id }
+      provider_id: { type: uuid, nullable: false, references: providers.id }
       external_id: { type: text, nullable: true }
       name: { type: text, nullable: false }
       description: { type: varchar(1000), nullable: true }
@@ -51,19 +51,19 @@ tables:
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
 
-  datacenter:
+  datacenters:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       name: { type: text, nullable: false }
       description: { type: text, nullable: true }
-      node_cluster_id: { type: uuid, nullable: false, references: node_cluster.id }
+      node_cluster_id: { type: uuid, nullable: false, references: node_clusters.id }
       capacity: { type: jsonb, nullable: true }
       settings: { type: jsonb, nullable: true }
       metadata: { type: jsonb, nullable: true }
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
 
-  tenant:
+  tenants:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       name: { type: text, nullable: false }
@@ -78,8 +78,8 @@ tables:
   tenant_datacenter_grant:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      tenant_id: { type: uuid, nullable: false, references: tenant.id }
-      datacenter_id: { type: uuid, nullable: false, references: datacenter.id }
+      tenant_id: { type: uuid, nullable: false, references: tenants.id }
+      datacenter_id: { type: uuid, nullable: false, references: datacenters.id }
       access: { type: boolean, nullable: false }
       limits: { type: jsonb, nullable: true }
       enabled_features: { type: text[], nullable: true }
@@ -124,7 +124,7 @@ tables:
       created_by: { type: uuid, nullable: true }
       created_at: { type: timestamptz, nullable: false }
 
-  identity_provider:
+  identity_providers:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       name: { type: text, nullable: false }
@@ -138,7 +138,7 @@ tables:
   idp_user:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      identity_provider_id: { type: uuid, nullable: false, references: identity_provider.id }
+      identity_provider_id: { type: uuid, nullable: false, references: identity_providers.id }
       external_id: { type: text, nullable: true }
       username: { type: text, nullable: true }
       email: { type: text, nullable: true }
@@ -147,11 +147,11 @@ tables:
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
 
-  audit_log:
+  audit_logs:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      tenant_id: { type: uuid, nullable: true, references: tenant.id }
-      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      tenant_id: { type: uuid, nullable: true, references: tenants.id }
+      actor_user_id: { type: uuid, nullable: true, references: idp_users.id }
       action: { type: text, nullable: false }
       payload: { type: jsonb, nullable: true }
       created_at: { type: timestamptz, nullable: false }
@@ -166,7 +166,7 @@ tables:
   system_settings:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      tenant_id: { type: uuid, nullable: true, references: tenant.id }
+      tenant_id: { type: uuid, nullable: true, references: tenants.id }
       name: { type: text, nullable: true }
       description: { type: text, nullable: true }
       contact_email: { type: text, nullable: true }
@@ -201,9 +201,9 @@ tables:
       console_session_timeout_minutes: { type: int, nullable: true }
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
-      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+      updated_by: { type: uuid, nullable: true, references: idp_users.id }
 
-  queue_entry:
+  orchestrator_queue:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       queue_type: { type: text, nullable: false }
@@ -212,7 +212,7 @@ tables:
       queue_category: { type: queue_category, nullable: false }
       status: { type: queue_status, nullable: false }
       payload: { type: jsonb, nullable: false }
-      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      actor_user_id: { type: uuid, nullable: true, references: idp_users.id }
       actor_service: { type: text, nullable: true }
       actor_type: { type: text, nullable: false }
       created_at: { type: timestamptz, nullable: false }
@@ -223,11 +223,11 @@ tables:
       source: { type: text, nullable: false }
       version: { type: text, nullable: true }
       metadata: { type: jsonb, nullable: true }
-      created_by: { type: uuid, nullable: true, references: idp_user.id }
-      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+      created_by: { type: uuid, nullable: true, references: idp_users.id }
+      updated_by: { type: uuid, nullable: true, references: idp_users.id }
       error_message: { type: text, nullable: true }
 
-  job:
+  jobs:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       job_type: { type: job_type, nullable: false }
@@ -236,7 +236,7 @@ tables:
       target_entity_id: { type: uuid, nullable: false }
       parameters: { type: jsonb, nullable: true }
       result: { type: jsonb, nullable: true }
-      provider_id: { type: uuid, nullable: true, references: provider.id }
+      provider_id: { type: uuid, nullable: true, references: providers.id }
       provider_operation_id: { type: text, nullable: true }
       created_at: { type: timestamptz, nullable: false }
       started_at: { type: timestamptz, nullable: true }
@@ -256,7 +256,7 @@ tables:
       cancellation_reason: { type: text, nullable: true }
       metadata: { type: jsonb, nullable: true }
 
-  entity_event:
+  entity_events:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       event_type: { type: text, nullable: false }
@@ -264,7 +264,7 @@ tables:
       entity_id: { type: uuid, nullable: false }
       message: { type: text, nullable: true }
       details: { type: jsonb, nullable: true }
-      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      actor_user_id: { type: uuid, nullable: true, references: idp_users.id }
       actor_service: { type: text, nullable: true }
       actor_type: { type: text, nullable: false }
       created_at: { type: timestamptz, nullable: false }
@@ -274,10 +274,10 @@ tables:
       version: { type: text, nullable: true }
       metadata: { type: jsonb, nullable: true }
 
-  task_step:
+  task_steps:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      task_id: { type: uuid, nullable: false, references: job.id }
+      task_id: { type: uuid, nullable: false, references: jobs.id }
       step_number: { type: int, nullable: false }
       step_name: { type: text, nullable: false }
       step_description: { type: text, nullable: true }
@@ -291,11 +291,11 @@ tables:
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
 
-  task_log:
+  task_logs:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      task_id: { type: uuid, nullable: false, references: job.id }
-      step_id: { type: uuid, nullable: true, references: task_step.id }
+      task_id: { type: uuid, nullable: false, references: jobs.id }
+      step_id: { type: uuid, nullable: true, references: task_steps.id }
       log_level: { type: text, nullable: false }
       message: { type: text, nullable: false }
       details: { type: jsonb, nullable: true }
@@ -338,7 +338,7 @@ tables:
       size_bytes: { type: bigint, nullable: false }
       actual_size_bytes: { type: bigint, nullable: true }
       status: { type: varchar(32), nullable: false }
-      provider_id: { type: uuid, nullable: false, references: provider.id }
+      provider_id: { type: uuid, nullable: false, references: providers.id }
       provider_volume_id: { type: varchar(255), nullable: false }
       encrypted: { type: boolean, nullable: true }
       encryption_key_id: { type: varchar(64), nullable: true }
@@ -450,7 +450,7 @@ tables:
       description: { type: text, nullable: true }
       library_type: { type: varchar(32), nullable: false }
       access_mode: { type: varchar(32), nullable: false }
-      tenant_id: { type: uuid, nullable: false, references: tenant.id }
+      tenant_id: { type: uuid, nullable: false, references: tenants.id }
       source_config: { type: jsonb, nullable: true }
       storage_class_name: { type: varchar(64), nullable: true }
       sync_status: { type: varchar(32), nullable: false }
@@ -488,7 +488,7 @@ tables:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       library_id: { type: uuid, nullable: false, references: content_libraries.id }
-      datacenter_id: { type: uuid, nullable: false, references: datacenter.id }
+      datacenter_id: { type: uuid, nullable: false, references: datacenters.id }
       replicate_status: { type: varchar(32), nullable: false }
       last_replicated_at: { type: timestamptz, nullable: true }
       storage_class_name: { type: varchar(128), nullable: true }
@@ -514,14 +514,14 @@ tables:
   vm:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      tenant_datacenter_grant_id: { type: uuid, nullable: false, references: tenant_datacenter_grant.id }
+      tenant_datacenter_grant_id: { type: uuid, nullable: false, references: tenant_datacenter_grants.id }
       name: { type: text, nullable: false }
       description: { type: text, nullable: true }
       spec: { type: jsonb, nullable: false }
       status: { type: vm_status, nullable: false }
       power_state: { type: vm_power_state, nullable: false }
-      provider_id: { type: uuid, nullable: true, references: provider.id }
-      node_id: { type: uuid, nullable: true, references: node.id }
+      provider_id: { type: uuid, nullable: true, references: providers.id }
+      node_id: { type: uuid, nullable: true, references: nodes.id }
       external_id: { type: text, nullable: true }
       ip_addresses: { type: text[], nullable: true }
       hostname: { type: text, nullable: true }
@@ -532,8 +532,8 @@ tables:
       updated_at: { type: timestamptz, nullable: false }
       started_at: { type: timestamptz, nullable: true }
       stopped_at: { type: timestamptz, nullable: true }
-      created_by: { type: uuid, nullable: true, references: idp_user.id }
-      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+      created_by: { type: uuid, nullable: true, references: idp_users.id }
+      updated_by: { type: uuid, nullable: true, references: idp_users.id }
       version: { type: bigint, nullable: false }
       content_item_id: { type: uuid, nullable: true, references: content_items.id }
       attached_iso_item_ids: { type: uuid[], nullable: true }
@@ -541,7 +541,7 @@ tables:
   compute_profile:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      tenant_datacenter_grant_id: { type: uuid, nullable: true, references: tenant_datacenter_grant.id }
+      tenant_datacenter_grant_id: { type: uuid, nullable: true, references: tenant_datacenter_grants.id }
       name: { type: text, nullable: false }
       description: { type: text, nullable: true }
       spec: { type: jsonb, nullable: false }
@@ -554,8 +554,8 @@ tables:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       vm_id: { type: uuid, nullable: false, references: vm.id }
-      tenant_id: { type: uuid, nullable: false, references: tenant.id }
-      user_id: { type: uuid, nullable: false, references: idp_user.id }
+      tenant_id: { type: uuid, nullable: false, references: tenants.id }
+      user_id: { type: uuid, nullable: false, references: idp_users.id }
       token: { type: text, nullable: false }
       console_type: { type: vm_console_type, nullable: false }
       hypervisor_host: { type: text, nullable: false }

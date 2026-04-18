@@ -23,14 +23,14 @@ CREATE TYPE vm_power_state AS ENUM (
 
 CREATE TABLE vm (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_datacenter_grant_id UUID NOT NULL REFERENCES tenant_datacenter_grant (id) ON DELETE RESTRICT,
+    tenant_datacenter_grant_id UUID NOT NULL REFERENCES tenant_datacenter_grants (id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
     description TEXT,
     spec JSONB NOT NULL,
     status vm_status NOT NULL DEFAULT 'PENDING',
     power_state vm_power_state NOT NULL DEFAULT 'UNKNOWN',
-    provider_id UUID REFERENCES provider (id) ON DELETE SET NULL,
-    node_id UUID REFERENCES node (id) ON DELETE SET NULL,
+    provider_id UUID REFERENCES providers (id) ON DELETE SET NULL,
+    node_id UUID REFERENCES nodes (id) ON DELETE SET NULL,
     external_id TEXT,
     ip_addresses TEXT[],
     hostname TEXT,
@@ -41,8 +41,8 @@ CREATE TABLE vm (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     started_at TIMESTAMPTZ,
     stopped_at TIMESTAMPTZ,
-    created_by UUID REFERENCES idp_user (id),
-    updated_by UUID REFERENCES idp_user (id),
+    created_by UUID REFERENCES idp_users (id),
+    updated_by UUID REFERENCES idp_users (id),
     version BIGINT NOT NULL DEFAULT 0,
     content_item_id UUID NULL REFERENCES content_items (id) ON DELETE SET NULL,
     attached_iso_item_ids UUID[],
@@ -62,7 +62,7 @@ COMMENT ON COLUMN vm.attached_iso_item_ids IS 'Content library ISO items current
 
 CREATE TABLE compute_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_datacenter_grant_id UUID REFERENCES tenant_datacenter_grant (id) ON DELETE CASCADE,
+    tenant_datacenter_grant_id UUID REFERENCES tenant_datacenter_grants (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     spec JSONB NOT NULL,

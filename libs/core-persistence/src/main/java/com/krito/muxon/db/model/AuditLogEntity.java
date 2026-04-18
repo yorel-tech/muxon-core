@@ -1,5 +1,5 @@
 /**
- * Entity for audit_log table.
+ * Entity for audit_logs table.
  */
 package com.krito.muxon.db.model;
 

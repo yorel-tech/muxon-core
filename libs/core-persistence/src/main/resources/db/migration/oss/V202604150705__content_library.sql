@@ -29,7 +29,7 @@ CREATE TABLE content_libraries (
     description TEXT,
     library_type VARCHAR(32) NOT NULL,
     access_mode VARCHAR(32) NOT NULL,
-    tenant_id UUID NOT NULL REFERENCES tenant (id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
     source_config JSONB,
     storage_class_name VARCHAR(64),
     sync_status VARCHAR(32) NOT NULL DEFAULT 'never_synced',
@@ -95,7 +95,7 @@ COMMENT ON COLUMN content_items.muxon_instance_segment IS 'muxon-{instanceName}-
 CREATE TABLE content_library_distribution (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES content_libraries (id) ON DELETE CASCADE,
-    datacenter_id UUID NOT NULL REFERENCES datacenter (id) ON DELETE CASCADE,
+    datacenter_id UUID NOT NULL REFERENCES datacenters (id) ON DELETE CASCADE,
     replicate_status VARCHAR(32) NOT NULL DEFAULT 'pending',
     last_replicated_at TIMESTAMPTZ,
     storage_class_name VARCHAR(128),

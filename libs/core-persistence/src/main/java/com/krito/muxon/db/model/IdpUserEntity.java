@@ -1,5 +1,5 @@
 /**
- * Entity for idp_user table.
+ * Entity for idp_users table.
  */
 package com.krito.muxon.db.model;
 

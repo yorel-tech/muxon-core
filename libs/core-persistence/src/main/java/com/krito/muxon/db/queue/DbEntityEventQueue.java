@@ -19,7 +19,7 @@ import java.util.UUID;
 
 /**
  * Database-backed implementation of {@link EntityEventQueue}.
- * Uses the {@code queue_entry} table with {@code ENTITY_EVENT} category.
+ * Uses the {@code orchestrator_queue} table with {@code ENTITY_EVENT} category.
  */
 public class DbEntityEventQueue implements EntityEventQueue {
 

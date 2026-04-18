@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * Tracks the bootstrap lifecycle state in the system_init table.
  */
 @Entity
-@Table(name = "system_inits")
+@Table(name = "system_init")
 @Getter
 @Setter
 @NoArgsConstructor

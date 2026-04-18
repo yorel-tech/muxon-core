@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Database-backed implementation of EventPublisher.
- * Writes status/audit events as rows in the queue_entry table.
+ * Writes status/audit events as rows in the orchestrator_queue table.
  */
 public class DbEventPublisher implements EventPublisher {
 

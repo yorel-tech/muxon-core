@@ -16,7 +16,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TABLE provider (
+CREATE TABLE providers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   type provider_type NOT NULL,
@@ -30,11 +30,11 @@ CREATE TABLE provider (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE node_cluster (
+CREATE TABLE node_clusters (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
-  provider_id UUID NOT NULL REFERENCES provider(id) ON DELETE CASCADE,
+  provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
   external_id TEXT NULL,
   capacity JSONB NULL,
   capabilities JSONB NULL,
@@ -46,15 +46,15 @@ CREATE TABLE node_cluster (
   UNIQUE (provider_id, external_id)
 );
 
-CREATE INDEX idx_clusters_provider ON node_cluster (provider_id);
-CREATE INDEX idx_clusters_name ON node_cluster (name);
-CREATE INDEX idx_node_clusters_provider_id ON node_cluster (provider_id);
-CREATE INDEX idx_node_clusters_status ON node_cluster (status);
+CREATE INDEX idx_clusters_provider ON node_clusters (provider_id);
+CREATE INDEX idx_clusters_name ON node_clusters (name);
+CREATE INDEX idx_node_clusters_provider_id ON node_clusters (provider_id);
+CREATE INDEX idx_node_clusters_status ON node_clusters (status);
 
-CREATE TABLE node (
+CREATE TABLE nodes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cluster_id UUID REFERENCES node_cluster(id) ON DELETE SET NULL,
-  provider_id UUID NOT NULL REFERENCES provider(id) ON DELETE CASCADE,
+  cluster_id UUID REFERENCES node_clusters(id) ON DELETE SET NULL,
+  provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
   external_id TEXT NULL,
   name TEXT NOT NULL,
   description VARCHAR(1000) NULL,
@@ -72,15 +72,15 @@ CREATE TABLE node (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_nodes_provider ON node (provider_id);
-CREATE INDEX idx_nodes_cluster ON node (cluster_id);
-CREATE INDEX idx_nodes_name ON node (name);
+CREATE INDEX idx_nodes_provider ON nodes (provider_id);
+CREATE INDEX idx_nodes_cluster ON nodes (cluster_id);
+CREATE INDEX idx_nodes_name ON nodes (name);
 
-CREATE TABLE datacenter (
+CREATE TABLE datacenters (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
-  node_cluster_id UUID NOT NULL REFERENCES node_cluster(id),
+  node_cluster_id UUID NOT NULL REFERENCES node_clusters(id),
   capacity JSONB,
   settings JSONB,
   metadata JSONB,
@@ -88,9 +88,9 @@ CREATE TABLE datacenter (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_datacenter_name ON datacenter (name);
+CREATE UNIQUE INDEX ux_datacenter_name ON datacenters (name);
 
-CREATE TABLE tenant (
+CREATE TABLE tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   display_name TEXT,
@@ -102,9 +102,9 @@ CREATE TABLE tenant (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_tenant_name ON tenant (name);
+CREATE UNIQUE INDEX ux_tenant_name ON tenants (name);
 
-INSERT INTO tenant (id, name, display_name, is_system, status)
+INSERT INTO tenants (id, name, display_name, is_system, status)
 VALUES (
     '215012d9-8b1e-5dc5-b54f-89022875fe1e',
     'system',
@@ -113,10 +113,10 @@ VALUES (
     'ACTIVE'
 ) ON CONFLICT (id) DO NOTHING;
 
-CREATE TABLE tenant_datacenter_grant (
+CREATE TABLE tenant_datacenter_grants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
-  datacenter_id UUID NOT NULL REFERENCES datacenter(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  datacenter_id UUID NOT NULL REFERENCES datacenters(id) ON DELETE CASCADE,
   access BOOLEAN NOT NULL DEFAULT true,
   limits JSONB,
   enabled_features TEXT[],
@@ -126,12 +126,12 @@ CREATE TABLE tenant_datacenter_grant (
   UNIQUE (tenant_id, datacenter_id)
 );
 
-CREATE INDEX ix_tdg_tenant ON tenant_datacenter_grant (tenant_id);
-CREATE INDEX ix_tdg_datacenter ON tenant_datacenter_grant (datacenter_id);
+CREATE INDEX ix_tdg_tenant ON tenant_datacenter_grants (tenant_id);
+CREATE INDEX ix_tdg_datacenter ON tenant_datacenter_grants (datacenter_id);
 
-CREATE TRIGGER trg_provider_updated BEFORE UPDATE ON provider FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_datacenter_updated BEFORE UPDATE ON datacenter FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_node_cluster_updated BEFORE UPDATE ON node_cluster FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_node_updated BEFORE UPDATE ON node FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_tenant_updated BEFORE UPDATE ON tenant FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_tdg_updated BEFORE UPDATE ON tenant_datacenter_grant FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_provider_updated BEFORE UPDATE ON providers FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_datacenter_updated BEFORE UPDATE ON datacenters FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_node_cluster_updated BEFORE UPDATE ON node_clusters FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_node_updated BEFORE UPDATE ON nodes FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_tenant_updated BEFORE UPDATE ON tenants FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_tdg_updated BEFORE UPDATE ON tenant_datacenter_grants FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();

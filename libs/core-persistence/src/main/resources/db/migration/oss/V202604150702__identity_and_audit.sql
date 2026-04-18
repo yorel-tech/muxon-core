@@ -3,7 +3,7 @@
 CREATE TYPE idp_protocol AS ENUM ('OIDC', 'OAUTH2');
 CREATE TYPE bootstrap_status AS ENUM ('NOTREADY', 'BOOTSTRAPPED', 'READY');
 
-CREATE TABLE identity_provider (
+CREATE TABLE identity_providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     protocol idp_protocol NOT NULL,
@@ -15,16 +15,16 @@ CREATE TABLE identity_provider (
     CONSTRAINT uq_identity_protocol UNIQUE (protocol)
 );
 
-CREATE INDEX idx_identity_provider_protocol ON identity_provider (protocol);
-CREATE INDEX idx_identity_provider_enabled ON identity_provider (enabled);
+CREATE INDEX idx_identity_provider_protocol ON identity_providers (protocol);
+CREATE INDEX idx_identity_provider_enabled ON identity_providers (enabled);
 
 CREATE UNIQUE INDEX uq_identity_provider_system
-ON identity_provider ((1))
+ON identity_providers ((1))
 WHERE is_system = true;
 
-CREATE TABLE idp_user (
+CREATE TABLE idp_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    identity_provider_id UUID NOT NULL REFERENCES identity_provider(id) ON DELETE CASCADE,
+    identity_provider_id UUID NOT NULL REFERENCES identity_providers(id) ON DELETE CASCADE,
     external_id TEXT,
     username TEXT,
     email TEXT,
@@ -35,13 +35,13 @@ CREATE TABLE idp_user (
     UNIQUE (identity_provider_id, external_id)
 );
 
-CREATE INDEX ix_idp_user_email ON idp_user (email);
-CREATE INDEX ix_idp_user_external ON idp_user (identity_provider_id, external_id);
+CREATE INDEX ix_idp_user_email ON idp_users (email);
+CREATE INDEX ix_idp_user_external ON idp_users (identity_provider_id, external_id);
 
-CREATE TABLE audit_log (
+CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID REFERENCES tenant(id),
-    actor_user_id UUID REFERENCES idp_user(id),
+    tenant_id UUID REFERENCES tenants(id),
+    actor_user_id UUID REFERENCES idp_users(id),
     action TEXT NOT NULL,
     payload JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -56,12 +56,12 @@ CREATE TABLE system_init (
 );
 
 INSERT INTO system_init (primary_key, value, system_status, updated_at)
-VALUES ('bootstrap_status', 'false', 'NOTREADY', now())
+VALUES ('bootstrap_status', 'NOTREADY', 'NOTREADY', now())
 ON CONFLICT (primary_key) DO NOTHING;
 
 CREATE TABLE system_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID REFERENCES tenant(id) ON DELETE CASCADE,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     name TEXT,
     description TEXT,
     contact_email TEXT,
@@ -96,15 +96,15 @@ CREATE TABLE system_settings (
     console_session_timeout_minutes INTEGER DEFAULT 15,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by UUID REFERENCES idp_user(id)
+    updated_by UUID REFERENCES idp_users(id)
 );
 
 CREATE UNIQUE INDEX uq_tenant_settings_singleton ON system_settings (tenant_id);
 CREATE INDEX idx_system_settings_tenant ON system_settings (tenant_id);
 
 CREATE TRIGGER trg_system_init_updated BEFORE UPDATE ON system_init FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_identity_provider_updated BEFORE UPDATE ON identity_provider FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_idp_user_updated BEFORE UPDATE ON idp_user FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_identity_provider_updated BEFORE UPDATE ON identity_providers FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_idp_user_updated BEFORE UPDATE ON idp_users FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
 CREATE TRIGGER trg_system_settings_updated
     BEFORE UPDATE ON system_settings
     FOR EACH ROW
@@ -163,5 +163,5 @@ SELECT
     NULL::text AS role_description,
     rb.scope_type::text AS role_scope_type,
     rb.scope_id AS role_scope_id
-FROM idp_user tu
+FROM idp_users tu
 JOIN role_bindings rb ON tu.id::text = rb.subject_id AND rb.subject_type = 'USER';

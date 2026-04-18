@@ -200,7 +200,10 @@ public class BootstrapApplication implements CommandLineRunner {
 
             performInitialization(configPath, outputFolder, passphrasePath, oidcSecretPath, dbPasswordPath);
 
-            jdbcTemplate.update("INSERT INTO system_inits (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name());
+            jdbcTemplate.update(
+                    "INSERT INTO system_init (primary_key, value, system_status, updated_at) VALUES (?, ?, CAST(? AS bootstrap_status), now()) "
+                            + "ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, system_status = EXCLUDED.system_status, updated_at = now()",
+                    BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name(), BootstrapStatus.BOOTSTRAPPED.name());
             System.out.println("Bootstrap initialization completed");
 
         } catch (Exception e) {
@@ -274,7 +277,8 @@ public class BootstrapApplication implements CommandLineRunner {
 
     private BootstrapStatus getBootstrapValue() {
         try {
-            final String bootStrapStatus = jdbcTemplate.queryForObject("SELECT value FROM system_inits WHERE primary_key = ?", String.class, BOOTSTRAP_STATUS_KEY);
+            final String bootStrapStatus = jdbcTemplate.queryForObject(
+                    "SELECT system_status::text FROM system_init WHERE primary_key = ?", String.class, BOOTSTRAP_STATUS_KEY);
             return BootstrapStatus.valueOf(bootStrapStatus);
         } catch (EmptyResultDataAccessException e) {
             return BootstrapStatus.NOTREADY;
@@ -346,8 +350,10 @@ public class BootstrapApplication implements CommandLineRunner {
         }
 
         // Mark bootstrap as done - for now using JDBC since system_init might not have a repository
-        jdbcTemplate.update("INSERT INTO system_inits (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-                BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name());
+        jdbcTemplate.update(
+                "INSERT INTO system_init (primary_key, value, system_status, updated_at) VALUES (?, ?, CAST(? AS bootstrap_status), now()) "
+                        + "ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, system_status = EXCLUDED.system_status, updated_at = now()",
+                BOOTSTRAP_STATUS_KEY, BootstrapStatus.BOOTSTRAPPED.name(), BootstrapStatus.BOOTSTRAPPED.name());
 
         System.out.println("Bootstrap data insertion completed");
     }
@@ -369,8 +375,10 @@ public class BootstrapApplication implements CommandLineRunner {
     }
 
     private static void storeEncryptionKey(JdbcTemplate jdbcTemplate, String key) {
-        jdbcTemplate.update("INSERT INTO system_inits (primary_key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-                           "encryption_key", key);
+        jdbcTemplate.update(
+                "INSERT INTO system_init (primary_key, value, system_status, updated_at) VALUES (?, ?, CAST(? AS bootstrap_status), now()) "
+                        + "ON CONFLICT (primary_key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+                "encryption_key", key, BootstrapStatus.NOTREADY.name());
     }
 
     private IdentityProviderEntity insertIdentityProvider(BootstrapConfig config, String oidcSecretPath) throws IOException {

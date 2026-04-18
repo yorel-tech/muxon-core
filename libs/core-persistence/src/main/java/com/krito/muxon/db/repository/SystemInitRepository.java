@@ -33,7 +33,7 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, St
      * @return number of rows updated
      */
     @Modifying
-    @Query(value = "UPDATE system_inits SET value = :systemStatusName, system_status = cast(:systemStatusName as bootstrap_status), updated_at = :updatedAt WHERE primary_key = :primaryKey", nativeQuery = true)
+    @Query(value = "UPDATE system_init SET value = :systemStatusName, system_status = cast(:systemStatusName as bootstrap_status), updated_at = :updatedAt WHERE primary_key = :primaryKey", nativeQuery = true)
     int updateSystemStatus(@Param("primaryKey") String primaryKey, @Param("systemStatus") BootstrapStatus systemStatus,
                            @Param("systemStatusName") String systemStatusName,
                            @Param("updatedAt") java.time.LocalDateTime updatedAt);
@@ -45,12 +45,12 @@ public interface SystemInitRepository extends JpaRepository<SystemInitEntity, St
      */
     default boolean isBootstrapCompleted() {
         Optional<SystemInitEntity> status = findByPrimaryKey(Constants.BOOTSTRAP_STATUS_KEY);
-        return status.filter(systemInitEntity -> BootstrapStatus.READY.name().equals(systemInitEntity.getValue())).isPresent();
+        return status.map(SystemInitEntity::getSystemStatus).filter(BootstrapStatus.READY::equals).isPresent();
     }
 
     default Optional<BootstrapStatus> getBootstrapStatus() {
         Optional<SystemInitEntity> status = findByPrimaryKey(Constants.BOOTSTRAP_STATUS_KEY);
-        return status.map(entity -> BootstrapStatus.valueOf(entity.getValue()));
+        return status.map(SystemInitEntity::getSystemStatus);
     }
 
     /**

@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Transport-agnostic port for task status events flowing from the worker back to the orchestrator.
  *
- * <p>OSS: backed by the {@code queue_entry} table (TASK_EVENT category) in {@code DbTaskEventQueue}.
+ * <p>OSS: backed by the {@code orchestrator_queue} table (TASK_EVENT category) in {@code DbTaskEventQueue}.
  * <p>Enterprise: replaced by a Kafka implementation in infron-nexus via {@code @ConditionalOnMissingBean}.
  *
  * <p>Event type constants: {@link TaskEventTypes}

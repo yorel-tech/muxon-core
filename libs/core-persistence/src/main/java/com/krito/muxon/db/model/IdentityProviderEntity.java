@@ -1,5 +1,5 @@
 /**
- * Entity for identity_provider table.
+ * Entity for identity_providers table.
  * Supports OIDC, OAuth2.0, and SAML 2.0 identity providers.
  * The is_system flag indicates if this is a system-level provider shared by all tenants.
  */

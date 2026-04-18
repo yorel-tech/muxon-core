@@ -15,7 +15,7 @@ import java.util.UUID;
  * Entity representing a queue entry for database-based async communication
  */
 @Entity
-@Table(name = "queue_entries")
+@Table(name = "orchestrator_queue")
 public class QueueEntryEntity {
 
     @Id

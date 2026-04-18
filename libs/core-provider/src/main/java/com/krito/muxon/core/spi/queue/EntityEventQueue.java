@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Transport-agnostic port for entity state events flowing from the worker to core-services.
  *
- * <p>OSS: backed by the {@code queue_entry} table (ENTITY_EVENT category) in {@code DbEntityEventQueue}.
+ * <p>OSS: backed by the {@code orchestrator_queue} table (ENTITY_EVENT category) in {@code DbEntityEventQueue}.
  * <p>Enterprise: replaced by a Kafka implementation in infron-nexus via {@code @ConditionalOnMissingBean}.
  *
  * <p>Event type naming: {@code <entity>.<action>} — e.g. {@code vm.created}, {@code vm.power.on}.

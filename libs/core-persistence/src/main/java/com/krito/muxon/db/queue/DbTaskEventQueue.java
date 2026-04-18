@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Database-backed implementation of {@link TaskEventQueue}.
- * Uses the {@code queue_entry} table with {@code TASK_EVENT} category.
+ * Uses the {@code orchestrator_queue} table with {@code TASK_EVENT} category.
  * The entity_id column stores the task ID for this category.
  */
 public class DbTaskEventQueue implements TaskEventQueue {

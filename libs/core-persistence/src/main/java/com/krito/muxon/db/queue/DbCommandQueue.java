@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Database-backed implementation of CommandQueue.
- * Uses the queue_entry table and centralizes PENDING → PROCESSING → COMPLETED/FAILED transitions.
+ * Uses the orchestrator_queue table and centralizes PENDING → PROCESSING → COMPLETED/FAILED transitions.
  * <p>
  * {@link #pollCommands}, {@link #markCompleted}, and {@link #markFailed} use {@link Propagation#REQUIRES_NEW}
  * so the claim and terminal updates commit in isolated transactions. That avoids leaving claimed

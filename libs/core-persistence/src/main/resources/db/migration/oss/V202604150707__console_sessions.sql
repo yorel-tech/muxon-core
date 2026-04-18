@@ -6,8 +6,8 @@ CREATE TYPE vm_console_type AS ENUM ('VNC', 'SPICE', 'SERIAL');
 CREATE TABLE console_session (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     vm_id UUID NOT NULL REFERENCES vm (id) ON DELETE CASCADE,
-    tenant_id UUID NOT NULL REFERENCES tenant (id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES idp_user (id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES idp_users (id) ON DELETE CASCADE,
     token TEXT NOT NULL,
     console_type vm_console_type NOT NULL,
     hypervisor_host TEXT NOT NULL,
