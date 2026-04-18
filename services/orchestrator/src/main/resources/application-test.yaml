@@ -10,8 +10,8 @@ spring:
       pool:
         size: 8
   datasource:
-    url: "jdbc:postgresql://localhost:5432/infron"
-    username: "infron"
+    url: "jdbc:postgresql://localhost:5432/muxon"
+    username: "muxon"
     password: "Infr0n@1234"
     driver-class-name: "org.postgresql.Driver"
   jpa:
@@ -25,13 +25,13 @@ logging:
   level:
     root: "INFO"
     org.springframework: "INFO"
-    com.onetattva.infron: "DEBUG"
+    com.krito.muxon: "DEBUG"
   file:
-    name: "logs/infron-orchestrator.log"
+    name: "logs/muxon-orchestrator.log"
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
 
-infron:
+muxon:
   instanceName: "local"
   instanceId: 19
   system: null

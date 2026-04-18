@@ -1,0 +1,619 @@
+version: "1.0"
+
+tables:
+  provider:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      type: { type: provider_type, nullable: false }
+      endpoint: { type: text, nullable: false }
+      credentials: { type: jsonb, nullable: true }
+      capabilities: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      description: { type: varchar(1000), nullable: true }
+      status: { type: text, nullable: false }
+      created_at: { type: timestamptz, nullable: true }
+      updated_at: { type: timestamptz, nullable: true }
+
+  node_cluster:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      provider_id: { type: uuid, nullable: false, references: provider.id }
+      external_id: { type: text, nullable: true }
+      capacity: { type: jsonb, nullable: true }
+      capabilities: { type: jsonb, nullable: true }
+      resources: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      status: { type: node_cluster_status, nullable: false }
+      created_at: { type: timestamptz, nullable: true }
+      updated_at: { type: timestamptz, nullable: true }
+
+  node:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      cluster_id: { type: uuid, nullable: true, references: node_cluster.id }
+      provider_id: { type: uuid, nullable: false, references: provider.id }
+      external_id: { type: text, nullable: true }
+      name: { type: text, nullable: false }
+      description: { type: varchar(1000), nullable: true }
+      role: { type: text, nullable: true }
+      cpu_total: { type: int, nullable: true }
+      mem_mb: { type: int, nullable: true }
+      capabilities: { type: text[], nullable: true }
+      resources: { type: jsonb, nullable: true }
+      status: { type: node_status, nullable: false }
+      last_seen_at: { type: timestamptz, nullable: true }
+      credentials: { type: jsonb, nullable: true }
+      ip_addresses: { type: text[], nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  datacenter:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      node_cluster_id: { type: uuid, nullable: false, references: node_cluster.id }
+      capacity: { type: jsonb, nullable: true }
+      settings: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  tenant:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      display_name: { type: text, nullable: true }
+      is_system: { type: boolean, nullable: false }
+      status: { type: tenant_status, nullable: false }
+      metadata: { type: jsonb, nullable: true }
+      settings: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  tenant_datacenter_grant:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      tenant_id: { type: uuid, nullable: false, references: tenant.id }
+      datacenter_id: { type: uuid, nullable: false, references: datacenter.id }
+      access: { type: boolean, nullable: false }
+      limits: { type: jsonb, nullable: true }
+      enabled_features: { type: text[], nullable: true }
+      override_settings: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  permissions:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      action: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      scope: { type: role_scope, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+
+  roles:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      scope_type: { type: role_scope, nullable: false }
+      scope_id: { type: uuid, nullable: true }
+      immutable: { type: boolean, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+
+  role_permissions:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      role_id: { type: uuid, nullable: false, references: roles.id }
+      permission_id: { type: uuid, nullable: false, references: permissions.id }
+      created_at: { type: timestamptz, nullable: false }
+
+  role_bindings:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      role_id: { type: uuid, nullable: false, references: roles.id }
+      subject_type: { type: subject_type, nullable: false }
+      subject_id: { type: text, nullable: false }
+      scope_type: { type: role_scope, nullable: false }
+      scope_id: { type: uuid, nullable: true }
+      expires_at: { type: timestamptz, nullable: true }
+      created_by: { type: uuid, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+
+  identity_provider:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: text, nullable: false }
+      protocol: { type: idp_protocol, nullable: false }
+      enabled: { type: boolean, nullable: false }
+      metadata: { type: jsonb, nullable: false }
+      is_system: { type: boolean, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  idp_user:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      identity_provider_id: { type: uuid, nullable: false, references: identity_provider.id }
+      external_id: { type: text, nullable: true }
+      username: { type: text, nullable: true }
+      email: { type: text, nullable: true }
+      display_name: { type: text, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  audit_log:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      tenant_id: { type: uuid, nullable: true, references: tenant.id }
+      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      action: { type: text, nullable: false }
+      payload: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+
+  system_init:
+    columns:
+      primary_key: { type: text, nullable: false, primary_key: true }
+      value: { type: text, nullable: true }
+      updated_at: { type: timestamptz, nullable: false }
+      system_status: { type: bootstrap_status, nullable: false }
+
+  system_settings:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      tenant_id: { type: uuid, nullable: true, references: tenant.id }
+      name: { type: text, nullable: true }
+      description: { type: text, nullable: true }
+      contact_email: { type: text, nullable: true }
+      contact_phone: { type: text, nullable: true }
+      default_timezone: { type: text, nullable: true }
+      default_locale: { type: text, nullable: true }
+      session_timeout_minutes: { type: int, nullable: true }
+      max_login_attempts: { type: int, nullable: true }
+      lockout_duration_minutes: { type: int, nullable: true }
+      password_min_length: { type: int, nullable: true }
+      password_require_uppercase: { type: boolean, nullable: true }
+      password_require_lowercase: { type: boolean, nullable: true }
+      password_require_digit: { type: boolean, nullable: true }
+      password_require_symbol: { type: boolean, nullable: true }
+      password_expiry_days: { type: int, nullable: true }
+      api_rate_limit_per_minute: { type: int, nullable: true }
+      smtp_enabled: { type: boolean, nullable: true }
+      smtp_host: { type: text, nullable: true }
+      smtp_port: { type: int, nullable: true }
+      smtp_username: { type: text, nullable: true }
+      smtp_password: { type: text, nullable: true }
+      smtp_from_email: { type: text, nullable: true }
+      smtp_use_tls: { type: boolean, nullable: true }
+      slack_webhook_url: { type: text, nullable: true }
+      webhook_enabled: { type: boolean, nullable: true }
+      theme: { type: text, nullable: true }
+      logo_url: { type: text, nullable: true }
+      favicon_url: { type: text, nullable: true }
+      primary_color: { type: text, nullable: true }
+      secondary_color: { type: text, nullable: true }
+      custom_css_url: { type: text, nullable: true }
+      console_session_timeout_minutes: { type: int, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+
+  queue_entry:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      queue_type: { type: text, nullable: false }
+      entity_type: { type: entity_type, nullable: false }
+      entity_id: { type: uuid, nullable: false }
+      queue_category: { type: queue_category, nullable: false }
+      status: { type: queue_status, nullable: false }
+      payload: { type: jsonb, nullable: false }
+      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      actor_service: { type: text, nullable: true }
+      actor_type: { type: text, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      processed_at: { type: timestamptz, nullable: true }
+      correlation_id: { type: text, nullable: true }
+      request_id: { type: text, nullable: true }
+      source: { type: text, nullable: false }
+      version: { type: text, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_by: { type: uuid, nullable: true, references: idp_user.id }
+      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+      error_message: { type: text, nullable: true }
+
+  job:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      job_type: { type: job_type, nullable: false }
+      status: { type: job_status, nullable: false }
+      target_entity_type: { type: entity_type, nullable: false }
+      target_entity_id: { type: uuid, nullable: false }
+      parameters: { type: jsonb, nullable: true }
+      result: { type: jsonb, nullable: true }
+      provider_id: { type: uuid, nullable: true, references: provider.id }
+      provider_operation_id: { type: text, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      started_at: { type: timestamptz, nullable: true }
+      completed_at: { type: timestamptz, nullable: true }
+      error_message: { type: text, nullable: true }
+      error_details: { type: jsonb, nullable: true }
+      retry_count: { type: int, nullable: true }
+      max_retries: { type: int, nullable: true }
+      correlation_id: { type: text, nullable: true }
+      request_id: { type: text, nullable: true }
+      current_step: { type: text, nullable: true }
+      total_steps: { type: int, nullable: true }
+      progress_percentage: { type: int, nullable: true }
+      timeout_at: { type: timestamptz, nullable: true }
+      last_heartbeat_at: { type: timestamptz, nullable: true }
+      cancellation_requested: { type: boolean, nullable: true }
+      cancellation_reason: { type: text, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+
+  entity_event:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      event_type: { type: text, nullable: false }
+      entity_type: { type: entity_type, nullable: false }
+      entity_id: { type: uuid, nullable: false }
+      message: { type: text, nullable: true }
+      details: { type: jsonb, nullable: true }
+      actor_user_id: { type: uuid, nullable: true, references: idp_user.id }
+      actor_service: { type: text, nullable: true }
+      actor_type: { type: text, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      correlation_id: { type: text, nullable: true }
+      request_id: { type: text, nullable: true }
+      source: { type: text, nullable: false }
+      version: { type: text, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+
+  task_step:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      task_id: { type: uuid, nullable: false, references: job.id }
+      step_number: { type: int, nullable: false }
+      step_name: { type: text, nullable: false }
+      step_description: { type: text, nullable: true }
+      status: { type: job_status, nullable: false }
+      started_at: { type: timestamptz, nullable: true }
+      completed_at: { type: timestamptz, nullable: true }
+      error_message: { type: text, nullable: true }
+      error_details: { type: jsonb, nullable: true }
+      output: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  task_log:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      task_id: { type: uuid, nullable: false, references: job.id }
+      step_id: { type: uuid, nullable: true, references: task_step.id }
+      log_level: { type: text, nullable: false }
+      message: { type: text, nullable: false }
+      details: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+
+  storage_classes:
+    columns:
+      name: { type: varchar(64), nullable: false, primary_key: true }
+      type: { type: varchar(32), nullable: false }
+      tier: { type: varchar(32), nullable: false }
+      features: { type: jsonb, nullable: false }
+      qos: { type: jsonb, nullable: true }
+      allowed_providers: { type: jsonb, nullable: true }
+      capabilities: { type: jsonb, nullable: false }
+      constraints: { type: jsonb, nullable: false }
+      description: { type: text, nullable: true }
+      version: { type: bigint, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  provider_storage_mappings:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      storage_class: { type: varchar(64), nullable: false, references: storage_classes.name }
+      provider_id: { type: uuid, nullable: false }
+      backend_type: { type: varchar(64), nullable: false }
+      backend_config: { type: jsonb, nullable: false }
+      priority: { type: int, nullable: true }
+      enabled: { type: boolean, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: true }
+
+  volumes:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: varchar(255), nullable: false }
+      workspace_id: { type: uuid, nullable: false }
+      storage_class: { type: varchar(64), nullable: false, references: storage_classes.name }
+      size_bytes: { type: bigint, nullable: false }
+      actual_size_bytes: { type: bigint, nullable: true }
+      status: { type: varchar(32), nullable: false }
+      provider_id: { type: uuid, nullable: false, references: provider.id }
+      provider_volume_id: { type: varchar(255), nullable: false }
+      encrypted: { type: boolean, nullable: true }
+      encryption_key_id: { type: varchar(64), nullable: true }
+      thin_provisioned: { type: boolean, nullable: true }
+      tags: { type: jsonb, nullable: true }
+      selected_storage_id: { type: uuid, nullable: true, references: provider_storage.id }
+      scheduler_metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      deleted_at: { type: timestamptz, nullable: true }
+      version: { type: bigint, nullable: true }
+
+  provider_storage:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      provider_id: { type: uuid, nullable: false }
+      provider_type: { type: varchar(32), nullable: false }
+      external_id: { type: varchar(255), nullable: false }
+      name: { type: varchar(255), nullable: false }
+      storage_type: { type: varchar(64), nullable: false }
+      capabilities: { type: jsonb, nullable: false }
+      metrics: { type: jsonb, nullable: false }
+      node_id: { type: varchar(255), nullable: true }
+      datacenter_id: { type: uuid, nullable: true }
+      enabled: { type: boolean, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      synced_at: { type: timestamptz, nullable: true }
+      version: { type: bigint, nullable: true }
+
+  storage_capability_mappings:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      muxon_capability: { type: varchar(64), nullable: false }
+      provider_type: { type: varchar(32), nullable: false }
+      provider_capability: { type: varchar(64), nullable: false }
+      value_mapping: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+
+  storage_overrides:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      storage_class_name: { type: varchar(64), nullable: false, references: storage_classes.name }
+      provider_type: { type: varchar(32), nullable: false }
+      provider_storage_names: { type: text[], nullable: false }
+      priority: { type: int, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: true }
+
+  volume_attachments:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      volume_id: { type: uuid, nullable: false, references: volumes.id }
+      resource_type: { type: varchar(32), nullable: false }
+      resource_id: { type: uuid, nullable: false }
+      device: { type: varchar(64), nullable: true }
+      attached_at: { type: timestamptz, nullable: false }
+      detached_at: { type: timestamptz, nullable: true }
+      version: { type: bigint, nullable: true }
+
+  snapshots:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      volume_id: { type: uuid, nullable: false, references: volumes.id }
+      name: { type: varchar(255), nullable: false }
+      size_bytes: { type: bigint, nullable: false }
+      status: { type: varchar(32), nullable: false }
+      provider_snapshot_id: { type: varchar(255), nullable: false }
+      immutable: { type: boolean, nullable: true }
+      retention_until: { type: timestamptz, nullable: true }
+      backup_policy_id: { type: varchar(64), nullable: true }
+      tags: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      deleted_at: { type: timestamptz, nullable: true }
+      version: { type: bigint, nullable: true }
+
+  buckets:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: varchar(255), nullable: false }
+      workspace_id: { type: uuid, nullable: false }
+      storage_class: { type: varchar(64), nullable: false, references: storage_classes.name }
+      region: { type: varchar(64), nullable: true }
+      versioning: { type: boolean, nullable: true }
+      encryption: { type: jsonb, nullable: true }
+      acl: { type: varchar(32), nullable: true }
+      lifecycle_rules: { type: jsonb, nullable: true }
+      provider_bucket_id: { type: varchar(255), nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      deleted_at: { type: timestamptz, nullable: true }
+      version: { type: bigint, nullable: true }
+
+  content_storage:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: varchar(128), nullable: false }
+      storage_type: { type: varchar(32), nullable: false }
+      config: { type: jsonb, nullable: false }
+      is_default: { type: boolean, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: false }
+
+  content_libraries:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      name: { type: varchar(128), nullable: false }
+      description: { type: text, nullable: true }
+      library_type: { type: varchar(32), nullable: false }
+      access_mode: { type: varchar(32), nullable: false }
+      tenant_id: { type: uuid, nullable: false, references: tenant.id }
+      source_config: { type: jsonb, nullable: true }
+      storage_class_name: { type: varchar(64), nullable: true }
+      sync_status: { type: varchar(32), nullable: false }
+      last_synced_at: { type: timestamptz, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      content_storage_id: { type: uuid, nullable: false, references: content_storage.id }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: false }
+
+  content_items:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      library_id: { type: uuid, nullable: false, references: content_libraries.id }
+      name: { type: varchar(128), nullable: false }
+      description: { type: text, nullable: true }
+      content_type: { type: varchar(64), nullable: false }
+      version_label: { type: varchar(128), nullable: true }
+      size_bytes: { type: bigint, nullable: true }
+      checksum: { type: varchar(256), nullable: true }
+      checksum_algorithm: { type: varchar(32), nullable: true }
+      source_url: { type: text, nullable: true }
+      source_item_id: { type: uuid, nullable: true, references: content_items.id }
+      content_status: { type: varchar(32), nullable: false }
+      last_replicated_at: { type: timestamptz, nullable: true }
+      provider_relative_path: { type: text, nullable: true }
+      muxon_instance_segment: { type: varchar(64), nullable: true }
+      template_spec: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: false }
+
+  content_library_distribution:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      library_id: { type: uuid, nullable: false, references: content_libraries.id }
+      datacenter_id: { type: uuid, nullable: false, references: datacenter.id }
+      replicate_status: { type: varchar(32), nullable: false }
+      last_replicated_at: { type: timestamptz, nullable: true }
+      storage_class_name: { type: varchar(128), nullable: true }
+      progress_percent: { type: int, nullable: false }
+      error_message: { type: text, nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: false }
+
+  content_item_distribution:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      content_item_id: { type: uuid, nullable: false, references: content_items.id }
+      distribution_id: { type: uuid, nullable: false, references: content_library_distribution.id }
+      status: { type: text, nullable: false }
+      checksum_verified: { type: boolean, nullable: false }
+      size_bytes: { type: bigint, nullable: true }
+      error_message: { type: text, nullable: true }
+      retry_count: { type: int, nullable: false }
+      last_updated_at: { type: timestamptz, nullable: false }
+      version: { type: bigint, nullable: false }
+
+  vm:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      tenant_datacenter_grant_id: { type: uuid, nullable: false, references: tenant_datacenter_grant.id }
+      name: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      spec: { type: jsonb, nullable: false }
+      status: { type: vm_status, nullable: false }
+      power_state: { type: vm_power_state, nullable: false }
+      provider_id: { type: uuid, nullable: true, references: provider.id }
+      node_id: { type: uuid, nullable: true, references: node.id }
+      external_id: { type: text, nullable: true }
+      ip_addresses: { type: text[], nullable: true }
+      hostname: { type: text, nullable: true }
+      resource_usage: { type: jsonb, nullable: true }
+      metadata: { type: jsonb, nullable: true }
+      tags: { type: text[], nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+      started_at: { type: timestamptz, nullable: true }
+      stopped_at: { type: timestamptz, nullable: true }
+      created_by: { type: uuid, nullable: true, references: idp_user.id }
+      updated_by: { type: uuid, nullable: true, references: idp_user.id }
+      version: { type: bigint, nullable: false }
+      content_item_id: { type: uuid, nullable: true, references: content_items.id }
+      attached_iso_item_ids: { type: uuid[], nullable: true }
+
+  compute_profile:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      tenant_datacenter_grant_id: { type: uuid, nullable: true, references: tenant_datacenter_grant.id }
+      name: { type: text, nullable: false }
+      description: { type: text, nullable: true }
+      spec: { type: jsonb, nullable: false }
+      metadata: { type: jsonb, nullable: true }
+      tags: { type: text[], nullable: true }
+      created_at: { type: timestamptz, nullable: false }
+      updated_at: { type: timestamptz, nullable: false }
+
+  console_session:
+    columns:
+      id: { type: uuid, nullable: false, primary_key: true }
+      vm_id: { type: uuid, nullable: false, references: vm.id }
+      tenant_id: { type: uuid, nullable: false, references: tenant.id }
+      user_id: { type: uuid, nullable: false, references: idp_user.id }
+      token: { type: text, nullable: false }
+      console_type: { type: vm_console_type, nullable: false }
+      hypervisor_host: { type: text, nullable: false }
+      hypervisor_port: { type: int, nullable: false }
+      hypervisor_password: { type: text, nullable: true }
+      tls: { type: boolean, nullable: false }
+      status: { type: console_session_status, nullable: false }
+      created_at: { type: timestamptz, nullable: false }
+      expires_at: { type: timestamptz, nullable: false }
+      last_activity_at: { type: timestamptz, nullable: false }
+      closed_at: { type: timestamptz, nullable: true }
+      upstream_ws_url: { type: text, nullable: true }
+      upstream_ws_cookie: { type: text, nullable: true }
+      upstream_ws_csrf: { type: text, nullable: true }
+      upstream_ws_authorization: { type: text, nullable: true }
+
+views:
+  user_role_bindings:
+    columns:
+      user_id: { type: uuid, nullable: false }
+      external_id: { type: text, nullable: true }
+      identity_provider_id: { type: uuid, nullable: false }
+      username: { type: text, nullable: true }
+      email: { type: text, nullable: true }
+      display_name: { type: text, nullable: true }
+      user_metadata: { type: jsonb, nullable: true }
+      user_created_at: { type: timestamptz, nullable: false }
+      user_updated_at: { type: timestamptz, nullable: false }
+      binding_id: { type: uuid, nullable: false }
+      role_id: { type: uuid, nullable: false }
+      subject_type: { type: text, nullable: false }
+      subject_id: { type: text, nullable: false }
+      scope_type: { type: text, nullable: false }
+      scope_id: { type: uuid, nullable: true }
+      expires_at: { type: timestamptz, nullable: true }
+      created_by: { type: uuid, nullable: true }
+      binding_created_at: { type: timestamptz, nullable: false }
+      role_name: { type: text, nullable: true }
+      role_description: { type: text, nullable: true }
+      role_scope_type: { type: text, nullable: true }
+      role_scope_id: { type: uuid, nullable: true }
+
+  active_volume_attachments:
+    columns: {}
+  active_snapshots:
+    columns: {}
+  active_buckets:
+    columns: {}
+  workspace_storage_usage:
+    columns: {}
+  provider_storage_usage:
+    columns: {}
+  storage_class_utilization:
+    columns: {}
+  storage_class_capabilities:
+    columns: {}
+  provider_storage_details:
+    columns: {}
+  storage_mapping_summary:
+    columns: {}
+

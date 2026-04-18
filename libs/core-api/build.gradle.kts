@@ -99,9 +99,9 @@ tasks.named<GenerateTask>("openApiGenerate") {
     // Treat first $ref in allOf as Java superclass so VmTemplateContentItemCreate extends ContentItemCreateBase.
     openapiNormalizer.set(mapOf("REF_AS_PARENT_IN_ALLOF" to "true"))
 
-    apiPackage.set("com.onetattva.infron.api")
-    modelPackage.set("com.onetattva.infron.api.model")
-    invokerPackage.set("com.onetattva.infron.api.invoker")
+    apiPackage.set("com.krito.muxon.api")
+    modelPackage.set("com.krito.muxon.api.model")
+    invokerPackage.set("com.krito.muxon.api.invoker")
 
 //    globalProperties.set(
 //        mapOf(

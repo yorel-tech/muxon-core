@@ -8,8 +8,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   contact:
     name: API Support
-    url: http://www.onetattva.com/support
-    email: support@onetattva.com
+    url: http://www.krito.com/support
+    email: support@krito.com
 
 servers:
   - url: /api/v1
@@ -29,10 +29,8 @@ tags:
   description: Health endpoints
 - name: Roles
   description: Role operations for platform and tenant admins
-- name: Permissions
-  description: Permissions endpoints
-- name: Bindings
-  description: Role Bindings endpoints
+- name: Capabilities
+  description: Per-user derived capabilities
 - name: Providers
   description: Infrastructure provider management
 - name: VMs
@@ -216,29 +214,13 @@ paths:
 
   # Roles
   /api/v1/roles:
-    $ref: './core_rbac.yaml#/paths/~1roles'
-  /api/v1/roles/{roleId}:
-    $ref: './core_rbac.yaml#/paths/~1roles~1{roleId}'
-  /api/v1/roles/{roleId}/bindings:
-    $ref: './core_rbac.yaml#/paths/~1roles~1{roleId}~1bindings'
-  /api/v1/roles/{roleId}/permissions:
-    $ref: './core_rbac.yaml#/paths/~1roles~1{roleId}~1permissions'
+    $ref: './roles_capabilities.yaml#/paths/~1roles'
   /api/v1/tenants/{tenantId}/roles:
-    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles'
-  /api/v1/tenants/{tenantId}/roles/{roleId}:
-    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles~1{roleId}'
-  /api/v1/tenants/{tenantId}/roles/{roleId}/bindings:
-    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles~1{roleId}~1bindings'
-  /api/v1/tenants/{tenantId}/roles/{roleId}/permissions:
-    $ref: './core_rbac.yaml#/paths/~1tenants~1{tenantId}~1roles~1{roleId}~1permissions'
-  /api/v1/permissions:
-    $ref: './core_rbac.yaml#/paths/~1permissions'
-  /api/v1/role-bindings:
-    $ref: './core_rbac.yaml#/paths/~1role-bindings'
-  /api/v1/role-bindings/{bindingId}:
-    $ref: './core_rbac.yaml#/paths/~1role-bindings~1{bindingId}'
-  /api/v1/users/{userId}/bindings:
-    $ref: './core_rbac.yaml#/paths/~1users~1{userId}~1bindings'
+    $ref: './roles_capabilities.yaml#/paths/~1tenants~1{tenantId}~1roles'
+
+  # Capabilities
+  /api/v1/me/capabilities:
+    $ref: './roles_capabilities.yaml#/paths/~1me~1capabilities'
 
   # System Settings
   /api/v1/system-settings:

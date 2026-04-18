@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-group = "com.onetattva.infron"
+group = "com.krito.muxon"
 version = "0.1.0"
 
 dependencies {

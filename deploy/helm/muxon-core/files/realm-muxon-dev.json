@@ -1,0 +1,153 @@
+{
+  "realm": "muxon-dev",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "admin" },
+      { "name": "member" },
+      { "name": "tenantadmin" },
+      { "name": "workload-operator" },
+      { "name": "workload-user" }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin@muxon.dev",
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "enabled": true
+    },
+    {
+      "username": "limited-admin@muxon.dev",
+      "firstName": "Limited",
+      "lastName": "Admin",
+      "email": "limited-admin@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "enabled": true
+    },
+    {
+      "username": "dev@muxon.dev",
+      "firstName": "Dev",
+      "lastName": "User",
+      "email": "dev@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "member"
+      ],
+      "enabled": true
+    },
+    {
+      "username": "tenantadmin@muxon.dev",
+      "firstName": "Tenant",
+      "lastName": "Admin",
+      "email": "tenantadmin@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["tenantadmin"],
+      "enabled": true
+    },
+    {
+      "username": "workload-operator@muxon.dev",
+      "firstName": "Workload",
+      "lastName": "Operator",
+      "email": "workload-operator@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["workload-operator"],
+      "enabled": true
+    },
+    {
+      "username": "workload-user@muxon.dev",
+      "firstName": "Workload",
+      "lastName": "User",
+      "email": "workload-user@muxon.dev",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Infr0n@1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["workload-user"],
+      "enabled": true
+    },
+    {
+      "username": "service-account-muxon-api",
+      "enabled": true,
+      "serviceAccountClientId": "muxon-api",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "view-groups"
+        ]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "muxon-web",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://localhost:4000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4000"
+      ],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "muxon-api",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "${MUXON_API_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "fullScopeAllowed": true 
+    }
+  ]
+}

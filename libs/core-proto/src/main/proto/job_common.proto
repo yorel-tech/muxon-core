@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package infron.workflow.v1;
+package muxon.workflow.v1;
 
 option java_multiple_files = true;
-option java_package = "com.onetattva.infron.grpc.workflow.v1";
+option java_package = "com.krito.muxon.grpc.workflow.v1";
 option java_outer_classname = "JobCommonProto";
 
 // Shared response returned by every workflow operation.

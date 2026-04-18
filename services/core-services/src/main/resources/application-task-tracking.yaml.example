@@ -1,7 +1,7 @@
 # Task Tracking Configuration Example
 # Copy relevant sections to your application.yaml
 
-infron:
+muxon:
   tasks:
     # Default timeout for tasks in seconds (1 hour)
     default-timeout: 3600

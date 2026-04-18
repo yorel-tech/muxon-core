@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+spring:
+  application:
+    name: core-services
+
+# DB + JPA
+  datasource:
+    url: jdbc:postgresql://localhost:5432/muxon
+    username: muxon
+    password: muxon
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  # flyway
+  flyway:
+    enabled: true
+
+  cache:
+    type: caffeine
+
+# API docs for service
+springdoc:
+  writer-with-order-by-keys: true
+  swagger-ui:
+    try-it-out-enabled: true
+
+# Logging - file writes for core business logs
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate: INFO
+    com.krito.muxon.core: DEBUG
+
+  file:
+    name: logs/muxon-core.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

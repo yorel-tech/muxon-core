@@ -1,0 +1,28 @@
+muxon:
+  instanceName: "local"
+  instanceId: 19
+
+  # system configuration
+  system:
+    systemAdminUserName: "admin@muxon.dev"
+    idp:
+      name: "default-idp"
+      protocol: "OIDC"            # or SAML2
+      metadata:
+        # OIDC placeholders
+        issuerUri: "http://localhost:8085/realms/muxon-dev"
+        clientId: "muxon-api"
+        clientSecret: "provide-in-secrets"
+      
+  # new tenants
+  tenants:
+  - name: "default"
+    idpName: "default-idp"
+    tenantAdminUserName: "dev@muxon.dev"
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/muxon
+    username: muxon
+    password: muxon
+    driver-class-name: org.postgresql.Driver
+

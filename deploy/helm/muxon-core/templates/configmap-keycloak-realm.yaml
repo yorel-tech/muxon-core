@@ -1,0 +1,13 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "muxon-core.fullname" . }}-keycloak-realm
+  labels:
+    app: keycloak
+    chart: {{ include "muxon-core.chart" . }}
+    release: {{ .Release.Name }}
+data:
+  muxon-dev.json: |
+{{ .Files.Get "files/realm-muxon-dev.json" | trim | nindent 4 }}
+{{- end }}

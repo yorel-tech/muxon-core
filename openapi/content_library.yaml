@@ -239,13 +239,13 @@ components:
               type: string
               nullable: true
               readOnly: true
-              description: Relative path under the provider storage pool when materialized (infron-.../content-libraries/...).
-            infronInstanceSegment:
+              description: Relative path under the provider storage pool when materialized (muxon-.../content-libraries/...).
+            muxonInstanceSegment:
               type: string
               maxLength: 64
               nullable: true
               readOnly: true
-              description: infron-{instanceName}-{instanceId} segment captured when the path was assigned.
+              description: muxon-{instanceName}-{instanceId} segment captured when the path was assigned.
 
     # VM template spec (minimal: only fields required to create a VM)
     VmTemplateSpec:
@@ -255,7 +255,7 @@ components:
       properties:
         apiVersion:
           type: string
-          example: infron.io/v1
+          example: muxon.io/v1
         kind:
           type: string
           enum: [VmTemplate]

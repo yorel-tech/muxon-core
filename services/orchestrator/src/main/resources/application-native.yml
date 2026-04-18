@@ -7,8 +7,8 @@ spring:
   application:
     name: "orchestrator"
   datasource:
-    url: "jdbc:postgresql://localhost:5432/infron"
-    username: "infron"
+    url: "jdbc:postgresql://localhost:5432/muxon"
+    username: "muxon"
     password: "Oln5QcC7iHiLOtVIrfXzbQ=="
     driver-class-name: "org.postgresql.Driver"
   jpa:
@@ -23,7 +23,7 @@ spring:
 server:
   port: 8081
 
-infron:
+muxon:
   instanceName: "local"
   instanceId: 19
   system: null

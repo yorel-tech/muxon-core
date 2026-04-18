@@ -1,0 +1,9 @@
+
+services:
+  keycloak:
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: Infr0n@1234
+    volumes:
+      - ${PWD}/compose/keycloak/realm-muxon-dev.json:/opt/keycloak/data/import/realm-muxon-dev.json:ro

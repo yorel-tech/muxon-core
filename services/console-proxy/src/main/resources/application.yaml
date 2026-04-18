@@ -12,8 +12,8 @@ spring:
   application:
     name: "console-proxy"
   datasource:
-    url: "jdbc:postgresql://localhost:5432/infron"
-    username: "infron"
+    url: "jdbc:postgresql://localhost:5432/muxon"
+    username: "muxon"
     password: "Oln5QcC7iHiLOtVIrfXzbQ=="
     driver-class-name: "org.postgresql.Driver"
   jpa:
@@ -25,7 +25,7 @@ spring:
   flyway:
     enabled: false
 
-infron:
+muxon:
   instanceName: "local"
   instanceId: 19
   console:
@@ -39,8 +39,8 @@ logging:
   level:
     root: "INFO"
     org.springframework: "INFO"
-    com.onetattva.infron: "DEBUG"
+    com.krito.muxon: "DEBUG"
   file:
-    name: "logs/infron-console-proxy.log"
+    name: "logs/muxon-console-proxy.log"
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"

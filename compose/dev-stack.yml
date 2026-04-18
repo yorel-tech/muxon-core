@@ -1,11 +1,11 @@
-name: infron-dev
+name: muxon-dev
 services:
   postgres:
     image: postgres:18
     environment:
-      POSTGRES_USER: infron
-      POSTGRES_PASSWORD: infron
-      POSTGRES_DB: infron
+      POSTGRES_USER: muxon
+      POSTGRES_PASSWORD: Infr0n@1234
+      POSTGRES_DB: muxon
     ports: ["5432:5432"]
 
   keycloak:
@@ -15,13 +15,6 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
-      - ./compose/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
+      - ./keycloak/realm-muxon-dev.json:/opt/keycloak/data/import/muxon-dev.json:ro
     ports: ["8085:8085"]
 
-  grafana:
-    image: grafana/grafana:12.3.0-18546308611
-    ports: ["3000:3000"]
-
-  prometheus:
-    image: prom/prometheus:v3.7.0
-    ports: ["9090:9090"]

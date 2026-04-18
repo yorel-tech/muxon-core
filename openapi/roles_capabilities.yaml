@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Roles & Capabilities API
+  version: "1.0.0"
+  description: "Read-only OSS roles from RoleRegistry and per-user capabilities derived from role→action mapping."
+
+security:
+  - bearerAuth: []
+
+components:
+  schemas:
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Deterministic UUID derived from role name
+        name:
+          type: string
+          example: "workload:operator"
+        description:
+          type: string
+          example: "Workload Operator"
+        scopeType:
+          type: string
+          description: "system | tenant_global | tenant"
+          example: "tenant_global"
+        immutable:
+          type: boolean
+          example: true
+
+    RoleList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        total:
+          type: integer
+
+    Capabilities:
+      type: object
+      properties:
+        infra:
+          $ref: "#/components/schemas/InfraCapabilities"
+        vm:
+          $ref: "#/components/schemas/VmCapabilities"
+        container:
+          $ref: "#/components/schemas/ContainerCapabilities"
+        network:
+          $ref: "#/components/schemas/NetworkCapabilities"
+        storage:
+          $ref: "#/components/schemas/UserRbacStorageCapabilities"
+        project:
+          $ref: "#/components/schemas/ProjectCapabilities"
+        orchestration:
+          $ref: "#/components/schemas/OrchestrationCapabilities"
+
+    InfraCapabilities:
+      type: object
+      properties:
+        view: { type: boolean }
+        manage: { type: boolean }
+
+    VmCapabilities:
+      type: object
+      properties:
+        create: { type: boolean }
+        start: { type: boolean }
+        stop: { type: boolean }
+        delete: { type: boolean }
+        view: { type: boolean }
+        consoleAccess: { type: boolean }
+
+    ContainerCapabilities:
+      type: object
+      properties:
+        deploy: { type: boolean }
+        update: { type: boolean }
+        delete: { type: boolean }
+        view: { type: boolean }
+
+    NetworkCapabilities:
+      type: object
+      properties:
+        create: { type: boolean }
+        attach: { type: boolean }
+        detach: { type: boolean }
+        view: { type: boolean }
+
+    UserRbacStorageCapabilities:
+      type: object
+      description: User-facing storage capability flags (RBAC); distinct from storage-class StorageCapabilities.
+      properties:
+        create: { type: boolean }
+        attach: { type: boolean }
+        detach: { type: boolean }
+        view: { type: boolean }
+
+    ProjectCapabilities:
+      type: object
+      properties:
+        view: { type: boolean }
+        update: { type: boolean }
+        delete: { type: boolean }
+        manageMembers: { type: boolean }
+
+    OrchestrationCapabilities:
+      type: object
+      properties:
+        executeTask: { type: boolean }
+        retryTask: { type: boolean }
+        cancelTask: { type: boolean }
+        viewTasks: { type: boolean }
+
+paths:
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [Roles]
+      summary: List roles (system admin)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/roles:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listTenantRoles
+      tags: [Roles]
+      summary: List roles visible to tenant (from RoleRegistry)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /me/capabilities:
+    get:
+      operationId: getMyCapabilities
+      tags: [Capabilities]
+      summary: Get capabilities for current user
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Capabilities"
+        '401':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+

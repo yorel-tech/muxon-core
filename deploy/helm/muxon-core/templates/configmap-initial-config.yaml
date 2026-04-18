@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "muxon-core.fullname" . }}-initial-config
+  labels:
+    app: core-services
+    chart: {{ include "muxon-core.chart" . }}
+    release: {{ .Release.Name }}
+data:
+  initial-config.yaml: |
+{{- if .Values.bootstrap.initialConfigYaml }}
+{{ .Values.bootstrap.initialConfigYaml | trim | nindent 4 }}
+{{- else }}
+    muxon:
+      instanceName: {{ .Values.bootstrap.initialConfig.instanceName | quote }}
+      instanceId: {{ .Values.bootstrap.initialConfig.instanceId }}
+      system:
+        systemAdminUserName: {{ .Values.bootstrap.initialConfig.systemAdminUserName | quote }}
+        idp:
+          name: {{ .Values.bootstrap.initialConfig.idpName | quote }}
+          protocol: {{ .Values.bootstrap.initialConfig.idpProtocol | quote }}
+          metadata:
+            issuerUri: {{ .Values.bootstrap.initialConfig.issuerUri | quote }}
+            clientId: {{ .Values.bootstrap.initialConfig.clientId | quote }}
+            clientSecret: {{ .Values.bootstrap.initialConfig.clientSecretPlaceholder | quote }}
+      tenants:
+        - name: {{ .Values.bootstrap.initialConfig.tenantName | quote }}
+          idpName: {{ .Values.bootstrap.initialConfig.idpName | quote }}
+          tenantAdminUserName: {{ .Values.bootstrap.initialConfig.tenantAdminUserName | quote }}
+      datasource:
+        url: {{ .Values.bootstrap.initialConfig.datasourceUrl | quote }}
+        username: {{ .Values.bootstrap.initialConfig.datasourceUsername | quote }}
+        password: {{ .Values.bootstrap.initialConfig.datasourcePasswordPlaceholder | quote }}
+        driver-class-name: org.postgresql.Driver
+{{- end }}

@@ -1,27 +1,27 @@
-infron:
+muxon:
   instanceName: "local"
   instanceId: 19
 
   # system configuration
   system:
-    systemAdminUserName: "admin@infron.dev"
+    systemAdminUserName: "admin@muxon.dev"
     idp:
       name: "default-idp"
       protocol: "OIDC"            # or SAML2
       metadata:
         # OIDC placeholders
-        issuerUri: "http://keycloak:8085/realms/infron-dev"
-        clientId: "infron-api"
+        issuerUri: "http://keycloak:8085/realms/muxon-dev"
+        clientId: "muxon-api"
         clientSecret: "provide-in-secret"
 
   # new tenants
   tenants:
     - name: "default"
       idpName: "default-idp"
-      tenantAdminUserName: "dev@infron.dev"
+      tenantAdminUserName: "dev@muxon.dev"
 
   datasource:
-    url: jdbc:postgresql://postgres:5432/infron
-    username: infron
+    url: jdbc:postgresql://postgres:5432/muxon
+    username: muxon
     password: "provide-in-secret"
     driver-class-name: org.postgresql.Driver

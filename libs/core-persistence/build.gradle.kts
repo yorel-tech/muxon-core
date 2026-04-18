@@ -13,3 +13,15 @@ dependencies {
     implementation(project(":libs:core-commons"))
     implementation(libs.jackson.databind)
 }
+
+tasks.register<JavaExec>("validateDbSchema") {
+    description = "Verify db-schema.yaml covers all oss/ migration tables/views"
+    group = "verification"
+
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.krito.muxon.db.schema.DbSchemaValidator")
+    args(
+        "${project.projectDir}/src/main/resources/db-schema.yaml",
+        "${project.projectDir}/src/main/resources/db/migration/oss"
+    )
+}

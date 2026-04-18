@@ -1,0 +1,64 @@
+image:
+  repository: ghcr.io/krito/muxon-core/core-services
+  tag: "0.1.0"
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# When true, an init container runs muxon-initializer and writes config into a shared
+# emptyDir at /etc/muxon. The main container sets MUXON_SKIP_BOOTSTRAP=1.
+bootstrap:
+  # If non-empty, used as the full contents of initial-config.yaml (prefer --set-file at install time).
+  initialConfigYaml: ""
+  initContainerEnabled: true
+  # Create first: kubectl create secret generic muxon-secrets -n muxon \
+  #   --from-file=muxon-passphrase=... --from-file=muxon-oidc-secret=... --from-file=muxon-db-password=...
+  # If keycloak.enabled, also add --from-file=keycloak-admin-password=...
+  existingSecret: muxon-secrets
+  secretKeys:
+    passphrase: muxon-passphrase
+    oidcSecret: muxon-oidc-secret
+    dbPassword: muxon-db-password
+  initialConfig:
+    instanceName: "k8s"
+    instanceId: 1
+    systemAdminUserName: "admin@example.com"
+    idpName: "default-idp"
+    idpProtocol: "OIDC"
+    # Internal: http://keycloak:8085/realms/muxon-dev (same namespace)
+    issuerUri: "http://keycloak:8085/realms/muxon-dev"
+    clientId: "muxon-api"
+    clientSecretPlaceholder: "provide-in-secrets"
+    tenantName: "default"
+    tenantAdminUserName: "admin@example.com"
+    # Internal: jdbc:postgresql://postgres:5432/muxon
+    datasourceUrl: "jdbc:postgresql://postgres:5432/muxon"
+    datasourceUsername: "muxon"
+    # Bootstrap ignores this field at runtime; password comes from secret file.
+    datasourcePasswordPlaceholder: "ignored"
+
+# Bundled PostgreSQL (set false when using an external database).
+postgres:
+  enabled: false
+  image: postgres:18
+  port: 5432
+  database: muxon
+  username: muxon
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# Bundled Keycloak dev mode + realm import (set false when using an external IdP).
+keycloak:
+  enabled: false
+  image: quay.io/keycloak/keycloak:26.4.0
+  port: 8085
+  adminUsername: admin
+  # Secret that contains the Keycloak admin password (plain text in file).
+  adminExistingSecret: muxon-secrets
+  adminSecretKey: keycloak-admin-password

@@ -1,14 +1,14 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="OrchestratorApp" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
     <envs>
-      <env name="INFRON_PASSPHRASE" value="Infr0n@1234" />
+      <env name="MUXON_PASSPHRASE" value="Infr0n@1234" />
     </envs>
     <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UnknownPolicyInFreeMode" />
     <module name="infron-core.services.orchestrator.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.onetattva.infron.core.orch.OrchestratorApp" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.krito.muxon.core.orch.OrchestratorApp" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.onetattva.infron.core.orch.*" />
+        <option name="PATTERN" value="com.krito.muxon.core.orch.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>

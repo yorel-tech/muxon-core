@@ -1,4 +1,4 @@
-rootProject.name = "infron-core"
+rootProject.name = "muxon-core"
 
 include(
     "libs:core-api",
@@ -7,8 +7,9 @@ include(
     "libs:core-auth",
     "libs:core-commons",
     "libs:core-provider",
+    "libs:core-worker",
     "services:auth-api",
-    "services:bootstrap-initializer",
+    "services:muxon-initializer",
     "services:core-services",
     "services:orchestrator",
     "services:usage-billing",

@@ -1,6 +1,6 @@
 # Bootstrap initializer (developer notes)
 
-The **bootstrap-initializer** JAR runs before **core-services** to:
+The **muxon-initializer** JAR runs before **core-services** to:
 
 - Read **`initial-config.yaml`**
 - Read **secret files** (passphrase, OIDC client secret, DB password)

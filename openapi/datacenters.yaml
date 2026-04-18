@@ -58,7 +58,7 @@ components:
 
     DatacenterSettings:
       type: object
-      description: Provider-side defaults & capability descriptors for a datacenter. Overcommit ratios are enterprise-only (infron-nexus).
+      description: Provider-side defaults & capability descriptors for a datacenter. Overcommit ratios are enterprise-only (muxon-nexus).
       properties:
         providerType:
           $ref: './providers.yaml#/components/schemas/ProviderType'

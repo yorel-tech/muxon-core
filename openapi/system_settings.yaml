@@ -30,7 +30,7 @@ components:
         contactEmail:
           type: string
           format: email
-          example: "admin@infron.example"
+          example: "admin@muxon.example"
         contactPhone:
           type: string
           pattern: "^[+]?[0-9\\s\\-()]+$"
@@ -123,7 +123,7 @@ components:
           example: 587
         smtpUsername:
           type: string
-          example: "noreply@infron.example"
+          example: "noreply@muxon.example"
         smtpPassword:
           type: string
           writeOnly: true
@@ -131,7 +131,7 @@ components:
         smtpFromEmail:
           type: string
           format: email
-          example: "noreply@infron.example"
+          example: "noreply@muxon.example"
         smtpUseTls:
           type: boolean
           default: true
@@ -165,10 +165,10 @@ components:
         issuerUrl:
           type: string
           format: uri
-          example: "https://keycloak.example.com/realms/infron"
+          example: "https://keycloak.example.com/realms/muxon"
         clientId:
           type: string
-          example: "infron-client"
+          example: "muxon-client"
         clientSecret:
           type: string
           writeOnly: true
@@ -184,11 +184,11 @@ components:
         jwksUri:
           type: string
           format: uri
-          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/jwks"
+          example: "https://keycloak.example.com/realms/muxon/protocol/openid-connect/jwks"
         userinfoEndpoint:
           type: string
           format: uri
-          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/userinfo"
+          example: "https://keycloak.example.com/realms/muxon/protocol/openid-connect/userinfo"
       additionalProperties: false
 
     # Appearance Settings
@@ -284,10 +284,10 @@ components:
         issuerUrl:
           type: string
           format: uri
-          example: "https://keycloak.example.com/realms/infron"
+          example: "https://keycloak.example.com/realms/muxon"
         clientId:
           type: string
-          example: "infron-client"
+          example: "muxon-client"
         clientSecret:
           type: string
           example: "client-secret"
@@ -302,13 +302,13 @@ components:
           example: true
         issuer:
           type: string
-          example: "https://keycloak.example.com/realms/infron"
+          example: "https://keycloak.example.com/realms/muxon"
         jwksUri:
           type: string
-          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/jwks"
+          example: "https://keycloak.example.com/realms/muxon/protocol/openid-connect/jwks"
         userinfoEndpoint:
           type: string
-          example: "https://keycloak.example.com/realms/infron/protocol/openid-connect/userinfo"
+          example: "https://keycloak.example.com/realms/muxon/protocol/openid-connect/userinfo"
         error:
           type: string
           example: ""

@@ -1,5 +1,5 @@
 # Business Source License 1.1 (Template)
-Licensor: OneTattva Technologies
+Licensor: Krito Technologies
 Licensed Work: Infron Core
 Additional Use Grant: Personal, non-commercial, internal evaluation.
 Change Date: 2029-01-01

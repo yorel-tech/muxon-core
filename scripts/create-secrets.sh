@@ -1,6 +1,6 @@
 #!/bin/sh
 # Create secret files for Docker Compose and Kubernetes examples.
-# Run from the infron-core directory:
+# Run from the muxon-core directory:
 #   ./scripts/create-secrets.sh
 #
 # Writes to ./secrets/ — add that directory to .gitignore and restrict permissions.
@@ -20,13 +20,13 @@ gen() {
   fi
 }
 
-gen "${SECRETS_DIR}/infron-passphrase"
-gen "${SECRETS_DIR}/infron-oidc-secret"
-gen "${SECRETS_DIR}/infron-db-password"
+gen "${SECRETS_DIR}/muxon-passphrase"
+gen "${SECRETS_DIR}/muxon-oidc-secret"
+gen "${SECRETS_DIR}/muxon-db-password"
 gen "${SECRETS_DIR}/keycloak-admin-password"
 
 chmod 600 "${SECRETS_DIR}"/* 2>/dev/null || true
 
 echo ""
 echo "Done. Keep ${SECRETS_DIR} private."
-echo "Align infron-oidc-secret with your Keycloak client's secret (see realm import / admin console)."
+echo "Align muxon-oidc-secret with your Keycloak client's secret (see realm import / admin console)."

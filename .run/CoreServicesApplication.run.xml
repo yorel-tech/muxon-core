@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="CoreServicesApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
     <envs>
-      <env name="INFRON_PASSPHRASE" value="Infr0n@1234" />
+      <env name="MUXON_PASSPHRASE" value="Infr0n@1234" />
     </envs>
     <module name="infron-core.services.core-services.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.onetattva.infron.core.CoreServicesApplication" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.krito.muxon.core.CoreServicesApplication" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
