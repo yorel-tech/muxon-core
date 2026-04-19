@@ -511,7 +511,7 @@ tables:
       last_updated_at: { type: timestamptz, nullable: false }
       version: { type: bigint, nullable: false }
 
-  vm:
+  vms:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       tenant_datacenter_grant_id: { type: uuid, nullable: false, references: tenant_datacenter_grants.id }
@@ -538,7 +538,7 @@ tables:
       content_item_id: { type: uuid, nullable: true, references: content_items.id }
       attached_iso_item_ids: { type: uuid[], nullable: true }
 
-  compute_profile:
+  compute_profiles:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
       tenant_datacenter_grant_id: { type: uuid, nullable: true, references: tenant_datacenter_grants.id }
@@ -550,10 +550,10 @@ tables:
       created_at: { type: timestamptz, nullable: false }
       updated_at: { type: timestamptz, nullable: false }
 
-  console_session:
+  console_sessions:
     columns:
       id: { type: uuid, nullable: false, primary_key: true }
-      vm_id: { type: uuid, nullable: false, references: vm.id }
+      vm_id: { type: uuid, nullable: false, references: vms.id }
       tenant_id: { type: uuid, nullable: false, references: tenants.id }
       user_id: { type: uuid, nullable: false, references: idp_users.id }
       token: { type: text, nullable: false }

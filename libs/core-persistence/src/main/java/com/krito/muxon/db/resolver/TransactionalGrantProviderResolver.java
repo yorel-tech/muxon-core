@@ -1,6 +1,6 @@
 package com.krito.muxon.db.resolver;
 
-import com.krito.muxon.core.providers.TenantDatacenterGrantResolver;
+import com.krito.muxon.providers.TenantDatacenterGrantResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -3,7 +3,7 @@ package com.krito.muxon.db.queue;
 import com.krito.muxon.api.model.EntityType;
 import com.krito.muxon.api.enums.QueueCategory;
 import com.krito.muxon.api.enums.QueueStatus;
-import com.krito.muxon.core.spi.queue.CommandMessage;
+import com.krito.muxon.spi.queue.CommandMessage;
 import com.krito.muxon.db.model.QueueEntryEntity;
 
 import java.time.Instant;

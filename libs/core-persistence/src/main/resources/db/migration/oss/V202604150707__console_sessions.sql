@@ -3,9 +3,9 @@
 CREATE TYPE console_session_status AS ENUM ('ACTIVE', 'EXPIRED', 'CLOSED');
 CREATE TYPE vm_console_type AS ENUM ('VNC', 'SPICE', 'SERIAL');
 
-CREATE TABLE console_session (
+CREATE TABLE console_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    vm_id UUID NOT NULL REFERENCES vm (id) ON DELETE CASCADE,
+    vm_id UUID NOT NULL REFERENCES vms (id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES idp_users (id) ON DELETE CASCADE,
     token TEXT NOT NULL,
@@ -23,11 +23,11 @@ CREATE TABLE console_session (
     upstream_ws_cookie TEXT,
     upstream_ws_csrf TEXT,
     upstream_ws_authorization TEXT,
-    CONSTRAINT uq_console_session_token UNIQUE (token),
-    CONSTRAINT uq_console_session_vm_user UNIQUE (vm_id, user_id)
+    CONSTRAINT uq_console_sessions_token UNIQUE (token),
+    CONSTRAINT uq_console_sessions_vm_user UNIQUE (vm_id, user_id)
 );
 
-CREATE INDEX idx_console_session_token ON console_session (token);
-CREATE INDEX idx_console_session_expires_at ON console_session (expires_at);
-CREATE INDEX idx_console_session_vm_user ON console_session (vm_id, user_id);
-CREATE INDEX idx_console_session_user_status ON console_session (user_id, status);
+CREATE INDEX idx_console_sessions_token ON console_sessions (token);
+CREATE INDEX idx_console_sessions_expires_at ON console_sessions (expires_at);
+CREATE INDEX idx_console_sessions_vm_user ON console_sessions (vm_id, user_id);
+CREATE INDEX idx_console_sessions_user_status ON console_sessions (user_id, status);

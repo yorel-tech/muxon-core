@@ -3,7 +3,7 @@ package com.krito.muxon.db.queue;
 import com.krito.muxon.api.model.EntityType;
 import com.krito.muxon.api.enums.QueueCategory;
 import com.krito.muxon.api.enums.QueueStatus;
-import com.krito.muxon.core.spi.queue.EventPublisher;
+import com.krito.muxon.spi.queue.EventPublisher;
 import com.krito.muxon.db.model.QueueEntryEntity;
 import com.krito.muxon.db.repository.QueueEntryRepository;
 import org.springframework.transaction.annotation.Transactional;

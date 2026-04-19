@@ -1,0 +1,119 @@
+package com.krito.muxon.controllers;
+
+import com.krito.muxon.services.storage.ProviderStorageDiscoveryService;
+import com.krito.muxon.db.model.ProviderStorageEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * REST controller for provider storage operations.
+ * <p>
+ * Provides endpoints to view discovered provider storage and trigger storage sync.
+ * </p>
+ */
+@RestController
+@RequestMapping("/api/v1/provider-storage")
+public class ProviderStorageController {
+
+    private static final Logger log = LoggerFactory.getLogger(ProviderStorageController.class);
+
+    private final ProviderStorageDiscoveryService discoveryService;
+
+    public ProviderStorageController(ProviderStorageDiscoveryService discoveryService) {
+        this.discoveryService = discoveryService;
+    }
+
+    /**
+     * Get all storage for a specific provider.
+     *
+     * @param providerId provider ID
+     * @return list of provider storage
+     */
+    @GetMapping("/provider/{providerId}")
+    public ResponseEntity<List<ProviderStorageEntity>> getStorageByProvider(
+            @PathVariable UUID providerId) {
+        log.debug("Getting storage for provider {}", providerId);
+        List<ProviderStorageEntity> storage = discoveryService.getProviderStorage(providerId);
+        return ResponseEntity.ok(storage);
+    }
+
+    /**
+     * Get enabled storage for a specific provider.
+     *
+     * @param providerId provider ID
+     * @return list of enabled provider storage
+     */
+    @GetMapping("/provider/{providerId}/enabled")
+    public ResponseEntity<List<ProviderStorageEntity>> getEnabledStorageByProvider(
+            @PathVariable UUID providerId) {
+        log.debug("Getting enabled storage for provider {}", providerId);
+        List<ProviderStorageEntity> storage = discoveryService.getEnabledProviderStorage(providerId);
+        return ResponseEntity.ok(storage);
+    }
+
+    /**
+     * Trigger storage discovery and sync for a provider (async; returns task id).
+     */
+    @PostMapping("/provider/{providerId}/sync")
+    public ResponseEntity<Map<String, Object>> syncProviderStorage(@PathVariable UUID providerId) {
+        log.info("Triggering storage sync for provider {}", providerId);
+
+        try {
+            UUID taskId = discoveryService.enqueueStorageDiscovery(providerId);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("providerId", providerId);
+            result.put("taskId", taskId);
+            result.put("message", "Poll GET /api/v1/tasks/" + taskId);
+            return ResponseEntity.status(202).body(result);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("providerId", providerId);
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
+        } catch (Exception e) {
+            log.error("Failed to enqueue storage sync for provider {}: {}", providerId, e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("providerId", providerId);
+            result.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(result);
+        }
+    }
+
+    /**
+     * Trigger storage discovery for all supported providers (async; one task per provider).
+     */
+    @PostMapping("/sync-all")
+    public ResponseEntity<Map<String, Object>> syncAllProviders() {
+        log.info("Triggering storage sync for all providers");
+
+        try {
+            Map<UUID, UUID> tasks = discoveryService.enqueueStorageDiscoveryForAllProviders();
+            Map<String, Object> serializable = new LinkedHashMap<>();
+            tasks.forEach((pid, tid) -> serializable.put(pid.toString(), tid != null ? tid.toString() : null));
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("providerCount", tasks.size());
+            result.put("tasksByProviderId", serializable);
+            result.put("message", "Poll each task via GET /api/v1/tasks/{taskId}");
+            return ResponseEntity.status(202).body(result);
+        } catch (Exception e) {
+            log.error("Failed to enqueue sync for all providers: {}", e.getMessage(), e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(result);
+        }
+    }
+}

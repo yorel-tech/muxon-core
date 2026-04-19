@@ -26,6 +26,8 @@ spring:
   # flyway
   flyway:
     enabled: true
+    placeholders:
+      contentStorageDefaultPath: "/var/lib/muxon/content-libraries"
 
   cache:
     type: caffeine
@@ -42,7 +44,7 @@ logging:
     root: INFO
     org.springframework: INFO
     org.hibernate: INFO
-    com.krito.muxon.core: DEBUG
+    com.krito.muxon: DEBUG
 
   file:
     name: logs/muxon-core.log

@@ -20,7 +20,7 @@ import java.util.UUID;
 @Table(
         name = "console_sessions",
         uniqueConstraints =
-                @UniqueConstraint(name = "uq_console_session_vm_user", columnNames = {"vm_id", "user_id"}))
+                @UniqueConstraint(name = "uq_console_sessions_vm_user", columnNames = {"vm_id", "user_id"}))
 public class ConsoleSessionEntity {
 
     @Id

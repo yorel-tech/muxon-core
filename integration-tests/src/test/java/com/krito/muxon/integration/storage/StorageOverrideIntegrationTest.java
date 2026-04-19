@@ -6,7 +6,7 @@ import com.krito.muxon.db.model.StorageOverrideEntity;
 import com.krito.muxon.db.repository.ProviderStorageRepository;
 import com.krito.muxon.db.repository.StorageClassRepository;
 import com.krito.muxon.db.repository.StorageOverrideRepository;
-import com.krito.muxon.core.services.storage.scheduler.StorageOverrideResolver;
+import com.krito.muxon.services.storage.scheduler.StorageOverrideResolver;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import com.krito.muxon.core.CoreServicesApplication;
+import com.krito.muxon.CoreServicesApplication;
 import org.testcontainers.DockerClientFactory;
 
 import java.util.List;

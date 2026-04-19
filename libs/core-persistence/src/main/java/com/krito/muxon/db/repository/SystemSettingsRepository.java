@@ -1,6 +1,6 @@
 package com.krito.muxon.db.repository;
 
-import com.krito.muxon.core.common.Constants;
+import com.krito.muxon.common.Constants;
 import com.krito.muxon.db.model.SystemSettingsEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

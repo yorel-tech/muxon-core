@@ -19,6 +19,6 @@ dependencies {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "com.krito.muxon.core.bootstrap.BootstrapApplication"
+        attributes["Main-Class"] = "com.krito.muxon.bootstrap.BootstrapApplication"
     }
 }

@@ -1,6 +1,6 @@
 package com.krito.muxon.db.model;
 
-import com.krito.muxon.core.common.Constants;
+import com.krito.muxon.common.Constants;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;

@@ -1,7 +1,7 @@
 package com.krito.muxon.db.resolver;
 
 import com.krito.muxon.api.model.ProviderType;
-import com.krito.muxon.core.providers.TenantDatacenterGrantResolver;
+import com.krito.muxon.providers.TenantDatacenterGrantResolver;
 import com.krito.muxon.db.model.DatacenterEntity;
 import com.krito.muxon.db.model.TenantDatacenterGrantEntity;
 import com.krito.muxon.db.repository.TenantDatacenterGrantRepository;

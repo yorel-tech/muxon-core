@@ -21,7 +21,7 @@ CREATE TYPE vm_power_state AS ENUM (
     'SUSPENDED'
 );
 
-CREATE TABLE vm (
+CREATE TABLE vms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_datacenter_grant_id UUID NOT NULL REFERENCES tenant_datacenter_grants (id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
@@ -50,17 +50,17 @@ CREATE TABLE vm (
     CONSTRAINT unique_vm_external_provider UNIQUE (provider_id, external_id)
 );
 
-CREATE INDEX idx_vm_grant ON vm (tenant_datacenter_grant_id);
-CREATE INDEX idx_vm_status ON vm (status);
-CREATE INDEX idx_vm_provider ON vm (provider_id);
-CREATE INDEX idx_vm_node ON vm (node_id);
-CREATE INDEX idx_vm_tags ON vm USING GIN (tags);
-CREATE INDEX idx_vm_content_item_id ON vm (content_item_id);
-CREATE INDEX idx_vm_attached_iso_item_ids ON vm USING GIN (attached_iso_item_ids);
+CREATE INDEX idx_vm_grant ON vms (tenant_datacenter_grant_id);
+CREATE INDEX idx_vm_status ON vms (status);
+CREATE INDEX idx_vm_provider ON vms (provider_id);
+CREATE INDEX idx_vm_node ON vms (node_id);
+CREATE INDEX idx_vm_tags ON vms USING GIN (tags);
+CREATE INDEX idx_vm_content_item_id ON vms (content_item_id);
+CREATE INDEX idx_vm_attached_iso_item_ids ON vms USING GIN (attached_iso_item_ids);
 
-COMMENT ON COLUMN vm.attached_iso_item_ids IS 'Content library ISO items currently attached to this VM';
+COMMENT ON COLUMN vms.attached_iso_item_ids IS 'Content library ISO items currently attached to this VM';
 
-CREATE TABLE compute_profile (
+CREATE TABLE compute_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_datacenter_grant_id UUID REFERENCES tenant_datacenter_grants (id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -73,8 +73,8 @@ CREATE TABLE compute_profile (
     CONSTRAINT unique_profile_name_grant UNIQUE (tenant_datacenter_grant_id, name)
 );
 
-CREATE INDEX idx_compute_profile_grant ON compute_profile (tenant_datacenter_grant_id);
-CREATE INDEX idx_compute_profile_tags ON compute_profile USING GIN (tags);
+CREATE INDEX idx_compute_profile_grant ON compute_profiles (tenant_datacenter_grant_id);
+CREATE INDEX idx_compute_profile_tags ON compute_profiles USING GIN (tags);
 
-CREATE TRIGGER trg_vm_updated BEFORE UPDATE ON vm FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
-CREATE TRIGGER trg_compute_profile_updated BEFORE UPDATE ON compute_profile FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_vm_updated BEFORE UPDATE ON vms FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER trg_compute_profile_updated BEFORE UPDATE ON compute_profiles FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();

@@ -1,9 +1,9 @@
 package com.krito.muxon.db.queue;
 
-import com.krito.muxon.core.spi.queue.CommandQueue;
-import com.krito.muxon.core.spi.queue.EntityEventQueue;
-import com.krito.muxon.core.spi.queue.EventPublisher;
-import com.krito.muxon.core.spi.queue.TaskEventQueue;
+import com.krito.muxon.spi.queue.CommandQueue;
+import com.krito.muxon.spi.queue.EntityEventQueue;
+import com.krito.muxon.spi.queue.EventPublisher;
+import com.krito.muxon.spi.queue.TaskEventQueue;
 import com.krito.muxon.db.repository.QueueEntryRepository;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
