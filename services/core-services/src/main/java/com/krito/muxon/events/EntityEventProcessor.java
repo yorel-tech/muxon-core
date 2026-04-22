@@ -88,6 +88,9 @@ public class EntityEventProcessor {
             case EntityEventTypes.VM_DELETION_FAILED  -> vmEventHandler.onDeletionFailed(event);
             case EntityEventTypes.VM_OPERATION_FAILED -> vmEventHandler.onOperationFailed(event);
             case EntityEventTypes.VM_MIGRATED         -> vmEventHandler.onMigrated(event);
+            case EntityEventTypes.VM_CUSTOMIZATION_STATUS_UPDATED,
+                 EntityEventTypes.VM_CUSTOMIZATION_COMPLETE,
+                 EntityEventTypes.VM_CUSTOMIZATION_FAILED -> vmEventHandler.onCustomizationUpdate(event);
             default -> log.debug("Unhandled VM event type '{}' for entity {}", event.eventType(), event.entityId());
         }
     }

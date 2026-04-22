@@ -1,6 +1,12 @@
 package com.krito.muxon.worker.executors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.krito.muxon.api.model.EntityType;
+import com.krito.muxon.customization.ScriptFetcher;
+import com.krito.muxon.customization.iso.SeedIsoBuilder;
+import com.krito.muxon.customization.model.*;
+import com.krito.muxon.customization.renderer.CustomizationRenderer;
+import com.krito.muxon.customization.renderer.CustomizationRendererFactory;
 import com.krito.muxon.providers.*;
 import com.krito.muxon.spi.queue.*;
 import com.krito.muxon.spi.queue.EntityEventQueue.EntityEventTypes;
@@ -15,10 +21,14 @@ import com.krito.muxon.db.repository.VmRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Executes VM tasks claimed from the {@link CommandQueue}.
@@ -52,6 +62,23 @@ public class VmTaskExecutor {
     @Autowired private QueueEntryRepository queueEntryRepository;
 
     @Autowired private TenantAwareVmProviderRegistry providerRegistry;
+
+    @Autowired private ObjectMapper objectMapper;
+
+    /** Base directory for seed ISO artifacts; e.g. /var/lib/muxon/seeds */
+    @Value("${muxon.customization.seed-storage-path:/var/lib/muxon/seeds}")
+    private String seedStoragePath;
+
+    @Value("${muxon.customization.content-storage-path:/var/lib/muxon/content}")
+    private String contentStoragePath;
+
+    private final SeedIsoBuilder seedIsoBuilder = new SeedIsoBuilder();
+    private final ScheduledExecutorService customizationScheduler =
+            Executors.newScheduledThreadPool(4, r -> {
+                Thread t = new Thread(r, "gc-monitor");
+                t.setDaemon(true);
+                return t;
+            });
 
     public void execute(CommandMessage entry) {
         String queueType = entry.queueType();
@@ -184,6 +211,34 @@ public class VmTaskExecutor {
             return;
         }
 
+        // ── Guest customization seed ────────────────────────────────────────────
+        CustomizationSeed customizationSeed = null;
+        VmCustomizationSpec customizationSpec = null;
+        try {
+            Object rawCust = entry.payload() != null ? entry.payload().get("customizationJson") : null;
+            if (rawCust != null && !rawCust.toString().isBlank()) {
+                customizationSpec = objectMapper.readValue(rawCust.toString(), VmCustomizationSpec.class);
+                // Resolve script content items from content library
+                resolveScripts(customizationSpec);
+                // Render + build the seed ISO
+                CustomizationRenderer renderer = CustomizationRendererFactory.forSpec(customizationSpec);
+                Map<String, String> seedFiles = renderer.render(vmId.toString(), vm.getName(), customizationSpec);
+                Path seedPath = Path.of(seedStoragePath, vmId.toString() + ".iso");
+                seedIsoBuilder.build(seedFiles, renderer.volumeLabel(), seedPath);
+                customizationSeed = new CustomizationSeed(
+                        seedPath.toAbsolutePath().toString(),
+                        renderer.volumeLabel(),
+                        customizationSpec.getOsFamily());
+                log.info("Seed ISO built for VM {}: {}", vmId, seedPath);
+            }
+        } catch (Exception e) {
+            log.error("Customization seed build failed for VM {}: {}", vmId, e.getMessage(), e);
+            publishEntityEvent(EntityEventTypes.VM_CREATION_FAILED, vmId, entry.id(),
+                    Map.of("error_code", "CUSTOMIZATION_SEED_FAILED", "message", e.getMessage()));
+            failTask(entry, "Customization seed build failed: " + e.getMessage());
+            return;
+        }
+
         String requestId = correlationId(entry);
         VmCreationRequest createRequest =
                 VmCreationRequest.builder()
@@ -193,6 +248,8 @@ public class VmTaskExecutor {
                         .correlationId(requestId)
                         .sourceImagePath(sourceImagePath)
                         .isoAttachments(isoAttachments)
+                        .customizationSeed(customizationSeed)
+                        .enableGuestAgent(customizationSeed != null)
                         .build();
 
         if (log.isDebugEnabled()) {
@@ -221,7 +278,25 @@ public class VmTaskExecutor {
                 if (result.vmInfo().hostname() != null) payload.put("hostname", result.vmInfo().hostname());
             }
             if (provider.id() != null) payload.put("provider_id", provider.id());
+            if (customizationSeed != null) {
+                payload.put("customizationSeedPath", customizationSeed.isoPath());
+            }
             publishEntityEvent(EntityEventTypes.VM_CREATED, vmId, entry.id(), payload);
+
+            // Launch async customization monitor if a seed was built
+            if (customizationSeed != null && result.externalVmId() != null) {
+                String expectedHostname = customizationSpec != null ? customizationSpec.getHostname() : null;
+                if ((expectedHostname == null || expectedHostname.isBlank()) && vm.getName() != null) {
+                    expectedHostname = vm.getName();
+                }
+                boolean isWindows = customizationSeed.isWindows();
+                GuestCustomizationMonitor monitor = new GuestCustomizationMonitor(
+                        vmId, result.externalVmId(), customizationSeed.isoPath(),
+                        expectedHostname, isWindows,
+                        provider, entityEventQueue, objectMapper, customizationScheduler);
+                monitor.start();
+            }
+
             completeTask(entry);
         } else {
             String errorMsg =
@@ -805,6 +880,61 @@ public class VmTaskExecutor {
                 entry.id(),
                 TaskEventTypes.FAILED,
                 buildTaskPayload(entry, Map.of("errorMessage", errorMessage != null ? errorMessage : "unknown")));
+    }
+
+    private void resolveScripts(VmCustomizationSpec spec) throws Exception {
+        ScriptFetcher fetcher = new ScriptFetcher(Path.of(contentStoragePath));
+
+        if (spec.getLinux() != null) {
+            LinuxCustomizationSpec linux = spec.getLinux();
+            List<UUID> preIds = extractUuids(linux, "preScriptItemIds");
+            List<UUID> postIds = extractUuids(linux, "postScriptItemIds");
+            if (!preIds.isEmpty()) {
+                linux.setResolvedPreScripts(fetchScriptsByIds(fetcher, preIds));
+            }
+            if (!postIds.isEmpty()) {
+                linux.setResolvedPostScripts(fetchScriptsByIds(fetcher, postIds));
+            }
+        }
+
+        if (spec.getWindows() != null) {
+            WindowsCustomizationSpec windows = spec.getWindows();
+            List<UUID> preIds = extractUuids(windows, "preScriptItemIds");
+            List<UUID> postIds = extractUuids(windows, "postScriptItemIds");
+            if (!preIds.isEmpty()) {
+                windows.setResolvedPreScripts(fetchScriptsByIds(fetcher, preIds));
+            }
+            if (!postIds.isEmpty()) {
+                windows.setResolvedPostScripts(fetchScriptsByIds(fetcher, postIds));
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<UUID> extractUuids(Object obj, String fieldName) {
+        try {
+            var field = obj.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            Object val = field.get(obj);
+            if (val instanceof List<?> list) {
+                return list.stream()
+                        .filter(Objects::nonNull)
+                        .map(o -> UUID.fromString(o.toString()))
+                        .toList();
+            }
+        } catch (Exception ignored) {}
+        return List.of();
+    }
+
+    private List<String> fetchScriptsByIds(ScriptFetcher fetcher, List<UUID> ids) throws Exception {
+        List<ScriptFetcher.ScriptRef> refs = new ArrayList<>();
+        for (UUID id : ids) {
+            ContentItemEntity item = contentItemRepository.findById(id)
+                    .orElseThrow(() -> new IllegalStateException("Script content item not found: " + id));
+            ContentItemResolution.assertAvailableScript(item);
+            refs.add(new ScriptFetcher.ScriptRef(id, item.getProviderRelativePath(), item.getChecksum()));
+        }
+        return fetcher.fetchScripts(refs);
     }
 
     private void publishEntityEvent(String eventType, UUID entityId, UUID taskId, Map<String, Object> payload) {

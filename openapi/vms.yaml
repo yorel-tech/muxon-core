@@ -110,6 +110,22 @@ components:
           type: string
           description: Static IP address (when ip_allocation is static)
           nullable: true
+        prefix:
+          type: integer
+          minimum: 1
+          maximum: 128
+          description: "Network prefix length, e.g. 24 for /24 (required when ip_allocation=static)"
+          nullable: true
+        gateway:
+          type: string
+          description: "Default gateway IP (required when ip_allocation=static)"
+          nullable: true
+        dns_servers:
+          type: array
+          items:
+            type: string
+          description: "Per-NIC DNS servers (overrides customization-level dnsServers)"
+          nullable: true
 
     NetworkSpec:
       type: object
@@ -135,6 +151,307 @@ components:
         version:
           type: string
           description: OS version
+
+    # ── Guest Customization ──────────────────────────────────────────────────────
+
+    NicCustomization:
+      type: object
+      description: "Per-NIC customization overlay applied during guest customization."
+      properties:
+        nicId:
+          type: string
+          description: "Matches the NIC by index (0-based) or template network id."
+        ipAllocation:
+          type: string
+          enum: [dhcp, static]
+          default: dhcp
+        ipAddress:
+          type: string
+          nullable: true
+          description: "Static IPv4 or IPv6 address (without prefix length)."
+        prefix:
+          type: integer
+          minimum: 1
+          maximum: 128
+          nullable: true
+        gateway:
+          type: string
+          nullable: true
+        dnsServers:
+          type: array
+          nullable: true
+          items:
+            type: string
+
+    GuestUser:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        gecos:
+          type: string
+          nullable: true
+        groups:
+          type: array
+          items:
+            type: string
+          nullable: true
+        shell:
+          type: string
+          nullable: true
+          default: /bin/bash
+        sshAuthorizedKeys:
+          type: array
+          items:
+            type: string
+          nullable: true
+        password:
+          type: string
+          writeOnly: true
+          nullable: true
+          description: "Accepted as plain text over TLS; stored encrypted at rest; never returned in API responses."
+        sudo:
+          type: string
+          nullable: true
+          description: "sudo rule, e.g. ALL=(ALL) NOPASSWD:ALL"
+
+    LinuxCustomization:
+      type: object
+      description: "Linux-specific cloud-init customization."
+      properties:
+        users:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/GuestUser'
+        packages:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: "Extra packages to install via the distro package manager."
+        writeFiles:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              content:
+                type: string
+              permissions:
+                type: string
+                default: "0644"
+              owner:
+                type: string
+                default: "root:root"
+              encoding:
+                type: string
+                enum: [plain, base64, gz, gz+base64]
+                default: plain
+        bootcmd:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: "Commands run very early in boot, before network is configured (cloud-init bootcmd)."
+        runcmd:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: "Commands run at the end of cloud-init (after network, users, packages)."
+        preScriptItemIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: "Content library script items executed before network config (bootcmd stage)."
+        postScriptItemIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: "Content library script items executed after all config (runcmd/final stage)."
+
+    WindowsDomainJoin:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+          description: "Active Directory domain FQDN, e.g. corp.example.com"
+        username:
+          type: string
+          nullable: true
+          description: "Domain join account (UPN or DOMAIN\\user). Defaults to Administrator."
+        password:
+          type: string
+          writeOnly: true
+          nullable: true
+          description: "Domain join password. Stored encrypted at rest; never returned."
+        ou:
+          type: string
+          nullable: true
+          description: "Optional OU path for the computer account, e.g. OU=Servers,DC=corp,DC=example,DC=com"
+
+    WindowsCustomization:
+      type: object
+      description: "Windows-specific sysprep customization."
+      properties:
+        adminPassword:
+          type: string
+          writeOnly: true
+          nullable: true
+          description: "Local Administrator password. Accepted as plain text over TLS; stored encrypted at rest; never returned."
+        productKey:
+          type: string
+          nullable: true
+          description: "Windows product key (KMS keys are safe to include; retail keys should be avoided)."
+        joinDomain:
+          $ref: '#/components/schemas/WindowsDomainJoin'
+          nullable: true
+        workgroup:
+          type: string
+          nullable: true
+          description: "Workgroup name (used when joinDomain is not set). Defaults to WORKGROUP."
+        locales:
+          type: object
+          nullable: true
+          properties:
+            uiLanguage:
+              type: string
+              default: en-US
+            systemLocale:
+              type: string
+              default: en-US
+            userLocale:
+              type: string
+              default: en-US
+            inputLocale:
+              type: string
+              default: 0409:00000409
+        autoLogonCount:
+          type: integer
+          minimum: 0
+          default: 0
+          nullable: true
+          description: "Number of times to auto-logon after first boot (for running firstLogonCommands). 0 = disabled."
+        firstLogonCommands:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: "PowerShell or cmd commands run as firstLogonCommands in the oobeSystem pass."
+        preScriptItemIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: "Content library script items executed in the specialize pass (before OOBE)."
+        postScriptItemIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: "Content library script items executed via firstLogonCommands (after domain join)."
+
+    VmCustomizationSpec:
+      type: object
+      description: "Guest customization applied at deploy time. Merged over template defaults."
+      properties:
+        hostname:
+          type: string
+          minLength: 1
+          maxLength: 63
+          nullable: true
+          description: "Guest hostname. Defaults to vm.name. Max 15 chars for Windows (NetBIOS limit)."
+        domain:
+          type: string
+          nullable: true
+          description: "DNS domain suffix appended to the hostname."
+        timezone:
+          type: string
+          nullable: true
+          description: "Guest timezone, e.g. UTC, Europe/London, America/New_York."
+        dnsServers:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: "Global DNS servers applied to all NICs (unless overridden per NIC)."
+        dnsSearch:
+          type: array
+          nullable: true
+          items:
+            type: string
+        nics:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/NicCustomization'
+          description: "Per-NIC network customization overlay."
+        linux:
+          $ref: '#/components/schemas/LinuxCustomization'
+          nullable: true
+        windows:
+          $ref: '#/components/schemas/WindowsCustomization'
+          nullable: true
+
+    CustomizationPhase:
+      type: string
+      enum:
+        - NONE
+        - PENDING
+        - SEED_BUILT
+        - WAITING_AGENT
+        - IN_PROGRESS
+        - COMPLETE
+        - FAILED
+      description: >
+        NONE: no customization configured.
+        PENDING: ISO not yet built.
+        SEED_BUILT: seed ISO written; VM not yet started.
+        WAITING_AGENT: VM running; waiting for QEMU guest agent.
+        IN_PROGRESS: QEMU guest agent online; cloud-init or sysprep running.
+        COMPLETE: all stages done; IP/hostname confirmed; seed cleaned up.
+        FAILED: timeout or guest-reported error.
+
+    CustomizationStatus:
+      type: object
+      description: "Current guest customization phase and timestamps."
+      properties:
+        phase:
+          $ref: '#/components/schemas/CustomizationPhase'
+        subPhase:
+          type: string
+          nullable: true
+          description: "Fine-grained sub-phase (Linux only): NETWORK_CONFIG, CONFIG, SCRIPTS_PRE, SCRIPTS_POST."
+        message:
+          type: string
+          nullable: true
+          description: "Human-readable status message or last error."
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        seedPath:
+          type: string
+          nullable: true
+          readOnly: true
+          description: "Internal path of the seed ISO (present until COMPLETE; omitted in API responses)."
 
     Vm:
       allOf:
@@ -206,6 +523,10 @@ components:
               format: date-time
               nullable: true
               description: Last time VM was stopped
+            customization_status:
+              $ref: '#/components/schemas/CustomizationStatus'
+              nullable: true
+              description: Current guest customization phase. Null when no customization is configured.
 
     VmCreateRequest:
       type: object
@@ -242,6 +563,12 @@ components:
           items:
             type: string
           description: VM tags
+        customization:
+          $ref: '#/components/schemas/VmCustomizationSpec'
+          nullable: true
+          description: >
+            Guest customization to apply at first boot. Merged over template defaults.
+            Secrets (passwords) are write-only: accepted over TLS, encrypted at rest, never returned.
 
     VmUpdateRequest:
       type: object

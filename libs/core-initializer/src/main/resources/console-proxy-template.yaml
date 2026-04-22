@@ -1,0 +1,40 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: "console-proxy"
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/muxon"
+    username: "muxon"
+    password: "muxon"
+    driver-class-name: "org.postgresql.Driver"
+  jpa:
+    hibernate:
+      ddl-auto: "none"
+    properties:
+      hibernate:
+        dialect: "org.hibernate.dialect.PostgreSQLDialect"
+  flyway:
+    enabled: false
+
+muxon:
+  instanceName: "local"
+  instanceId: 19
+  console:
+    allowed-origins:
+      - "http://localhost:4000"
+      - "http://127.0.0.1:4000"
+    cleanup-interval-ms: 60000
+    trust-all-hypervisor-tls: true
+
+logging:
+  level:
+    root: "INFO"
+    org.springframework: "INFO"
+    com.krito.muxon: "DEBUG"
+  file:
+    name: "logs/muxon-console-proxy.log"
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+

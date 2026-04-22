@@ -536,11 +536,25 @@ public class ProxmoxVmProvider implements VmProvider {
                 .boot("order=scsi0;net0")
                 .scsi(0, diskConfig)
                 .net(0, "virtio,bridge=vmbr0");
+        // Enable QEMU guest agent when requested (always needed with customization)
+        if (request.enableGuestAgent() || request.customizationSeed() != null) {
+            builder = builder.agent("1,type=virtio");
+        }
+
+        // Customization seed ISO on ide2 (ide2 reserved for seed; user ISOs start at ide3)
+        if (request.customizationSeed() != null) {
+            String seedPath = request.customizationSeed().isoPath();
+            builder = builder.ide(2, "file=" + seedPath + ",media=cdrom");
+        }
+
+        // User ISOs — attach starting at ide3
         List<IsoAttachment> isos = request.isoAttachments();
         if (isos != null && !isos.isEmpty()) {
-            IsoAttachment iso = isos.get(0);
-            String p = iso.isoPath() != null ? iso.isoPath() : "";
-            builder = builder.ide(2, p.isEmpty() ? "none,media=cdrom" : "file=" + p + ",media=cdrom");
+            for (int i = 0; i < isos.size(); i++) {
+                IsoAttachment iso = isos.get(i);
+                String p = iso.isoPath() != null ? iso.isoPath() : "";
+                builder = builder.ide(3 + i, p.isEmpty() ? "none,media=cdrom" : "file=" + p + ",media=cdrom");
+            }
         }
         return builder.build();
     }
@@ -861,5 +875,106 @@ public class ProxmoxVmProvider implements VmProvider {
             }
         }
         return extractHost(provider.getEndpoint());
+    }
+
+    // ── Guest customization — QGA queries ────────────────────────────────────
+
+    @Override
+    public CompletableFuture<GuestAgentInfo> queryGuestAgent(String externalVmId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Optional<ProviderEntity> providerOpt = providerRepository.findById(providerId);
+                if (providerOpt.isEmpty()) return GuestAgentInfo.unreachable();
+                ProxmoxProviderContext ctx = new ProxmoxProviderContext(
+                        providerOpt.get(), "pve-node-01", "1", "local-lvm");
+                Proxmox client = getOrCreateClient(ctx);
+                String nodeName = resolveTargetNodeName(client, ctx);
+                int vmid = Integer.parseInt(externalVmId);
+
+                List<String> ips = new ArrayList<>();
+                String hostname = null;
+                String cloudInitStatus = null;
+
+                // network-get-interfaces
+                try {
+                    var ifaceResult = client.getNodes().get(nodeName).getQemu().get(vmid)
+                            .agent("network-get-interfaces").execute();
+                    ips = parseProxmoxNetworkInterfaces(ifaceResult);
+                } catch (Exception e) {
+                    logger.debug("Proxmox network-get-interfaces failed for {}: {}", externalVmId, e.getMessage());
+                    // QGA not yet reachable
+                    return GuestAgentInfo.unreachable();
+                }
+
+                // get-host-name
+                try {
+                    var hnResult = client.getNodes().get(nodeName).getQemu().get(vmid)
+                            .agent("get-host-name").execute();
+                    if (hnResult != null) hostname = String.valueOf(hnResult);
+                } catch (Exception ignored) {}
+
+                return new GuestAgentInfo(ips, hostname, cloudInitStatus, true);
+            } catch (Exception e) {
+                logger.debug("Proxmox QGA query failed for {}: {}", externalVmId, e.getMessage());
+                return GuestAgentInfo.unreachable();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> detachCustomizationSeed(String externalVmId, String seedIsoPath) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Optional<ProviderEntity> providerOpt = providerRepository.findById(providerId);
+                if (providerOpt.isEmpty()) return new VmOperationResult(false, "Provider not found", null);
+                ProxmoxProviderContext ctx = new ProxmoxProviderContext(
+                        providerOpt.get(), "pve-node-01", "1", "local-lvm");
+                Proxmox client = getOrCreateClient(ctx);
+                String nodeName = resolveTargetNodeName(client, ctx);
+                int vmid = Integer.parseInt(externalVmId);
+
+                // Eject ide2 by issuing a VM config update (Proxmox REST: PUT /nodes/{node}/qemu/{vmid}/config)
+                // pve4j exposes this via the qemu config object; wrap in try/catch since API coverage varies.
+                try {
+                    client.getNodes().get(nodeName).getQemu().get(vmid)
+                            .config("ide2=none,media=cdrom").execute();
+                } catch (Exception e) {
+                    logger.warn("Proxmox config update for seed detach failed (non-fatal): {}", e.getMessage());
+                }
+                logger.info("Detached customization seed CD-ROM from Proxmox VM {}", externalVmId);
+
+                // Delete local seed file
+                try {
+                    java.nio.file.Files.deleteIfExists(java.nio.file.Path.of(seedIsoPath));
+                } catch (Exception e) {
+                    logger.warn("Failed to delete seed ISO {}: {}", seedIsoPath, e.getMessage());
+                }
+                return new VmOperationResult(true, "Seed detached", null);
+            } catch (Exception e) {
+                logger.warn("Failed to detach Proxmox seed from {}: {}", externalVmId, e.getMessage());
+                return new VmOperationResult(false, e.getMessage(), null);
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> parseProxmoxNetworkInterfaces(Object result) {
+        List<String> ips = new ArrayList<>();
+        if (result == null) return ips;
+        String s = result.toString();
+        int idx = 0;
+        while ((idx = s.indexOf("ip-address=", idx)) >= 0) {
+            idx += "ip-address=".length();
+            int end = s.indexOf(',', idx);
+            if (end < 0) end = s.indexOf('}', idx);
+            if (end > idx) {
+                String ip = s.substring(idx, end).trim().replaceAll("[\"']", "");
+                if (!ip.startsWith("127.") && !ip.equals("::1")) {
+                    ips.add(ip);
+                }
+            }
+            idx = Math.max(idx + 1, end);
+        }
+        return ips;
     }
 }

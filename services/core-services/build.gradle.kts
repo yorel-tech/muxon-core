@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-auth"))
     implementation(project(":libs:core-commons"))
+    implementation(project(":libs:core-customization"))
     implementation(project(":libs:core-persistence"))
     implementation(project(":libs:core-provider"))
     implementation(project(":libs:core-proto"))

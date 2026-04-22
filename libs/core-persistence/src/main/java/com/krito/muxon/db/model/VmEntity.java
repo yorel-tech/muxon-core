@@ -80,6 +80,18 @@ public class VmEntity {
     @Column(name = "hostname", nullable = true)
     private String hostname;
 
+    // Guest customization
+    @Column(name = "customization", nullable = true, columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String customization;
+
+    @Column(name = "customization_status", nullable = true, columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String customizationStatus;
+
+    @Column(name = "customization_seed_path", nullable = true, length = 1024)
+    private String customizationSeedPath;
+
     // Resource tracking
     @Column(name = "resource_usage", nullable = true, columnDefinition = "JSONB")
     @JdbcTypeCode(SqlTypes.JSON)
@@ -256,6 +268,30 @@ public class VmEntity {
 
     public void setHostname(String hostname) {
         this.hostname = hostname;
+    }
+
+    public String getCustomization() {
+        return customization;
+    }
+
+    public void setCustomization(String customization) {
+        this.customization = customization;
+    }
+
+    public String getCustomizationStatus() {
+        return customizationStatus;
+    }
+
+    public void setCustomizationStatus(String customizationStatus) {
+        this.customizationStatus = customizationStatus;
+    }
+
+    public String getCustomizationSeedPath() {
+        return customizationSeedPath;
+    }
+
+    public void setCustomizationSeedPath(String customizationSeedPath) {
+        this.customizationSeedPath = customizationSeedPath;
     }
 
     public String getResourceUsage() {

@@ -1,0 +1,69 @@
+spring:
+  main:
+    web-application-type: none
+  application:
+    name: "orchestrator"
+  grpc:
+    server:
+      port: 9090
+  task:
+    scheduling:
+      pool:
+        size: 8
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/muxon"
+    username: "muxon"
+    password: "muxon"
+    driver-class-name: "org.postgresql.Driver"
+  jpa:
+    hibernate:
+      ddl-auto: "none"
+    properties:
+      hibernate:
+        dialect: "org.hibernate.dialect.PostgreSQLDialect"
+
+  flyway:
+    enabled: true
+    locations: "classpath:db/migration/oss"
+    placeholders:
+      contentStorageDefaultPath: "/var/lib/muxon/content-libraries"
+
+logging:
+  level:
+    root: "INFO"
+    org.springframework: "INFO"
+    com.krito.muxon: "DEBUG"
+  file:
+    name: "logs/muxon-orchestrator.log"
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+muxon:
+  instanceName: "local"
+  instanceId: 19
+  enterprise:
+    enabled: false
+  system: null
+  tenants: null
+  queue:
+    backend: "db"
+  worker:
+    poll-delay-ms: 5000
+    poll-batch-size: 10
+    stall-threshold-minutes: 10
+  provider:
+    storage-discovery-execution-timeout-seconds: 300
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+

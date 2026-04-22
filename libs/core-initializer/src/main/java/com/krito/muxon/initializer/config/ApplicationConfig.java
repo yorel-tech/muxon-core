@@ -1,4 +1,4 @@
-package com.krito.muxon.bootstrap;
+package com.krito.muxon.initializer.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuration class representing the app-template.yaml structure
+ * Configuration class representing the service template YAML structure.
  */
 public class ApplicationConfig {
 
@@ -17,7 +17,6 @@ public class ApplicationConfig {
     private LoggingConfig logging;
     private MuxonConfig muxon;
 
-    // Getters and setters
     public ServerConfig getServer() {
         return server;
     }
@@ -67,19 +66,21 @@ public class ApplicationConfig {
     }
 
     public static class ServerConfig {
-        private int port;
+        private Integer port;
 
-        public int getPort() {
+        public Integer getPort() {
             return port;
         }
 
-        public void setPort(int port) {
+        public void setPort(Integer port) {
             this.port = port;
         }
     }
 
     public static class ManagementConfig {
         private EndpointsConfig endpoints;
+        private MetricsConfig metrics;
+        private TracingConfig tracing;
 
         public EndpointsConfig getEndpoints() {
             return endpoints;
@@ -87,6 +88,22 @@ public class ApplicationConfig {
 
         public void setEndpoints(EndpointsConfig endpoints) {
             this.endpoints = endpoints;
+        }
+
+        public MetricsConfig getMetrics() {
+            return metrics;
+        }
+
+        public void setMetrics(MetricsConfig metrics) {
+            this.metrics = metrics;
+        }
+
+        public TracingConfig getTracing() {
+            return tracing;
+        }
+
+        public void setTracing(TracingConfig tracing) {
+            this.tracing = tracing;
         }
 
         public static class EndpointsConfig {
@@ -124,14 +141,85 @@ public class ApplicationConfig {
                 }
             }
         }
+
+        public static class MetricsConfig {
+            private ExportConfig export;
+
+            public ExportConfig getExport() {
+                return export;
+            }
+
+            public void setExport(ExportConfig export) {
+                this.export = export;
+            }
+
+            public static class ExportConfig {
+                private PrometheusConfig prometheus;
+
+                public PrometheusConfig getPrometheus() {
+                    return prometheus;
+                }
+
+                public void setPrometheus(PrometheusConfig prometheus) {
+                    this.prometheus = prometheus;
+                }
+
+                public static class PrometheusConfig {
+                    private Boolean enabled;
+
+                    public Boolean getEnabled() {
+                        return enabled;
+                    }
+
+                    public void setEnabled(Boolean enabled) {
+                        this.enabled = enabled;
+                    }
+                }
+            }
+        }
+
+        public static class TracingConfig {
+            private SamplingConfig sampling;
+
+            public SamplingConfig getSampling() {
+                return sampling;
+            }
+
+            public void setSampling(SamplingConfig sampling) {
+                this.sampling = sampling;
+            }
+
+            public static class SamplingConfig {
+                private Double probability;
+
+                public Double getProbability() {
+                    return probability;
+                }
+
+                public void setProbability(Double probability) {
+                    this.probability = probability;
+                }
+            }
+        }
     }
 
     public static class SpringConfig {
+        private MainConfig main;
         private SpringApplicationConfig application;
+        private GrpcConfig grpc;
+        private TaskConfig task;
         private DatasourceConfig datasource;
         private JpaConfig jpa;
         private SecurityConfig security;
         private FlywayConfig flyway;
+
+        public MainConfig getMain() {
+            return main;
+        }
+
+        public void setMain(MainConfig main) {
+            this.main = main;
+        }
 
         public SpringApplicationConfig getApplication() {
             return application;
@@ -139,6 +227,22 @@ public class ApplicationConfig {
 
         public void setApplication(SpringApplicationConfig application) {
             this.application = application;
+        }
+
+        public GrpcConfig getGrpc() {
+            return grpc;
+        }
+
+        public void setGrpc(GrpcConfig grpc) {
+            this.grpc = grpc;
+        }
+
+        public TaskConfig getTask() {
+            return task;
+        }
+
+        public void setTask(TaskConfig task) {
+            this.task = task;
         }
 
         public DatasourceConfig getDatasource() {
@@ -173,6 +277,19 @@ public class ApplicationConfig {
             this.flyway = flyway;
         }
 
+        public static class MainConfig {
+            @JsonProperty("web-application-type")
+            private String webApplicationType;
+
+            public String getWebApplicationType() {
+                return webApplicationType;
+            }
+
+            public void setWebApplicationType(String webApplicationType) {
+                this.webApplicationType = webApplicationType;
+            }
+        }
+
         public static class SpringApplicationConfig {
             private String name;
 
@@ -182,6 +299,66 @@ public class ApplicationConfig {
 
             public void setName(String name) {
                 this.name = name;
+            }
+        }
+
+        public static class GrpcConfig {
+            private Server server;
+
+            public Server getServer() {
+                return server;
+            }
+
+            public void setServer(Server server) {
+                this.server = server;
+            }
+
+            public static class Server {
+                private Integer port;
+
+                public Integer getPort() {
+                    return port;
+                }
+
+                public void setPort(Integer port) {
+                    this.port = port;
+                }
+            }
+        }
+
+        public static class TaskConfig {
+            private Scheduling scheduling;
+
+            public Scheduling getScheduling() {
+                return scheduling;
+            }
+
+            public void setScheduling(Scheduling scheduling) {
+                this.scheduling = scheduling;
+            }
+
+            public static class Scheduling {
+                private Pool pool;
+
+                public Pool getPool() {
+                    return pool;
+                }
+
+                public void setPool(Pool pool) {
+                    this.pool = pool;
+                }
+
+                public static class Pool {
+                    private Integer size;
+
+                    public Integer getSize() {
+                        return size;
+                    }
+
+                    public void setSize(Integer size) {
+                        this.size = size;
+                    }
+                }
             }
         }
 
@@ -227,6 +404,7 @@ public class ApplicationConfig {
 
         public static class JpaConfig {
             private HibernateConfig hibernate;
+            private PropertiesConfig properties;
 
             public HibernateConfig getHibernate() {
                 return hibernate;
@@ -234,6 +412,14 @@ public class ApplicationConfig {
 
             public void setHibernate(HibernateConfig hibernate) {
                 this.hibernate = hibernate;
+            }
+
+            public PropertiesConfig getProperties() {
+                return properties;
+            }
+
+            public void setProperties(PropertiesConfig properties) {
+                this.properties = properties;
             }
 
             public static class HibernateConfig {
@@ -246,6 +432,30 @@ public class ApplicationConfig {
 
                 public void setDdlAuto(String ddlAuto) {
                     this.ddlAuto = ddlAuto;
+                }
+            }
+
+            public static class PropertiesConfig {
+                private HibernateProperties hibernate;
+
+                public HibernateProperties getHibernate() {
+                    return hibernate;
+                }
+
+                public void setHibernate(HibernateProperties hibernate) {
+                    this.hibernate = hibernate;
+                }
+
+                public static class HibernateProperties {
+                    private String dialect;
+
+                    public String getDialect() {
+                        return dialect;
+                    }
+
+                    public void setDialect(String dialect) {
+                        this.dialect = dialect;
+                    }
                 }
             }
         }
@@ -334,15 +544,24 @@ public class ApplicationConfig {
         }
 
         public static class FlywayConfig {
-            private boolean enabled;
+            private Boolean enabled;
+            private String locations;
             private Map<String, String> placeholders;
 
-            public boolean isEnabled() {
+            public Boolean getEnabled() {
                 return enabled;
             }
 
-            public void setEnabled(boolean enabled) {
+            public void setEnabled(Boolean enabled) {
                 this.enabled = enabled;
+            }
+
+            public String getLocations() {
+                return locations;
+            }
+
+            public void setLocations(String locations) {
+                this.locations = locations;
             }
 
             public Map<String, String> getPlaceholders() {
@@ -353,20 +572,19 @@ public class ApplicationConfig {
                 this.placeholders = placeholders;
             }
         }
-
     }
 
     public static class SpringDocConfig {
         @JsonProperty("writer-with-order-by-keys")
-        private boolean writerWithOrderByKeys;
+        private Boolean writerWithOrderByKeys;
         @JsonProperty("swagger-ui")
         private SwaggerUiConfig swaggerUi;
 
-        public boolean isWriterWithOrderByKeys() {
+        public Boolean getWriterWithOrderByKeys() {
             return writerWithOrderByKeys;
         }
 
-        public void setWriterWithOrderByKeys(boolean writerWithOrderByKeys) {
+        public void setWriterWithOrderByKeys(Boolean writerWithOrderByKeys) {
             this.writerWithOrderByKeys = writerWithOrderByKeys;
         }
 
@@ -380,13 +598,13 @@ public class ApplicationConfig {
 
         public static class SwaggerUiConfig {
             @JsonProperty("try-it-out-enabled")
-            private boolean tryItOutEnabled;
+            private Boolean tryItOutEnabled;
 
-            public boolean isTryItOutEnabled() {
+            public Boolean getTryItOutEnabled() {
                 return tryItOutEnabled;
             }
 
-            public void setTryItOutEnabled(boolean tryItOutEnabled) {
+            public void setTryItOutEnabled(Boolean tryItOutEnabled) {
                 this.tryItOutEnabled = tryItOutEnabled;
             }
         }
@@ -425,6 +643,10 @@ public class ApplicationConfig {
             private String root;
             @JsonProperty("org.springframework")
             private String orgSpringframework;
+            @JsonProperty("org.hibernate")
+            private String orgHibernate;
+            @JsonProperty("com.krito.muxon")
+            private String comKritoMuxon;
 
             public String getRoot() {
                 return root;
@@ -440,6 +662,22 @@ public class ApplicationConfig {
 
             public void setOrgSpringframework(String orgSpringframework) {
                 this.orgSpringframework = orgSpringframework;
+            }
+
+            public String getOrgHibernate() {
+                return orgHibernate;
+            }
+
+            public void setOrgHibernate(String orgHibernate) {
+                this.orgHibernate = orgHibernate;
+            }
+
+            public String getComKritoMuxon() {
+                return comKritoMuxon;
+            }
+
+            public void setComKritoMuxon(String comKritoMuxon) {
+                this.comKritoMuxon = comKritoMuxon;
             }
         }
 
@@ -457,6 +695,7 @@ public class ApplicationConfig {
 
         public static class PatternConfig {
             private String console;
+            private String file;
 
             public String getConsole() {
                 return console;
@@ -465,14 +704,27 @@ public class ApplicationConfig {
             public void setConsole(String console) {
                 this.console = console;
             }
+
+            public String getFile() {
+                return file;
+            }
+
+            public void setFile(String file) {
+                this.file = file;
+            }
         }
     }
 
     public static class MuxonConfig {
         private String instanceName;
         private int instanceId;
+        private EnterpriseConfig enterprise;
         private SystemConfig system;
         private List<TenantConfig> tenants;
+        private QueueConfig queue;
+        private WorkerConfig worker;
+        private ProviderConfig provider;
+        private ConsoleConfig console;
 
         public String getInstanceName() {
             return instanceName;
@@ -490,6 +742,14 @@ public class ApplicationConfig {
             this.instanceId = instanceId;
         }
 
+        public EnterpriseConfig getEnterprise() {
+            return enterprise;
+        }
+
+        public void setEnterprise(EnterpriseConfig enterprise) {
+            this.enterprise = enterprise;
+        }
+
         public SystemConfig getSystem() {
             return system;
         }
@@ -504,6 +764,50 @@ public class ApplicationConfig {
 
         public void setTenants(List<TenantConfig> tenants) {
             this.tenants = tenants;
+        }
+
+        public QueueConfig getQueue() {
+            return queue;
+        }
+
+        public void setQueue(QueueConfig queue) {
+            this.queue = queue;
+        }
+
+        public WorkerConfig getWorker() {
+            return worker;
+        }
+
+        public void setWorker(WorkerConfig worker) {
+            this.worker = worker;
+        }
+
+        public ProviderConfig getProvider() {
+            return provider;
+        }
+
+        public void setProvider(ProviderConfig provider) {
+            this.provider = provider;
+        }
+
+        public ConsoleConfig getConsole() {
+            return console;
+        }
+
+        public void setConsole(ConsoleConfig console) {
+            this.console = console;
+        }
+
+        public static class EnterpriseConfig {
+            private Boolean enabled;
+
+            public Boolean getEnabled() {
+                return enabled;
+            }
+
+            public void setEnabled(Boolean enabled) {
+                this.enabled = enabled;
+            }
         }
 
         public static class SystemConfig {
@@ -540,5 +844,97 @@ public class ApplicationConfig {
                 this.tenantAdminUserName = tenantAdminUserName;
             }
         }
+
+        public static class QueueConfig {
+            private String backend;
+
+            public String getBackend() {
+                return backend;
+            }
+
+            public void setBackend(String backend) {
+                this.backend = backend;
+            }
+        }
+
+        public static class WorkerConfig {
+            @JsonProperty("poll-delay-ms")
+            private Integer pollDelayMs;
+            @JsonProperty("poll-batch-size")
+            private Integer pollBatchSize;
+            @JsonProperty("stall-threshold-minutes")
+            private Integer stallThresholdMinutes;
+
+            public Integer getPollDelayMs() {
+                return pollDelayMs;
+            }
+
+            public void setPollDelayMs(Integer pollDelayMs) {
+                this.pollDelayMs = pollDelayMs;
+            }
+
+            public Integer getPollBatchSize() {
+                return pollBatchSize;
+            }
+
+            public void setPollBatchSize(Integer pollBatchSize) {
+                this.pollBatchSize = pollBatchSize;
+            }
+
+            public Integer getStallThresholdMinutes() {
+                return stallThresholdMinutes;
+            }
+
+            public void setStallThresholdMinutes(Integer stallThresholdMinutes) {
+                this.stallThresholdMinutes = stallThresholdMinutes;
+            }
+        }
+
+        public static class ProviderConfig {
+            @JsonProperty("storage-discovery-execution-timeout-seconds")
+            private Integer storageDiscoveryExecutionTimeoutSeconds;
+
+            public Integer getStorageDiscoveryExecutionTimeoutSeconds() {
+                return storageDiscoveryExecutionTimeoutSeconds;
+            }
+
+            public void setStorageDiscoveryExecutionTimeoutSeconds(Integer storageDiscoveryExecutionTimeoutSeconds) {
+                this.storageDiscoveryExecutionTimeoutSeconds = storageDiscoveryExecutionTimeoutSeconds;
+            }
+        }
+
+        public static class ConsoleConfig {
+            @JsonProperty("allowed-origins")
+            private List<String> allowedOrigins;
+            @JsonProperty("cleanup-interval-ms")
+            private Integer cleanupIntervalMs;
+            @JsonProperty("trust-all-hypervisor-tls")
+            private Boolean trustAllHypervisorTls;
+
+            public List<String> getAllowedOrigins() {
+                return allowedOrigins;
+            }
+
+            public void setAllowedOrigins(List<String> allowedOrigins) {
+                this.allowedOrigins = allowedOrigins;
+            }
+
+            public Integer getCleanupIntervalMs() {
+                return cleanupIntervalMs;
+            }
+
+            public void setCleanupIntervalMs(Integer cleanupIntervalMs) {
+                this.cleanupIntervalMs = cleanupIntervalMs;
+            }
+
+            public Boolean getTrustAllHypervisorTls() {
+                return trustAllHypervisorTls;
+            }
+
+            public void setTrustAllHypervisorTls(Boolean trustAllHypervisorTls) {
+                this.trustAllHypervisorTls = trustAllHypervisorTls;
+            }
+        }
     }
 }
+

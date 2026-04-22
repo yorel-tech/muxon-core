@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
+import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -140,7 +141,8 @@ public class LibvirtVmProvider implements VmProvider {
                 }
 
                 String domainXml = LibvirtXmlBuilder.buildDomainXml(
-                        request.vmId(), request.spec(), diskPath, resolvedIsos);
+                        request.vmId(), request.spec(), diskPath, resolvedIsos,
+                        request.customizationSeed(), request.enableGuestAgent());
 
                 logger.debug("Libvirt domain XML for VM {}: {}", request.vmId(), domainXml);
 
@@ -1305,5 +1307,151 @@ public class LibvirtVmProvider implements VmProvider {
      */
     public void close() {
         multiNodeManager.closeAll();
+    }
+
+    // ── Guest customization — QGA queries ────────────────────────────────────
+
+    @Override
+    public CompletableFuture<GuestAgentInfo> queryGuestAgent(String externalVmId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Domain domain = findDomainByExternalId(externalVmId);
+                if (domain == null) {
+                    logger.debug("queryGuestAgent: domain not found for externalId={}", externalVmId);
+                    return GuestAgentInfo.unreachable();
+                }
+
+                // Query hostname via QGA
+                String hostnameResult = domain.qemuAgentCommand(
+                        "{\"execute\":\"guest-get-host-name\"}", 10, 0);
+                if (hostnameResult == null || hostnameResult.isBlank()) {
+                    return GuestAgentInfo.unreachable();
+                }
+
+                // Parse {"return":{"host-name":"..."}}
+                String hostname = extractJsonStringField(hostnameResult, "host-name");
+
+                // Query IP addresses via QGA
+                List<String> ips = new ArrayList<>();
+                try {
+                    String ifaceResult = domain.qemuAgentCommand(
+                            "{\"execute\":\"guest-network-get-interfaces\"}", 10, 0);
+                    ips = parseGuestNetworkInterfaces(ifaceResult);
+                } catch (Exception e) {
+                    logger.debug("Could not get guest interfaces for {}: {}", externalVmId, e.getMessage());
+                }
+
+                // Query cloud-init status (Linux only)
+                String cloudInitStatus = null;
+                try {
+                    String ciResult = domain.qemuAgentCommand(
+                            "{\"execute\":\"guest-exec\",\"arguments\":{\"path\":\"/usr/bin/cloud-init\","
+                                    + "\"arg\":[\"status\",\"--long\"],\"capture-output\":true}}",
+                            30, 0);
+                    // Extract PID and poll result
+                    cloudInitStatus = pollGuestExecOutput(domain, ciResult);
+                } catch (Exception e) {
+                    logger.debug("cloud-init status query failed for {}: {}", externalVmId, e.getMessage());
+                }
+
+                return new GuestAgentInfo(ips, hostname, cloudInitStatus, true);
+
+            } catch (LibvirtException e) {
+                logger.debug("QGA query failed for {}: {}", externalVmId, e.getMessage());
+                return GuestAgentInfo.unreachable();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<VmOperationResult> detachCustomizationSeed(String externalVmId, String seedIsoPath) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Domain domain = findDomainByExternalId(externalVmId);
+                if (domain == null) {
+                    return new VmOperationResult(false, "Domain not found: " + externalVmId, null);
+                }
+                // Eject the CD-ROM at sdb (customization seed slot)
+                String ejectXml = "<disk type='file' device='cdrom'>"
+                        + "<driver name='qemu' type='raw'/>"
+                        + "<target dev='sdb' bus='sata'/>"
+                        + "<readonly/>"
+                        + "</disk>";
+                // VIR_DOMAIN_DEVICE_MODIFY_LIVE | VIR_DOMAIN_DEVICE_MODIFY_CONFIG = 3
+                domain.updateDeviceFlags(ejectXml, 3);
+                logger.info("Detached customization seed CD-ROM from VM {}", externalVmId);
+                // Delete the ISO file
+                try {
+                    Files.deleteIfExists(Path.of(seedIsoPath));
+                } catch (Exception e) {
+                    logger.warn("Failed to delete seed ISO {}: {}", seedIsoPath, e.getMessage());
+                }
+                return new VmOperationResult(true, "Seed detached", null);
+            } catch (LibvirtException e) {
+                logger.warn("Failed to detach seed from {}: {}", externalVmId, e.getMessage());
+                return new VmOperationResult(false, e.getMessage(), null);
+            }
+        });
+    }
+
+    private Domain findDomainByExternalId(String externalVmId) {
+        for (NodeEntity node : multiNodeManager.getAllNodes()) {
+            try {
+                Connect conn = multiNodeManager.getConnection(node.getId());
+                Domain d = conn.domainLookupByName(externalVmId);
+                if (d != null) return d;
+            } catch (LibvirtException ignored) {}
+        }
+        return null;
+    }
+
+    private static String extractJsonStringField(String json, String fieldName) {
+        String pattern = "\"" + fieldName + "\":\"";
+        int start = json.indexOf(pattern);
+        if (start < 0) return null;
+        start += pattern.length();
+        int end = json.indexOf('"', start);
+        return end > start ? json.substring(start, end) : null;
+    }
+
+    private static List<String> parseGuestNetworkInterfaces(String json) {
+        List<String> ips = new ArrayList<>();
+        if (json == null) return ips;
+        int idx = 0;
+        while ((idx = json.indexOf("\"ip-address\":\"", idx)) >= 0) {
+            idx += "\"ip-address\":\"".length();
+            int end = json.indexOf('"', idx);
+            if (end > idx) {
+                String ip = json.substring(idx, end);
+                if (!ip.startsWith("127.") && !ip.equals("::1")) {
+                    ips.add(ip);
+                }
+            }
+            idx = end + 1;
+        }
+        return ips;
+    }
+
+    private String pollGuestExecOutput(Domain domain, String execResult) {
+        try {
+            String pidStr = extractJsonStringField(execResult, "pid");
+            if (pidStr == null) return null;
+            int pid = Integer.parseInt(pidStr);
+            // Poll for up to 10 seconds
+            for (int i = 0; i < 10; i++) {
+                Thread.sleep(1000);
+                String statusResult = domain.qemuAgentCommand(
+                        "{\"execute\":\"guest-exec-status\",\"arguments\":{\"pid\":" + pid + "}}",
+                        10, 0);
+                if (statusResult != null && statusResult.contains("\"exited\":true")) {
+                    String encoded = extractJsonStringField(statusResult, "out-data");
+                    if (encoded != null) {
+                        return new String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8);
+                    }
+                    return statusResult;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 }

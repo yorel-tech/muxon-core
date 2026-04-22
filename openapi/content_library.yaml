@@ -291,7 +291,7 @@ components:
 
     VmTemplateSpecBody:
       type: object
-      required: [firmware, compute, disks, network, cloudInit]
+      required: [firmware, compute, disks, network, customization]
       additionalProperties: false
       properties:
         firmware:
@@ -309,8 +309,8 @@ components:
           minItems: 1
           items:
             $ref: '#/components/schemas/VmTemplateNetworkSpec'
-        cloudInit:
-          $ref: '#/components/schemas/VmTemplateCloudInitSpec'
+        customization:
+          $ref: '#/components/schemas/VmTemplateCustomizationSpec'
 
     VmTemplateComputeSpec:
       type: object
@@ -389,13 +389,41 @@ components:
           type: string
           description: virtio, e1000, vmxnet3
 
-    VmTemplateCloudInitSpec:
+    VmTemplateCustomizationSpec:
       type: object
-      required: [enabled]
+      required: [type, osFamily]
       additionalProperties: false
       properties:
-        enabled:
-          type: boolean
+        type:
+          type: string
+          enum: [cloudInit, sysprep, none]
+          description: "Customization mechanism. cloudInit for Linux; sysprep for Windows; none to skip."
+        osFamily:
+          type: string
+          enum: [linux, windows]
+          description: "Guest OS family. Determines which customization type is valid."
+        defaults:
+          $ref: '#/components/schemas/VmTemplateCustomizationDefaults'
+
+    VmTemplateCustomizationDefaults:
+      type: object
+      description: "Default customization values baked into this template; overridable at deploy time."
+      additionalProperties: false
+      properties:
+        timezone:
+          type: string
+          nullable: true
+          description: "Default timezone, e.g. UTC, America/New_York."
+        dnsServers:
+          type: array
+          nullable: true
+          items:
+            type: string
+        dnsSearch:
+          type: array
+          nullable: true
+          items:
+            type: string
 
     VmTemplateContentItem:
       allOf:

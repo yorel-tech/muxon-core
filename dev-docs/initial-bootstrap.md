@@ -6,7 +6,19 @@ The **muxon-initializer** JAR runs before **core-services** to:
 - Read **secret files** (passphrase, OIDC client secret, DB password)
 - Run **Flyway** migrations
 - Seed initial IdP / tenant data
-- Write generated Spring configuration under **`/etc/infron/`** (merged at runtime via `--spring.config.additional-location=optional:file:/etc/infron/`)
+- Write generated Spring configuration under **`/etc/muxon/`** as **per-service** files:
+  - `core-services-application.yaml`
+  - `orchestrator-application.yaml`
+  - `console-proxy-application.yaml`
+
+Each service loads only its own generated file via `--spring.config.additional-location=optional:file:/etc/muxon/<service>-application.yaml`.
+
+## Enterprise bootstrap
+
+Enterprise runs a separate init step, **`nexus-initializer`**, which:
+
+- Invokes the OSS initializer logic first (Flyway OSS + seed + the three OSS config files)
+- Then runs enterprise migrations and writes `nexus-services-application.yaml`
 
 ## Admin installation guides
 

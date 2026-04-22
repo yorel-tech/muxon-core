@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api(project(":libs:core-provider"))
     api(project(":libs:core-persistence"))
+    api(project(":libs:core-customization"))
 
     implementation(project(":libs:core-api"))
     implementation(project(":libs:core-commons"))

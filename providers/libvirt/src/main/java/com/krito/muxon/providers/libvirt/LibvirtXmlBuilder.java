@@ -1,5 +1,6 @@
 package com.krito.muxon.providers.libvirt;
 
+import com.krito.muxon.providers.CustomizationSeed;
 import com.krito.muxon.providers.IsoAttachment;
 
 import java.util.ArrayList;
@@ -42,10 +43,23 @@ public class LibvirtXmlBuilder {
     }
 
     /**
-     * Builds domain XML with optional ISO CD-ROM devices. {@link IsoAttachment#deviceName()} selects
-     * the guest target dev (e.g. sdc); when null, assigns sdc, sdd, ...
+     * Builds domain XML with optional ISO CD-ROM devices and optional customization seed.
+     * {@link IsoAttachment#deviceName()} selects the guest target dev (e.g. sdc); when null, assigns sdc, sdd, ...
      */
     public static String buildDomainXml(UUID vmId, String spec, String diskPath, List<IsoAttachment> isoAttachments) {
+        return buildDomainXml(vmId, spec, diskPath, isoAttachments, null, false);
+    }
+
+    /**
+     * Full builder with customization seed and guest-agent flag.
+     *
+     * @param customizationSeed When non-null, appends a second CD-ROM at {@code sdb} with the seed ISO.
+     * @param enableGuestAgent  When true, adds the QGA virtio-serial channel.
+     */
+    public static String buildDomainXml(UUID vmId, String spec, String diskPath,
+                                        List<IsoAttachment> isoAttachments,
+                                        CustomizationSeed customizationSeed,
+                                        boolean enableGuestAgent) {
         List<IsoAttachment> isos = isoAttachments == null ? List.of() : isoAttachments;
         boolean anyBootableIso = isos.stream().anyMatch(IsoAttachment::bootable);
 
@@ -104,6 +118,17 @@ public class LibvirtXmlBuilder {
             xml.append("    </disk>\n");
         }
 
+        // Customization seed ISO (always on sdb — before user ISOs which start at sdc)
+        if (customizationSeed != null) {
+            xml.append("    <disk type='file' device='cdrom'>\n");
+            xml.append("      <driver name='qemu' type='raw'/>\n");
+            xml.append("      <source file='").append(escapeXmlAttr(customizationSeed.isoPath())).append("'/>\n");
+            xml.append("      <target dev='sdb' bus='sata'/>\n");
+            xml.append("      <readonly/>\n");
+            xml.append("    </disk>\n");
+            usedTargets.add("sdb");
+        }
+
         xml.append("    <interface type='network'>\n");
         xml.append("      <source network='default'/>\n");
         xml.append("      <model type='virtio'/>\n");
@@ -112,6 +137,16 @@ public class LibvirtXmlBuilder {
         xml.append("    <console type='pty'>\n");
         xml.append("      <target type='serial' port='0'/>\n");
         xml.append("    </console>\n");
+
+        // QEMU guest agent virtio-serial channel
+        if (enableGuestAgent || customizationSeed != null) {
+            xml.append("    <channel type='unix'>\n");
+            xml.append("      <target type='virtio' name='org.qemu.guest_agent.0'/>\n");
+            xml.append("    </channel>\n");
+            xml.append("    <rng model='virtio'>\n");
+            xml.append("      <backend model='random'>/dev/urandom</backend>\n");
+            xml.append("    </rng>\n");
+        }
 
         xml.append("  </devices>\n");
         xml.append("</domain>\n");

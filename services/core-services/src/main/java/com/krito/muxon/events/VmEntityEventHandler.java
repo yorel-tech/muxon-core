@@ -126,6 +126,32 @@ public class VmEntityEventHandler {
         });
     }
 
+    @Transactional
+    public void onCustomizationUpdate(EntityEventMessage event) {
+        updateVm(event.entityId(), vm -> {
+            // Update customizationStatus JSON from the payload
+            Object statusJson = event.payload().get("customizationStatus");
+            if (statusJson != null) {
+                vm.setCustomizationStatus(statusJson.toString());
+            }
+            // On COMPLETE / FAILED: also update IP + hostname if provided, clear seed path
+            String phase = event.payload().containsKey("customizationPhase")
+                    ? event.payload().get("customizationPhase").toString() : null;
+            if ("COMPLETE".equals(phase) || "FAILED".equals(phase)) {
+                vm.setCustomizationSeedPath(null);
+            }
+            if ("COMPLETE".equals(phase)) {
+                Object ips = event.payload().get("ip_addresses");
+                if (ips instanceof List<?> list && !list.isEmpty()) {
+                    vm.setIpAddresses(list.stream().map(Object::toString).toList());
+                }
+                Object hostname = event.payload().get("hostname");
+                if (hostname != null) vm.setHostname(hostname.toString());
+            }
+            log.info("VM {} customization update: phase={}", event.entityId(), phase);
+        });
+    }
+
     // ── private ───────────────────────────────────────────────────────────────
 
     private void updateVm(UUID vmId, VmUpdater updater) {

@@ -61,6 +61,11 @@ public interface EntityEventQueue {
         String VM_OPERATION_FAILED  = "vm.operation.failed";
         String VM_MIGRATED          = "vm.migrated";
 
+        // Guest customization events
+        String VM_CUSTOMIZATION_STATUS_UPDATED = "vm.customization.status_updated";
+        String VM_CUSTOMIZATION_COMPLETE       = "vm.customization.complete";
+        String VM_CUSTOMIZATION_FAILED         = "vm.customization.failed";
+
         // Content library distribution (replication to a datacenter)
         String CL_DISTRIBUTION_ITEM_UPDATED = "content_library_distribution.item_updated";
         String CL_DISTRIBUTION_COMPLETED    = "content_library_distribution.completed";

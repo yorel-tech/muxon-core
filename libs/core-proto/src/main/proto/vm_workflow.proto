@@ -34,6 +34,7 @@ message CreateVMRequest {
   string source_image_path          = 4;   // optional: provider-relative path of template
   repeated string iso_content_ids   = 5;   // optional: list of ISO content item UUIDs
   string correlation_id             = 6;
+  string customization_json         = 7;   // optional: serialised VmCustomizationSpec JSON (secrets encrypted at rest)
 }
 
 message DeleteVMRequest {

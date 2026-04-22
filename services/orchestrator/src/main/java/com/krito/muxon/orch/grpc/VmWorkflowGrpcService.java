@@ -42,15 +42,19 @@ public class VmWorkflowGrpcService extends VMWorkflowServiceGrpc.VMWorkflowServi
             if (!request.getIsoContentIdsList().isEmpty()) {
                 payload.put("isoContentItemIds", request.getIsoContentIdsList());
             }
+            if (!request.getCustomizationJson().isBlank()) {
+                payload.put("customizationJson", request.getCustomizationJson());
+            }
             log.debug(
                     "VM workflow gRPC createVM: vmId={}, correlationId={}, grantId={}, specJsonChars={}, "
-                            + "sourceImagePathSet={}, isoContentIdCount={}",
+                            + "sourceImagePathSet={}, isoContentIdCount={}, hasCustomization={}",
                     request.getVmId(),
                     request.getCorrelationId(),
                     request.getTenantDatacenterGrantId(),
                     request.getSpecJson() != null ? request.getSpecJson().length() : 0,
                     !request.getSourceImagePath().isBlank(),
-                    request.getIsoContentIdsList().size());
+                    request.getIsoContentIdsList().size(),
+                    !request.getCustomizationJson().isBlank());
             return jobService.createJob(
                     JobType.VM_CREATE, EntityType.VM,
                     UUID.fromString(request.getVmId()),

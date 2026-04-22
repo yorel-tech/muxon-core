@@ -1,6 +1,7 @@
-package com.krito.muxon.bootstrap;
+package com.krito.muxon.initializer.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,6 @@ public class BootstrapConfig {
         private List<TenantConfig> tenants;
         private DatasourceConfig datasource;
 
-        // Getters and setters
         public String getInstanceName() {
             return instanceName;
         }
@@ -186,3 +186,4 @@ public class BootstrapConfig {
         }
     }
 }
+

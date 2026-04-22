@@ -117,6 +117,9 @@ public class VmsService {
     private ConsoleSessionRepository consoleSessionRepository;
 
     @Autowired
+    private CustomizationSecretService customizationSecretService;
+
+    @Autowired
     private SystemSettingsRepository systemSettingsRepository;
 
     @Autowired
@@ -213,6 +216,39 @@ public class VmsService {
         vm.setContentItemId(request.getContentItemId());
         if (isoIds != null && !isoIds.isEmpty()) {
             vm.setAttachedIsoItemIds(new ArrayList<>(new LinkedHashSet<>(isoIds)));
+        }
+
+        // Validate + deep-merge the customization spec
+        if (request.getCustomization() != null) {
+            validateCustomizationSpec(request.getCustomization(), tpl);
+        }
+
+        // Persist the customization spec (secrets will be encrypted before saving)
+        if (request.getCustomization() != null) {
+            try {
+                // Stamp osFamily from template if available
+                if (tpl != null && tpl.getTemplateSpec() != null) {
+                    Object meta = tpl.getTemplateSpec().get("metadata");
+                    if (meta instanceof java.util.Map<?, ?> metaMap) {
+                        Object osFamily = metaMap.get("osFamily");
+                        if (osFamily != null && request.getCustomization().getOsFamily() == null) {
+                            request.getCustomization().setOsFamily(osFamily.toString());
+                        }
+                    }
+                }
+                String rawJson = objectMapper.writeValueAsString(request.getCustomization());
+                String encryptedJson = customizationSecretService.encryptSecrets(rawJson);
+                log.debug("Persisting customization for VM {}: {}", vm.getId(),
+                        customizationSecretService.redactForLog(rawJson));
+                vm.setCustomization(encryptedJson);
+                // Initial status = PENDING
+                var initStatus = new com.krito.muxon.customization.model.CustomizationStatus();
+                initStatus.setPhase(com.krito.muxon.customization.model.CustomizationPhase.PENDING);
+                initStatus.setStartedAt(java.time.Instant.now());
+                vm.setCustomizationStatus(objectMapper.writeValueAsString(initStatus));
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to serialize customization spec", e);
+            }
         }
 
         // Save VM
@@ -842,6 +878,30 @@ public class VmsService {
         vm.setStartedAt(entity.getStartedAt() != null ? entity.getStartedAt().atOffset(ZoneOffset.UTC) : null);
         vm.setStoppedAt(entity.getStoppedAt() != null ? entity.getStoppedAt().atOffset(ZoneOffset.UTC) : null);
 
+        // Customization status — map the stored JSON to the API model; omit seedPath (internal).
+        if (entity.getCustomizationStatus() != null && !entity.getCustomizationStatus().isBlank()) {
+            try {
+                var apiStatus = new com.krito.muxon.api.model.CustomizationStatus();
+                var internalStatus = objectMapper.readValue(entity.getCustomizationStatus(),
+                        com.krito.muxon.customization.model.CustomizationStatus.class);
+                if (internalStatus.getPhase() != null) {
+                    apiStatus.setPhase(com.krito.muxon.api.model.CustomizationPhase.valueOf(
+                            internalStatus.getPhase().name()));
+                }
+                apiStatus.setSubPhase(internalStatus.getSubPhase());
+                apiStatus.setMessage(internalStatus.getMessage());
+                if (internalStatus.getStartedAt() != null) {
+                    apiStatus.setStartedAt(internalStatus.getStartedAt().atOffset(java.time.ZoneOffset.UTC));
+                }
+                if (internalStatus.getCompletedAt() != null) {
+                    apiStatus.setCompletedAt(internalStatus.getCompletedAt().atOffset(java.time.ZoneOffset.UTC));
+                }
+                vm.setCustomizationStatus(apiStatus);
+            } catch (Exception e) {
+                log.warn("Failed to parse customization status for VM {}: {}", entity.getId(), e.getMessage());
+            }
+        }
+
         return vm;
     }
 
@@ -902,6 +962,10 @@ public class VmsService {
                 .setCorrelationId(generateRequestId());
         if (request.getIsoContentItemIds() != null) {
             request.getIsoContentItemIds().forEach(id -> b.addIsoContentIds(id.toString()));
+        }
+        // Propagate decrypted customization JSON to the worker (never logged at DEBUG).
+        if (vm.getCustomization() != null && !vm.getCustomization().isBlank()) {
+            b.setCustomizationJson(customizationSecretService.decryptSecrets(vm.getCustomization()));
         }
         return b.build();
     }
@@ -979,6 +1043,68 @@ public class VmsService {
             out.setOs(requestSpec.getOs());
         }
         return out;
+    }
+
+    /**
+     * Validates the customization spec against template constraints and platform rules.
+     * Throws {@link IllegalArgumentException} on any violation.
+     */
+    private void validateCustomizationSpec(
+            com.krito.muxon.api.model.VmCustomizationSpec spec,
+            ContentItemEntity templateItem) {
+
+        // Derive osFamily from template if not provided
+        String osFamily = spec.getOsFamily();
+        if ((osFamily == null || osFamily.isBlank()) && templateItem != null
+                && templateItem.getTemplateSpec() != null) {
+            Object meta = templateItem.getTemplateSpec().get("metadata");
+            if (meta instanceof java.util.Map<?, ?> m) {
+                Object of = m.get("osFamily");
+                if (of != null) osFamily = of.toString();
+            }
+        }
+
+        // Hostname length constraints
+        if (spec.getHostname() != null && !spec.getHostname().isBlank()) {
+            int max = "windows".equalsIgnoreCase(osFamily) ? 15 : 63;
+            if (spec.getHostname().length() > max) {
+                throw new IllegalArgumentException(
+                        "customization.hostname exceeds max length " + max
+                                + " for " + osFamily + " (got " + spec.getHostname().length() + " chars)");
+            }
+        }
+
+        // OS family / spec consistency
+        if ("linux".equalsIgnoreCase(osFamily) && spec.getWindows() != null) {
+            throw new IllegalArgumentException(
+                    "customization.windows fields are not allowed when osFamily=linux");
+        }
+        if ("windows".equalsIgnoreCase(osFamily) && spec.getLinux() != null) {
+            throw new IllegalArgumentException(
+                    "customization.linux fields are not allowed when osFamily=windows");
+        }
+
+        // Static NICs must have ipAddress + prefix + gateway
+        if (spec.getNics() != null) {
+            for (int i = 0; i < spec.getNics().size(); i++) {
+                var nic = spec.getNics().get(i);
+                if ("static".equalsIgnoreCase(nic.getIpAllocation() != null
+                        ? nic.getIpAllocation().getValue() : "dhcp")) {
+                    if (nic.getIpAddress() == null || nic.getIpAddress().isBlank()) {
+                        throw new IllegalArgumentException(
+                                "customization.nics[" + i + "].ipAddress is required for static allocation");
+                    }
+                    if (nic.getPrefix() == null) {
+                        throw new IllegalArgumentException(
+                                "customization.nics[" + i + "].prefix is required for static allocation");
+                    }
+                    if (nic.getGateway() == null || nic.getGateway().isBlank()) {
+                        throw new IllegalArgumentException(
+                                "customization.nics[" + i + "].gateway is required for static allocation");
+                    }
+                }
+            }
+        }
     }
 
     private CommandMessage buildStartCommand(VmEntity vm) {

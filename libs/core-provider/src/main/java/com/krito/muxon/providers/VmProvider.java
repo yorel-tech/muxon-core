@@ -131,4 +131,29 @@ public interface VmProvider {
         return CompletableFuture.failedFuture(
                 new UnsupportedOperationException("Console is not supported for this provider"));
     }
+
+    /**
+     * Query the QEMU guest agent channel for the VM's current IP addresses, hostname,
+     * and (Linux only) the cloud-init status JSON.
+     *
+     * <p>Returns {@link GuestAgentInfo#unreachable()} when the guest agent has not yet started
+     * rather than throwing, so callers can poll until the agent is available.
+     *
+     * @param externalVmId Provider-assigned VM ID.
+     */
+    default CompletableFuture<GuestAgentInfo> queryGuestAgent(String externalVmId) {
+        return CompletableFuture.completedFuture(GuestAgentInfo.unreachable());
+    }
+
+    /**
+     * Detach and eject the customization seed CD-ROM from the VM, then delete the backing ISO file.
+     * Called once the guest customization phase reaches {@code COMPLETE} or {@code FAILED}.
+     *
+     * @param externalVmId Provider-assigned VM ID.
+     * @param seedIsoPath  Absolute path of the seed ISO to delete after detach.
+     */
+    default CompletableFuture<VmOperationResult> detachCustomizationSeed(String externalVmId, String seedIsoPath) {
+        return CompletableFuture.completedFuture(
+                new VmOperationResult(true, "Seed detach not supported by this provider", null));
+    }
 }

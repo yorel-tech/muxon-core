@@ -196,19 +196,17 @@ If you set **`MUXON_API_CLIENT_SECRET`** in Compose before the **first** realm i
 Run it (from repo root):
 
 ```bash
-./gradlew :services:muxon-initializer:bootRun --args="\
---initial-config $PWD/services/muxon-initializer/src/main/resources/initial-config.yaml \
---output-folder $PWD/services/core-services/src/main/resources \
---muxon-passphrase $HOME/.secrets/passphrase \
---muxon-oidc-secret $HOME/.secrets/muxon-oidc-secret \
---muxon-db-password $HOME/.secrets/passphrase"
+./scripts/dev-init.sh
 ```
 
 This will:
 
-- Run Flyway migrations
+- Run Flyway migrations (OSS)
 - Insert initial RBAC/bootstrap data
-- Generate `application.yaml` into the output folder (by default `services/core-services/src/main/resources`)
+- Generate **per-service** Spring configs:
+  - `services/core-services/src/main/resources/application.yaml`
+  - `services/orchestrator/src/main/resources/application.yaml`
+  - `services/console-proxy/src/main/resources/application.yaml`
 
 ### 2) Run `core-services`
 

@@ -25,6 +25,13 @@ public final class ContentItemResolution {
         assertAvailable(item);
     }
 
+    public static void assertAvailableScript(ContentItemEntity item) {
+        if (!"script".equalsIgnoreCase(item.getContentType())) {
+            throw new IllegalStateException("Content item is not a script: " + item.getId());
+        }
+        assertAvailable(item);
+    }
+
     private static void assertAvailable(ContentItemEntity item) {
         if (!"available".equalsIgnoreCase(item.getContentStatus())) {
             throw new IllegalStateException(
