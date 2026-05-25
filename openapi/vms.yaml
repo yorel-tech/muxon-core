@@ -98,9 +98,24 @@ components:
         isPrimary:
           type: boolean
           description: Whether this is the primary network interface
+        subnetId:
+          type: string
+          format: uuid
+          description: Subnet UUID to attach this NIC to (requires ATTACH permission via subnet_rbac)
+        securityGroupIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Security groups applied at the vNIC level (independent per NIC)
         network:
           type: string
-          description: Network name or ID
+          description: "Deprecated: Use subnetId instead. Legacy network name (bridge/network) for backward compatibility."
+          deprecated: true
+        networkName:
+          type: string
+          description: "Deprecated: Use subnetId instead."
+          deprecated: true
         ip_allocation:
           type: string
           enum: [ dhcp, static, pool ]
@@ -368,6 +383,11 @@ components:
       type: object
       description: "Guest customization applied at deploy time. Merged over template defaults."
       properties:
+        osFamily:
+          type: string
+          enum: [linux, windows]
+          nullable: true
+          description: "Guest OS family. Optional on the request; may be taken from template metadata. Drives hostname limits and whether linux vs windows sub-objects apply."
         hostname:
           type: string
           minLength: 1
@@ -546,6 +566,10 @@ components:
           type: string
           format: uuid
           description: Tenant datacenter grant ID
+        stackId:
+          type: string
+          format: uuid
+          description: Stack this VM belongs to
         content_item_id:
           type: string
           format: uuid

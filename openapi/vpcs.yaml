@@ -1,0 +1,893 @@
+openapi: 3.0.3
+info:
+  title: VPCs, Subnets, Route Tables & IPAM API
+  version: 2026-05-24
+
+components:
+  parameters:
+    vpcId:
+      name: vpcId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: VPC UUID
+    subnetId:
+      name: subnetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Subnet UUID
+    routeTableId:
+      name: routeTableId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Route Table UUID
+
+  schemas:
+    VpcStatus:
+      type: string
+      enum: [ACTIVE, DELETING]
+
+    Vpc:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            tenantId:
+              type: string
+              format: uuid
+            cidr:
+              type: string
+              example: '10.0.0.0/16'
+            description:
+              type: string
+            status:
+              $ref: '#/components/schemas/VpcStatus'
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    VpcCreate:
+      type: object
+      required:
+        - name
+        - cidr
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        cidr:
+          type: string
+          description: IPv4 CIDR block (must be a private range)
+          example: '10.0.0.0/16'
+        description:
+          type: string
+          maxLength: 1000
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    VpcUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+
+    VpcList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vpc'
+
+    SubnetStatus:
+      type: string
+      enum: [PENDING, ACTIVE, ERROR, DELETING]
+
+    Subnet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cidr:
+          type: string
+          example: '10.0.1.0/24'
+        gatewayIp:
+          type: string
+        dnsServers:
+          type: array
+          items:
+            type: string
+        public:
+          type: boolean
+          default: false
+        availabilityZone:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/SubnetStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SubnetCreate:
+      type: object
+      required:
+        - name
+        - cidr
+        - datacenterId
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        cidr:
+          type: string
+          description: IPv4 CIDR (must be within the parent VPC CIDR)
+          example: '10.0.1.0/24'
+        datacenterId:
+          type: string
+          format: uuid
+        gatewayIp:
+          type: string
+        dnsServers:
+          type: array
+          items:
+            type: string
+        public:
+          type: boolean
+          default: false
+        availabilityZone:
+          type: string
+
+    SubnetUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        dnsServers:
+          type: array
+          items:
+            type: string
+
+    SubnetList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subnet'
+
+    SubnetRbac:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subnetId:
+          type: string
+          format: uuid
+        principalType:
+          type: string
+          enum: [USER, STACK, ROLE]
+        principalId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [ATTACH, VIEW, MANAGE]
+        createdAt:
+          type: string
+          format: date-time
+
+    SubnetRbacCreate:
+      type: object
+      required:
+        - principalType
+        - principalId
+        - permissions
+      properties:
+        principalType:
+          type: string
+          enum: [USER, STACK, ROLE]
+        principalId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [ATTACH, VIEW, MANAGE]
+          minItems: 1
+
+    RouteTargetType:
+      type: string
+      enum: [INTERNET_GATEWAY, NAT_GATEWAY, LOCAL, VPC_PEERING, INSTANCE]
+
+    RouteTable:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        isMain:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RouteTableCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+
+    RouteTableEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        routeTableId:
+          type: string
+          format: uuid
+        destinationCidr:
+          type: string
+        targetType:
+          $ref: '#/components/schemas/RouteTargetType'
+        targetId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    RouteTableEntryCreate:
+      type: object
+      required:
+        - destinationCidr
+        - targetType
+      properties:
+        destinationCidr:
+          type: string
+          example: '0.0.0.0/0'
+        targetType:
+          $ref: '#/components/schemas/RouteTargetType'
+        targetId:
+          type: string
+          format: uuid
+
+    IpamPrefixDelegation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subnetId:
+          type: string
+          format: uuid
+        stackId:
+          type: string
+          format: uuid
+        nodeVmId:
+          type: string
+          format: uuid
+        delegatedCidr:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, ROUTE_ERROR, RELEASED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    IpamPrefixDelegationCreate:
+      type: object
+      required:
+        - stackId
+        - nodeVmId
+        - delegatedCidr
+      properties:
+        stackId:
+          type: string
+          format: uuid
+        nodeVmId:
+          type: string
+          format: uuid
+        delegatedCidr:
+          type: string
+          description: Sub-prefix of the parent subnet CIDR to delegate to the node
+
+paths:
+  /tenants/{tenantId}/vpcs:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+    get:
+      tags: [VPCs]
+      summary: List VPCs for tenant
+      operationId: listVpcs
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: VPC list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VpcList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [VPCs]
+      summary: Create a VPC
+      operationId: createVpc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VpcCreate'
+      responses:
+        '201':
+          description: Created VPC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vpc'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+    get:
+      tags: [VPCs]
+      summary: Get VPC by ID
+      operationId: getVpc
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: VPC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vpc'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [VPCs]
+      summary: Update VPC
+      operationId: updateVpc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VpcUpdate'
+      responses:
+        '200':
+          description: Updated VPC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vpc'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [VPCs]
+      summary: Delete VPC (rejected if active subnets)
+      operationId: deleteVpc
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+    get:
+      tags: [Subnets]
+      summary: List subnets in a VPC
+      operationId: listSubnets
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+        - name: stack
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter to subnets where this stack has VIEW or ATTACH permission
+      responses:
+        '200':
+          description: Subnet list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubnetList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Subnets]
+      summary: Create a subnet
+      operationId: createSubnet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubnetCreate'
+      responses:
+        '201':
+          description: Created subnet (status PENDING, transitions to ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subnet'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/subnetId'
+    get:
+      tags: [Subnets]
+      summary: Get subnet by ID
+      operationId: getSubnet
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Subnet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subnet'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Subnets]
+      summary: Update subnet
+      operationId: updateSubnet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubnetUpdate'
+      responses:
+        '200':
+          description: Updated subnet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subnet'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [Subnets]
+      summary: Delete subnet
+      operationId: deleteSubnet
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/access:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/subnetId'
+    get:
+      tags: [SubnetRbac]
+      summary: List subnet RBAC bindings
+      operationId: listSubnetRbac
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Subnet RBAC bindings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubnetRbac'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    post:
+      tags: [SubnetRbac]
+      summary: Add a subnet RBAC binding (requires MANAGE permission)
+      operationId: createSubnetRbac
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubnetRbacCreate'
+      responses:
+        '201':
+          description: Created binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubnetRbac'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/access/{rbacId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/subnetId'
+      - name: rbacId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [SubnetRbac]
+      summary: Remove a subnet RBAC binding
+      operationId: deleteSubnetRbac
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/route-tables:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+    get:
+      tags: [RouteTables]
+      summary: List route tables in a VPC
+      operationId: listRouteTables
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Route tables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RouteTable'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [RouteTables]
+      summary: Create a route table
+      operationId: createRouteTable
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteTableCreate'
+      responses:
+        '201':
+          description: Created route table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteTable'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/routeTableId'
+    get:
+      tags: [RouteTables]
+      summary: Get route table by ID
+      operationId: getRouteTable
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Route table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteTable'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [RouteTables]
+      summary: Delete route table (rejected if isMain = true)
+      operationId: deleteRouteTable
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}/entries:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/routeTableId'
+    get:
+      tags: [RouteTables]
+      summary: List route table entries
+      operationId: listRouteTableEntries
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Route table entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RouteTableEntry'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [RouteTables]
+      summary: Add a route table entry
+      operationId: createRouteTableEntry
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteTableEntryCreate'
+      responses:
+        '201':
+          description: Created route entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteTableEntry'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}/entries/{entryId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/routeTableId'
+      - name: entryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [RouteTables]
+      summary: Delete a route table entry
+      operationId: deleteRouteTableEntry
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/prefix-delegations:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/subnetId'
+    get:
+      tags: [IpamPrefixDelegation]
+      summary: List prefix delegations for a subnet
+      operationId: listPrefixDelegations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Prefix delegations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IpamPrefixDelegation'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [IpamPrefixDelegation]
+      summary: Create a prefix delegation for a Kubernetes node
+      operationId: createPrefixDelegation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IpamPrefixDelegationCreate'
+      responses:
+        '201':
+          description: Created prefix delegation (status PENDING → ACTIVE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpamPrefixDelegation'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/prefix-delegations/{delegationId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: '#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/subnetId'
+      - name: delegationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [IpamPrefixDelegation]
+      summary: Release a prefix delegation (removes route entry)
+      operationId: deletePrefixDelegation
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Delegation released
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

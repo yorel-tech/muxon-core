@@ -3,7 +3,7 @@ syntax = "proto3";
 package muxon.vm.console.v1;
 
 option java_multiple_files = true;
-option java_package = "com.krito.muxon.grpc.vmconsole.v1";
+option java_package = "com.sal.muxon.grpc.vmconsole.v1";
 option java_outer_classname = "VmConsoleResolutionProto";
 
 // Synchronous console endpoint resolution (hypervisor host/port/password). Implemented by orchestrator only.

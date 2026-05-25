@@ -1,0 +1,226 @@
+openapi: 3.0.3
+info:
+  title: Stacks API
+  version: 2026-05-24
+
+components:
+  parameters:
+    stackId:
+      name: stackId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Stack UUID
+
+  schemas:
+    StackStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, DELETING]
+
+    Stack:
+      allOf:
+        - $ref: './commons.yaml#/components/schemas/BaseEntity'
+        - type: object
+          properties:
+            tenantDatacenterGrantId:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/StackStatus'
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    StackCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    StackUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    StackList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        perPage:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stack'
+
+paths:
+  /tenants/{tenantId}/datacenters/{datacenterId}/stacks:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+    get:
+      tags: [Stacks]
+      summary: List stacks for tenant in datacenter
+      operationId: listStacks
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Stack list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackList'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Stacks]
+      summary: Create a stack
+      operationId: createStack
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StackCreate'
+      responses:
+        '201':
+          description: Created stack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stack'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/stacks/{stackId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+      - $ref: '#/components/parameters/stackId'
+    get:
+      tags: [Stacks]
+      summary: Get stack by ID
+      operationId: getStack
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Stack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stack'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Stacks]
+      summary: Update stack
+      operationId: updateStack
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StackUpdate'
+      responses:
+        '200':
+          description: Updated stack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stack'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [Stacks]
+      summary: Delete stack (transitions to DELETING; rejects if active VMs)
+      operationId: deleteStack
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/stacks/{stackId}/vms:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+      - $ref: '#/components/parameters/stackId'
+    get:
+      tags: [Stacks]
+      summary: List VMs in a stack
+      operationId: listStackVms
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: './commons.yaml#/components/parameters/page'
+        - $ref: './commons.yaml#/components/parameters/perPage'
+      responses:
+        '200':
+          description: VM list for this stack
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: './vms.yaml#/components/schemas/Vm'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

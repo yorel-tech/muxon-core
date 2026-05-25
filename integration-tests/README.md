@@ -1,5 +1,5 @@
 cd muxon-core/integration-tests
-DOCKER_HOST=unix:///run/user/1000/podman/podman.sock ../gradlew test --tests "com.krito.muxon.tests.IntegrationTestSuite"
+DOCKER_HOST=unix:///run/user/1000/podman/podman.sock ../gradlew test --tests "com.sal.muxon.tests.IntegrationTestSuite"
 
 This will run tests in the specified order:
 1. InfraDeployer - starts the infrastructure

@@ -1,9 +1,0 @@
-// Enum for tenant_status
-
-package com.krito.muxon.api.enums;
-
-public enum TenantStatus {
-    ACTIVE,
-    INACTIVE,
-    SUSPENDED
-}

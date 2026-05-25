@@ -4,7 +4,7 @@ plugins {
 }
 
 allprojects {
-    group = "com.krito.muxon"
+    group = "com.sal.muxon"
     version = "0.1.0"
 
     repositories {
@@ -31,7 +31,7 @@ publishing {
 
         maven {
             name = "github"
-            url = uri("https://maven.pkg.github.com/krito/muxon-core")
+            url = uri("https://maven.pkg.github.com/sal/muxon-core")
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")

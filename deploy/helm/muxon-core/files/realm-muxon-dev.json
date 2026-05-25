@@ -1,5 +1,5 @@
 {
-  "realm": "muxon-dev",
+  "realm": "muxon-local",
   "enabled": true,
   "roles": {
     "realm": [
@@ -12,10 +12,10 @@
   },
   "users": [
     {
-      "username": "admin@muxon.dev",
+      "username": "admin@muxon.local",
       "firstName": "Admin",
       "lastName": "User",
-      "email": "admin@muxon.dev",
+      "email": "admin@muxon.local",
       "emailVerified": true,
       "credentials": [
         {
@@ -30,10 +30,10 @@
       "enabled": true
     },
     {
-      "username": "limited-admin@muxon.dev",
+      "username": "limited-admin@muxon.local",
       "firstName": "Limited",
       "lastName": "Admin",
-      "email": "limited-admin@muxon.dev",
+      "email": "limited-admin@muxon.local",
       "emailVerified": true,
       "credentials": [
         {
@@ -48,10 +48,10 @@
       "enabled": true
     },
     {
-      "username": "dev@muxon.dev",
+      "username": "dev@muxon.local",
       "firstName": "Dev",
       "lastName": "User",
-      "email": "dev@muxon.dev",
+      "email": "dev@muxon.local",
       "emailVerified": true,
       "credentials": [
         {
@@ -66,10 +66,10 @@
       "enabled": true
     },
     {
-      "username": "tenantadmin@muxon.dev",
+      "username": "tenantadmin@muxon.local",
       "firstName": "Tenant",
       "lastName": "Admin",
-      "email": "tenantadmin@muxon.dev",
+      "email": "tenantadmin@muxon.local",
       "emailVerified": true,
       "credentials": [
         {
@@ -82,10 +82,10 @@
       "enabled": true
     },
     {
-      "username": "workload-operator@muxon.dev",
+      "username": "workload-operator@muxon.local",
       "firstName": "Workload",
       "lastName": "Operator",
-      "email": "workload-operator@muxon.dev",
+      "email": "workload-operator@muxon.local",
       "emailVerified": true,
       "credentials": [
         {
@@ -98,10 +98,10 @@
       "enabled": true
     },
     {
-      "username": "workload-user@muxon.dev",
+      "username": "workload-user@muxon.local",
       "firstName": "Workload",
       "lastName": "User",
-      "email": "workload-user@muxon.dev",
+      "email": "workload-user@muxon.local",
       "emailVerified": true,
       "credentials": [
         {

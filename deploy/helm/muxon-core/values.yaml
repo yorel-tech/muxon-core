@@ -1,6 +1,6 @@
 image:
-  repository: ghcr.io/krito/muxon-core/core-services
-  tag: "0.1.0"
+  repository: localhost:5000/sal/core-services
+  tag: 0.1.0
 
 nameOverride: ""
 fullnameOverride: ""
@@ -29,8 +29,8 @@ bootstrap:
     systemAdminUserName: "admin@example.com"
     idpName: "default-idp"
     idpProtocol: "OIDC"
-    # Internal: http://keycloak:8085/realms/muxon-dev (same namespace)
-    issuerUri: "http://keycloak:8085/realms/muxon-dev"
+    # Internal: http://keycloak:8085/realms/muxon-local (same namespace)
+    issuerUri: "http://keycloak:8085/realms/muxon-local"
     clientId: "muxon-api"
     clientSecretPlaceholder: "provide-in-secrets"
     tenantName: "default"

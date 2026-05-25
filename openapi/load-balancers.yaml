@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: Load Balancers API
+  version: 2026-05-24
+
+components:
+  schemas:
+    LbScheme:
+      type: string
+      enum: [INTERNAL, INTERNET_FACING]
+
+    LoadBalancer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        subnetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scheme:
+          $ref: '#/components/schemas/LbScheme'
+        floatingIpId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LoadBalancerCreate:
+      type: object
+      required:
+        - name
+        - subnetId
+        - scheme
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        subnetId:
+          type: string
+          format: uuid
+        scheme:
+          $ref: '#/components/schemas/LbScheme'
+        floatingIpId:
+          type: string
+          format: uuid
+          description: Required when scheme=INTERNET_FACING
+
+    LoadBalancerListener:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        loadBalancerId:
+          type: string
+          format: uuid
+        protocol:
+          type: string
+          enum: [TCP, UDP]
+        port:
+          type: integer
+        targetPort:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    LoadBalancerListenerCreate:
+      type: object
+      required:
+        - protocol
+        - port
+        - targetPort
+      properties:
+        protocol:
+          type: string
+          enum: [TCP, UDP]
+          default: TCP
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        targetPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+
+    LoadBalancerTarget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        loadBalancerId:
+          type: string
+          format: uuid
+        vmId:
+          type: string
+          format: uuid
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        port:
+          type: integer
+        weight:
+          type: integer
+        status:
+          type: string
+          enum: [HEALTHY, UNHEALTHY]
+        createdAt:
+          type: string
+          format: date-time
+
+    LoadBalancerTargetCreate:
+      type: object
+      required:
+        - port
+      properties:
+        vmId:
+          type: string
+          format: uuid
+        ipAddress:
+          type: string
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        weight:
+          type: integer
+          minimum: 1
+          default: 1
+
+paths:
+  /tenants/{tenantId}/vpcs/{vpcId}/load-balancers:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+    get:
+      tags: [LoadBalancers]
+      summary: List load balancers in a VPC
+      operationId: listLoadBalancers
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Load balancers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoadBalancer'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [LoadBalancers]
+      summary: Create a load balancer (INTERNET_FACING requires floatingIpId)
+      operationId: createLoadBalancer
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadBalancerCreate'
+      responses:
+        '201':
+          description: Created load balancer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadBalancer'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - name: loadBalancerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [LoadBalancers]
+      summary: Get load balancer
+      operationId: getLoadBalancer
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Load balancer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadBalancer'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [LoadBalancers]
+      summary: Delete load balancer
+      operationId: deleteLoadBalancer
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}/listeners:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - name: loadBalancerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [LoadBalancers]
+      summary: List listeners
+      operationId: listLoadBalancerListeners
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Listeners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoadBalancerListener'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [LoadBalancers]
+      summary: Add a listener
+      operationId: createLoadBalancerListener
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadBalancerListenerCreate'
+      responses:
+        '201':
+          description: Created listener
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadBalancerListener'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}/targets:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - name: loadBalancerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [LoadBalancers]
+      summary: List targets
+      operationId: listLoadBalancerTargets
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Targets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoadBalancerTarget'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [LoadBalancers]
+      summary: Register a target
+      operationId: createLoadBalancerTarget
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadBalancerTargetCreate'
+      responses:
+        '201':
+          description: Created target
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadBalancerTarget'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

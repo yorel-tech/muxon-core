@@ -8,8 +8,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   contact:
     name: API Support
-    url: http://www.krito.com/support
-    email: support@krito.com
+    url: http://www.sal.com/support
+    email: support@sal.com
 
 servers:
   - url: /api/v1
@@ -59,6 +59,28 @@ tags:
   description: Tenant content library CRUD, publish to datacenters, and items (local libraries only)
 - name: Overview
   description: Dashboard aggregate counts for system and tenant scope
+- name: Stacks
+  description: Stack entity — application grouping for workloads under a TenantDatacenterGrant
+- name: VPCs
+  description: VPC (tenant-global logical routing domain) lifecycle management
+- name: Subnets
+  description: Subnet (datacenter-scoped, carved from VPC CIDR) lifecycle management
+- name: SubnetRbac
+  description: Subnet RBAC bindings controlling workload attachment permissions
+- name: RouteTables
+  description: Route table and route entry management within VPCs
+- name: SecurityGroups
+  description: Security group and rule management (vNIC-level enforcement)
+- name: Gateways
+  description: Internet gateways and NAT gateways for VPC external connectivity
+- name: FloatingIps
+  description: Floating IP allocation, association, and release
+- name: LoadBalancers
+  description: L4 load balancer lifecycle, listeners, and targets
+- name: NetworkPolicies
+  description: Tenant network policy management and effective capability resolution
+- name: IpamPrefixDelegation
+  description: IPAM prefix delegation for Kubernetes CNI node prefix assignment
 
 components:
   schemas:
@@ -358,3 +380,95 @@ paths:
     $ref: './users.yaml#/paths/~1tenants~1{tenantId}~1users~1{userId}'
   /api/v1/idps/{idpId}/users:
     $ref: './users.yaml#/paths/~1idp~1{idpId}~1users'
+
+  # Datacenter networking sub-resources
+  /api/v1/datacenters/{datacenterId}/fabric-networks:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1fabric-networks'
+  /api/v1/datacenters/{datacenterId}/fabric-networks/{fabricNetworkId}:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1fabric-networks~1{fabricNetworkId}'
+  /api/v1/datacenters/{datacenterId}/public-ip-pools:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1public-ip-pools'
+  /api/v1/datacenters/{datacenterId}/public-ip-pools/{poolId}:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1public-ip-pools~1{poolId}'
+  /api/v1/datacenters/{datacenterId}/network-edge-nodes:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1network-edge-nodes'
+  /api/v1/datacenters/{datacenterId}/network-edge-nodes/{nodeId}:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1network-edge-nodes~1{nodeId}'
+  /api/v1/datacenters/{datacenterId}/network-capabilities:
+    $ref: './datacenters.yaml#/paths/~1datacenters~1{datacenterId}~1network-capabilities'
+
+  # Network policies
+  /api/v1/admin/tenants/{tenantId}/network-policy:
+    $ref: './network-policies.yaml#/paths/~1admin~1tenants~1{tenantId}~1network-policy'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/network-capabilities:
+    $ref: './network-policies.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1network-capabilities'
+
+  # Stacks
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/stacks:
+    $ref: './stacks.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1stacks'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/stacks/{stackId}:
+    $ref: './stacks.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1stacks~1{stackId}'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/stacks/{stackId}/vms:
+    $ref: './stacks.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1stacks~1{stackId}~1vms'
+
+  # VPCs and Subnets
+  /api/v1/tenants/{tenantId}/vpcs:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets~1{subnetId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/access:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets~1{subnetId}~1access'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/access/{rbacId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets~1{subnetId}~1access~1{rbacId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/route-tables:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1route-tables'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1route-tables~1{routeTableId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}/entries:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1route-tables~1{routeTableId}~1entries'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/route-tables/{routeTableId}/entries/{entryId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1route-tables~1{routeTableId}~1entries~1{entryId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/prefix-delegations:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets~1{subnetId}~1prefix-delegations'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/subnets/{subnetId}/prefix-delegations/{delegationId}:
+    $ref: './vpcs.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1subnets~1{subnetId}~1prefix-delegations~1{delegationId}'
+
+  # Security Groups
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/security-groups:
+    $ref: './security-groups.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1security-groups'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}:
+    $ref: './security-groups.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1security-groups~1{securityGroupId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}/rules:
+    $ref: './security-groups.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1security-groups~1{securityGroupId}~1rules'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}/rules/{ruleId}:
+    $ref: './security-groups.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1security-groups~1{securityGroupId}~1rules~1{ruleId}'
+
+  # Gateways and Floating IPs
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/internet-gateway:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1internet-gateway'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/nat-gateways:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1nat-gateways'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/nat-gateways/{natGatewayId}:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1nat-gateways~1{natGatewayId}'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/floating-ips:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1floating-ips'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1floating-ips~1{floatingIpId}'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}/associate:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1floating-ips~1{floatingIpId}~1associate'
+  /api/v1/tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}/disassociate:
+    $ref: './gateways.yaml#/paths/~1tenants~1{tenantId}~1datacenters~1{datacenterId}~1floating-ips~1{floatingIpId}~1disassociate'
+
+  # Load Balancers
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/load-balancers:
+    $ref: './load-balancers.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1load-balancers'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}:
+    $ref: './load-balancers.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1load-balancers~1{loadBalancerId}'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}/listeners:
+    $ref: './load-balancers.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1load-balancers~1{loadBalancerId}~1listeners'
+  /api/v1/tenants/{tenantId}/vpcs/{vpcId}/load-balancers/{loadBalancerId}/targets:
+    $ref: './load-balancers.yaml#/paths/~1tenants~1{tenantId}~1vpcs~1{vpcId}~1load-balancers~1{loadBalancerId}~1targets'

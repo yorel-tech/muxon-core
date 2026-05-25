@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-group = "com.krito.muxon"
+group = "com.sal.muxon"
 version = "0.1.0"
 
 dependencies {

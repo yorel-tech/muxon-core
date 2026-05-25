@@ -1,0 +1,267 @@
+openapi: 3.0.3
+info:
+  title: Security Groups API
+  version: 2026-05-24
+
+components:
+  parameters:
+    sgId:
+      name: securityGroupId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Security Group UUID
+
+  schemas:
+    SgDirection:
+      type: string
+      enum: [INGRESS, EGRESS]
+
+    SgProtocol:
+      type: string
+      enum: [TCP, UDP, ICMP, ALL]
+
+    SecurityGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SecurityGroupCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+
+    SecurityGroupRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        securityGroupId:
+          type: string
+          format: uuid
+        direction:
+          $ref: '#/components/schemas/SgDirection'
+        protocol:
+          $ref: '#/components/schemas/SgProtocol'
+        portRangeMin:
+          type: integer
+          nullable: true
+        portRangeMax:
+          type: integer
+          nullable: true
+        cidr:
+          type: string
+          nullable: true
+          example: '0.0.0.0/0'
+        sourceSecurityGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Reference to another SG instead of a CIDR (for SG-to-SG rules)
+        createdAt:
+          type: string
+          format: date-time
+
+    SecurityGroupRuleCreate:
+      type: object
+      required:
+        - direction
+        - protocol
+      properties:
+        direction:
+          $ref: '#/components/schemas/SgDirection'
+        protocol:
+          $ref: '#/components/schemas/SgProtocol'
+        portRangeMin:
+          type: integer
+          minimum: 0
+          maximum: 65535
+        portRangeMax:
+          type: integer
+          minimum: 0
+          maximum: 65535
+        cidr:
+          type: string
+        sourceSecurityGroupId:
+          type: string
+          format: uuid
+
+paths:
+  /tenants/{tenantId}/vpcs/{vpcId}/security-groups:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+    get:
+      tags: [SecurityGroups]
+      summary: List security groups in a VPC
+      operationId: listSecurityGroups
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Security groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SecurityGroup'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [SecurityGroups]
+      summary: Create a security group (auto-creates default egress allow-all rule)
+      operationId: createSecurityGroup
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityGroupCreate'
+      responses:
+        '201':
+          description: Created security group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityGroup'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/sgId'
+    get:
+      tags: [SecurityGroups]
+      summary: Get security group by ID
+      operationId: getSecurityGroup
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Security group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityGroup'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [SecurityGroups]
+      summary: Delete security group
+      operationId: deleteSecurityGroup
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}/rules:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/sgId'
+    get:
+      tags: [SecurityGroups]
+      summary: List rules for a security group
+      operationId: listSecurityGroupRules
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Security group rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SecurityGroupRule'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [SecurityGroups]
+      summary: Add a rule to a security group
+      operationId: createSecurityGroupRule
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecurityGroupRuleCreate'
+      responses:
+        '201':
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityGroupRule'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/security-groups/{securityGroupId}/rules/{ruleId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - $ref: '#/components/parameters/sgId'
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [SecurityGroups]
+      summary: Delete a security group rule
+      operationId: deleteSecurityGroupRule
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

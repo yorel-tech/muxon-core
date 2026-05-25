@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Tenant Network Policies API
+  version: 2026-05-24
+
+components:
+  schemas:
+    TenantNetworkPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        maxVpcs:
+          type: integer
+          minimum: 0
+          default: 10
+        maxPublicIps:
+          type: integer
+          minimum: 0
+          default: 5
+        maxSubnetsPerVpc:
+          type: integer
+          minimum: 0
+          default: 10
+        vpnAllowed:
+          type: boolean
+          default: false
+        peeringAllowed:
+          type: boolean
+          default: false
+        haNetworkingAllowed:
+          type: boolean
+          default: false
+        bandwidthLimitMbps:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TenantNetworkPolicyUpdate:
+      type: object
+      properties:
+        maxVpcs:
+          type: integer
+          minimum: 0
+        maxPublicIps:
+          type: integer
+          minimum: 0
+        maxSubnetsPerVpc:
+          type: integer
+          minimum: 0
+        vpnAllowed:
+          type: boolean
+        peeringAllowed:
+          type: boolean
+        haNetworkingAllowed:
+          type: boolean
+        bandwidthLimitMbps:
+          type: integer
+          nullable: true
+
+    EffectiveNetworkCapabilities:
+      type: object
+      description: Intersection of TenantNetworkPolicy and DatacenterNetworkCapabilities
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        publicIpAvailable:
+          type: boolean
+        vpnAvailable:
+          type: boolean
+        bgpAvailable:
+          type: boolean
+        haGatewayAvailable:
+          type: boolean
+        vxlanAvailable:
+          type: boolean
+        multiRegionAvailable:
+          type: boolean
+        l7LbAvailable:
+          type: boolean
+        ipv6Available:
+          type: boolean
+        dualStackAvailable:
+          type: boolean
+
+paths:
+  /admin/tenants/{tenantId}/network-policy:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+    get:
+      tags: [NetworkPolicies]
+      summary: Get tenant network policy
+      operationId: getTenantNetworkPolicy
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenant network policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantNetworkPolicy'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [NetworkPolicies]
+      summary: Update tenant network policy (admin only)
+      operationId: updateTenantNetworkPolicy
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantNetworkPolicyUpdate'
+      responses:
+        '200':
+          description: Updated network policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantNetworkPolicy'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/network-capabilities:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+    get:
+      tags: [NetworkPolicies]
+      summary: Get effective network capabilities for tenant in datacenter
+      operationId: getEffectiveNetworkCapabilities
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Effective networking capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveNetworkCapabilities'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'

@@ -44,7 +44,7 @@ logging:
     root: INFO
     org.springframework: INFO
     org.hibernate: INFO
-    com.krito.muxon: DEBUG
+    com.sal.muxon: DEBUG
 
   file:
     name: logs/muxon-core.log

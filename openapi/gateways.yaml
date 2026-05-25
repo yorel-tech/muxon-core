@@ -1,0 +1,447 @@
+openapi: 3.0.3
+info:
+  title: Gateways, Floating IPs API
+  version: 2026-05-24
+
+components:
+  schemas:
+    InternetGateway:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+        networkEdgeNodeId:
+          type: string
+          format: uuid
+          nullable: true
+        haMode:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InternetGatewayCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+
+    NatGateway:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vpcId:
+          type: string
+          format: uuid
+        subnetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        floatingIpId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+        networkEdgeNodeId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NatGatewayCreate:
+      type: object
+      required:
+        - name
+        - subnetId
+        - floatingIpId
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        subnetId:
+          type: string
+          format: uuid
+          description: Must reference a public=true subnet
+        floatingIpId:
+          type: string
+          format: uuid
+
+    FloatingIpStatus:
+      type: string
+      enum: [AVAILABLE, ASSOCIATED, RELEASING]
+
+    FloatingIp:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        ipAddress:
+          type: string
+        status:
+          $ref: '#/components/schemas/FloatingIpStatus'
+        associatedVmId:
+          type: string
+          format: uuid
+          nullable: true
+        associatedPrivateIp:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FloatingIpAllocate:
+      type: object
+      required:
+        - datacenterId
+      properties:
+        datacenterId:
+          type: string
+          format: uuid
+
+    FloatingIpAssociate:
+      type: object
+      required:
+        - vmId
+        - privateIp
+      properties:
+        vmId:
+          type: string
+          format: uuid
+        privateIp:
+          type: string
+
+paths:
+  /tenants/{tenantId}/vpcs/{vpcId}/internet-gateway:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+    get:
+      tags: [Gateways]
+      summary: Get internet gateway for a VPC
+      operationId: getInternetGateway
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Internet gateway
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternetGateway'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Gateways]
+      summary: Create internet gateway (one per VPC; requires active edge node)
+      operationId: createInternetGateway
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternetGatewayCreate'
+      responses:
+        '201':
+          description: Created internet gateway
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternetGateway'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Gateways]
+      summary: Delete internet gateway
+      operationId: deleteInternetGateway
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/nat-gateways:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+    get:
+      tags: [Gateways]
+      summary: List NAT gateways in a VPC
+      operationId: listNatGateways
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: NAT gateways
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NatGateway'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Gateways]
+      summary: Create a NAT gateway (subnetId must be public=true)
+      operationId: createNatGateway
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NatGatewayCreate'
+      responses:
+        '201':
+          description: Created NAT gateway
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NatGateway'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/vpcs/{vpcId}/nat-gateways/{natGatewayId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './vpcs.yaml#/components/parameters/vpcId'
+      - name: natGatewayId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Gateways]
+      summary: Get NAT gateway
+      operationId: getNatGateway
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: NAT gateway
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NatGateway'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Gateways]
+      summary: Delete NAT gateway
+      operationId: deleteNatGateway
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/floating-ips:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+    get:
+      tags: [FloatingIps]
+      summary: List floating IPs for tenant in datacenter
+      operationId: listFloatingIps
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Floating IPs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FloatingIp'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [FloatingIps]
+      summary: Allocate a floating IP from the datacenter pool
+      operationId: allocateFloatingIp
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Allocated floating IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FloatingIp'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+      - name: floatingIpId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [FloatingIps]
+      summary: Get floating IP
+      operationId: getFloatingIp
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Floating IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FloatingIp'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [FloatingIps]
+      summary: Release a floating IP back to pool
+      operationId: releaseFloatingIp
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Released
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}/associate:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+      - name: floatingIpId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [FloatingIps]
+      summary: Associate floating IP with a VM
+      operationId: associateFloatingIp
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FloatingIpAssociate'
+      responses:
+        '200':
+          description: Associated floating IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FloatingIp'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  /tenants/{tenantId}/datacenters/{datacenterId}/floating-ips/{floatingIpId}/disassociate:
+    parameters:
+      - $ref: './commons.yaml#/components/parameters/tenantId'
+      - $ref: './datacenters.yaml#/components/parameters/dcId'
+      - name: floatingIpId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [FloatingIps]
+      summary: Disassociate floating IP from a VM
+      operationId: disassociateFloatingIp
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Disassociated floating IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FloatingIp'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'

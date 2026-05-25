@@ -35,7 +35,7 @@ logging:
   level:
     root: "INFO"
     org.springframework: "INFO"
-    com.krito.muxon: "DEBUG"
+    com.sal.muxon: "DEBUG"
   file:
     name: "logs/muxon-orchestrator.log"
   pattern:

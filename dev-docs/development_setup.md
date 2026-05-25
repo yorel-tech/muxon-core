@@ -23,7 +23,7 @@ This guide covers:
 ## Clone the repo
 
 ```bash
-git clone git@github.com:krito/muxon-core.git
+git clone git@github.com:sal/muxon-core.git
 cd muxon-core
 ```
 
@@ -168,7 +168,7 @@ You typically run services against the dev stack:
 
 ### 1) Run `muxon-initializer` (bootstrap)
 
-`muxon-initializer` is `services:muxon-initializer` with main class `com.krito.muxon.bootstrap.BootstrapApplication`.
+`muxon-initializer` is `services:muxon-initializer` with main class `com.sal.muxon.bootstrap.BootstrapApplication`.
 It requires CLI arguments pointing at an initial config YAML and a few secrets on disk.
 
 Create local secret files (example paths used by the IntelliJ run config). The passphrase and DB password below match the default dev Postgres user password in `compose/dev-stack.yml`.
@@ -211,7 +211,7 @@ This will:
 ### 2) Run `core-services`
 
 Module: `services:core-services`  
-Main: `com.krito.muxon.CoreServicesApplication`
+Main: `com.sal.muxon.CoreServicesApplication`
 
 ```bash
 export MUXON_PASSPHRASE='Infr0n@1234'
@@ -221,7 +221,7 @@ export MUXON_PASSPHRASE='Infr0n@1234'
 ### 3) Run `console-proxy`
 
 Module: `services:console-proxy`  
-Main: `com.krito.muxon.console.ConsoleProxyApplication`
+Main: `com.sal.muxon.console.ConsoleProxyApplication`
 
 ```bash
 ./gradlew :services:console-proxy:bootRun
@@ -230,7 +230,7 @@ Main: `com.krito.muxon.console.ConsoleProxyApplication`
 ### 4) Run `orchestrator`
 
 Module: `services:orchestrator`  
-Main: `com.krito.muxon.orch.OrchestratorApp`
+Main: `com.sal.muxon.orch.OrchestratorApp`
 
 ```bash
 export MUXON_PASSPHRASE='Infr0n@1234'

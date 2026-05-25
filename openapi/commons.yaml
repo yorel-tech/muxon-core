@@ -211,6 +211,28 @@ components:
               value:
                 code: BAD_REQUEST
                 message: Invalid data
+    Conflict:
+      description: Resource already exists or business rule conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            conflict:
+              value:
+                code: CONFLICT
+                message: Resource already exists or operation conflicts with current state
+    UnprocessableEntity:
+      description: Semantic validation failed (quota, CIDR, capability)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unprocessable:
+              value:
+                code: UNPROCESSABLE_ENTITY
+                message: Validation failed
     TooManyRequests:
       description: Rate limit exceeded
       content:

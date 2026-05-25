@@ -8,6 +8,6 @@ metadata:
     chart: {{ include "muxon-core.chart" . }}
     release: {{ .Release.Name }}
 data:
-  muxon-dev.json: |
+  muxon-local.json: |
 {{ .Files.Get "files/realm-muxon-dev.json" | trim | nindent 4 }}
 {{- end }}

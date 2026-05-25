@@ -5,10 +5,10 @@
     </envs>
     <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UnknownPolicyInFreeMode" />
     <module name="infron-core.services.orchestrator.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.krito.muxon.orch.OrchestratorApp" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.sal.muxon.orch.OrchestratorApp" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.krito.muxon.orch.*" />
+        <option name="PATTERN" value="com.sal.muxon.orch.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>

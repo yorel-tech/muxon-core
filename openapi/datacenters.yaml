@@ -84,6 +84,200 @@ components:
           additionalProperties: true
           description: Provider-specific settings
 
+    FabricNetworkType:
+      type: string
+      enum: [BRIDGE, VLAN, VXLAN, OVS, UNDERLAY]
+
+    FabricNetworkRole:
+      type: string
+      enum: [TENANT_OVERLAY, STORAGE, MANAGEMENT, LIVE_MIGRATION]
+
+    FabricNetwork:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nodeClusterId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/FabricNetworkType'
+        role:
+          $ref: '#/components/schemas/FabricNetworkRole'
+        externalId:
+          type: string
+        vlanId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FabricNetworkCreate:
+      type: object
+      required:
+        - name
+        - type
+        - role
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: '#/components/schemas/FabricNetworkType'
+        role:
+          $ref: '#/components/schemas/FabricNetworkRole'
+        externalId:
+          type: string
+        vlanId:
+          type: integer
+        config:
+          type: object
+          additionalProperties: true
+
+    PublicIpPool:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        cidr:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        totalIps:
+          type: integer
+        allocatedIps:
+          type: integer
+        availableIps:
+          type: integer
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+
+    PublicIpPoolCreate:
+      type: object
+      required:
+        - cidr
+        - name
+      properties:
+        cidr:
+          type: string
+          description: Public IP CIDR range
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+
+    NetworkEdgeNodeType:
+      type: string
+      enum: [STANDARD, HA_PRIMARY, HA_SECONDARY]
+
+    NetworkEdgeNodeStatus:
+      type: string
+      enum: [ACTIVE, MAINTENANCE, INACTIVE]
+
+    NetworkEdgeNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        datacenterId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        host:
+          type: string
+        type:
+          $ref: '#/components/schemas/NetworkEdgeNodeType'
+        status:
+          $ref: '#/components/schemas/NetworkEdgeNodeStatus'
+        capabilities:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NetworkEdgeNodeCreate:
+      type: object
+      required:
+        - name
+        - host
+        - type
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        host:
+          type: string
+          description: IP address or FQDN of the edge node
+        type:
+          $ref: '#/components/schemas/NetworkEdgeNodeType'
+        capabilities:
+          type: object
+          additionalProperties: true
+
+    DatacenterNetworkCapabilities:
+      type: object
+      properties:
+        datacenterId:
+          type: string
+          format: uuid
+        publicIpSupported:
+          type: boolean
+          default: false
+        vpnSupported:
+          type: boolean
+          default: false
+        bgpSupported:
+          type: boolean
+          default: false
+        haGatewaySupported:
+          type: boolean
+          default: false
+        vxlanSupported:
+          type: boolean
+          default: false
+        multiRegionSupported:
+          type: boolean
+          default: false
+        l7LbSupported:
+          type: boolean
+          default: false
+        ipv6Supported:
+          type: boolean
+          default: false
+        dualStackSupported:
+          type: boolean
+          default: false
+        updatedAt:
+          type: string
+          format: date-time
+
     Datacenter:
       allOf:
         - $ref: './commons.yaml#/components/schemas/BaseEntity'
@@ -95,6 +289,17 @@ components:
               $ref: '#/components/schemas/DatacenterSettings'
             nodeCluster:
               $ref: './commons.yaml#/components/schemas/EntityReference'
+            fabricNetworkCount:
+              type: integer
+              description: Number of registered fabric networks
+              readOnly: true
+            publicIpPoolCount:
+              type: integer
+              description: Number of registered public IP pools
+              readOnly: true
+            networkCapabilities:
+              $ref: '#/components/schemas/DatacenterNetworkCapabilities'
+              readOnly: true
 
     DatacenterCreate:
       type: object
@@ -272,6 +477,341 @@ components:
           description: Utilization percentage
 
 paths:
+
+  # Fabric networks (system-admin only, not tenant-visible)
+  /datacenters/{datacenterId}/fabric-networks:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: List fabric networks for a datacenter (system admin)
+      operationId: listFabricNetworks
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Fabric networks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FabricNetwork'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Datacenters]
+      summary: Register a fabric network (system admin; role field required)
+      operationId: createFabricNetwork
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FabricNetworkCreate'
+      responses:
+        '201':
+          description: Created fabric network
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FabricNetwork'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './commons.yaml#/components/responses/UnprocessableEntity'
+
+  /datacenters/{datacenterId}/fabric-networks/{fabricNetworkId}:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+      - name: fabricNetworkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Datacenters]
+      summary: Get fabric network
+      operationId: getFabricNetwork
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Fabric network
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FabricNetwork'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Datacenters]
+      summary: Delete fabric network
+      operationId: deleteFabricNetwork
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # Public IP pools (system-admin only)
+  /datacenters/{datacenterId}/public-ip-pools:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: List public IP pools for a datacenter (system admin)
+      operationId: listPublicIpPools
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Public IP pools with allocation summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicIpPool'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Datacenters]
+      summary: Register a public IP pool (system admin)
+      operationId: createPublicIpPool
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicIpPoolCreate'
+      responses:
+        '201':
+          description: Created public IP pool
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicIpPool'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /datacenters/{datacenterId}/public-ip-pools/{poolId}:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+      - name: poolId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Datacenters]
+      summary: Get public IP pool
+      operationId: getPublicIpPool
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Public IP pool
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicIpPool'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    delete:
+      tags: [Datacenters]
+      summary: Delete public IP pool
+      operationId: deletePublicIpPool
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # Network edge nodes
+  /datacenters/{datacenterId}/network-edge-nodes:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: List network edge nodes for a datacenter
+      operationId: listNetworkEdgeNodes
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Network edge nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NetworkEdgeNode'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    post:
+      tags: [Datacenters]
+      summary: Register a network edge node (one STANDARD per datacenter in OSS)
+      operationId: createNetworkEdgeNode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkEdgeNodeCreate'
+      responses:
+        '201':
+          description: Created edge node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkEdgeNode'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '409':
+          $ref: './commons.yaml#/components/responses/Conflict'
+
+  /datacenters/{datacenterId}/network-edge-nodes/{nodeId}:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+      - name: nodeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Datacenters]
+      summary: Get network edge node
+      operationId: getNetworkEdgeNode
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Network edge node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkEdgeNode'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Datacenters]
+      summary: Update network edge node
+      operationId: updateNetworkEdgeNode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkEdgeNodeCreate'
+      responses:
+        '200':
+          description: Updated edge node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkEdgeNode'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+    delete:
+      tags: [Datacenters]
+      summary: Deactivate network edge node
+      operationId: deleteNetworkEdgeNode
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deactivated
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+
+  # Datacenter network capabilities
+  /datacenters/{datacenterId}/network-capabilities:
+    parameters:
+      - $ref: '#/components/parameters/dcId'
+    get:
+      tags: [Datacenters]
+      summary: Get datacenter network capabilities
+      operationId: getDatacenterNetworkCapabilities
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Network capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterNetworkCapabilities'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+    put:
+      tags: [Datacenters]
+      summary: Update datacenter network capabilities (admin)
+      operationId: updateDatacenterNetworkCapabilities
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatacenterNetworkCapabilities'
+      responses:
+        '200':
+          description: Updated capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatacenterNetworkCapabilities'
+        '400':
+          $ref: './commons.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: './commons.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './commons.yaml#/components/responses/NotFound'
 
   # Datacenter management
   /datacenters:
