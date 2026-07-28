@@ -45,22 +45,29 @@ subprojects {
         val hasSources = file("src/main/java").exists() || file("src/test/java").exists()
         onlyIf { hasSources }
     }
-}
 
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-        }
-    }
-    repositories {
-
-        maven {
-            name = "github"
-            url = uri("https://maven.pkg.github.com/yorel/muxon-core")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+    // Publish leaf modules so Enterprise can resolve Core from mavenLocal / GH packages.
+    // Skip aggregators (no build script) and integration-tests.
+    val isPublishableLeaf =
+        name != "integration-tests" &&
+            (file("build.gradle.kts").exists() || file("build.gradle").exists())
+    if (isPublishableLeaf) {
+        apply(plugin = "maven-publish")
+        extensions.configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("mavenJava") {
+                    from(components["java"])
+                }
+            }
+            repositories {
+                maven {
+                    name = "github"
+                    url = uri("https://maven.pkg.github.com/yorel-tech/muxon-core")
+                    credentials {
+                        username = System.getenv("GITHUB_ACTOR")
+                        password = System.getenv("GITHUB_TOKEN")
+                    }
+                }
             }
         }
     }

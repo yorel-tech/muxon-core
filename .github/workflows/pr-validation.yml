@@ -30,7 +30,8 @@ jobs:
       - name: Unit tests
         run: ./gradlew test -x :integration-tests:test --no-daemon
       - name: Build
-        run: ./gradlew build -x test -x :integration-tests:test --no-daemon
+        # Spotless stays report-only (see step above); exclude it from build's check lifecycle.
+        run: ./gradlew build -x test -x :integration-tests:test -x spotlessCheck --no-daemon
 
   request-enterprise-compatibility:
     name: request-enterprise-compatibility
