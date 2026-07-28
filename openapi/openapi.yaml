@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Core API
+  title: Muxon Core API
   version: 0.1.0
   description: Core API resources for tenants (organizations) — CRUD, list with pagination and filters.
   license:
@@ -8,8 +8,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   contact:
     name: API Support
-    url: http://www.scalion.com/support
-    email: support@scalion.com
+    url: http://www.yorel.io/muxon/support
+    email: muxon-support@yorel.io
 
 servers:
   - url: /api/v1

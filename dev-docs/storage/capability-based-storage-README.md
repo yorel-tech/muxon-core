@@ -2,7 +2,7 @@
 
 ## Overview
 
-The capability-based storage architecture provides an intelligent, intent-driven approach to storage management in Infron. Instead of manually mapping storage classes to provider-specific backends, administrators define storage requirements using generic capabilities, and the system automatically selects the best available storage.
+The capability-based storage architecture provides an intelligent, intent-driven approach to storage management in Muxon. Instead of manually mapping storage classes to provider-specific backends, administrators define storage requirements using generic capabilities, and the system automatically selects the best available storage.
 
 ## Key Concepts
 
@@ -47,9 +47,9 @@ Provider storage represents **what exists** - discovered storage pools/classes f
 
 ### Capability Mappings (Translation)
 
-Capability mappings translate between Infron's generic terms and provider-specific terminology:
+Capability mappings translate between Muxon's generic terms and provider-specific terminology:
 
-| Infron Capability | Libvirt Equivalent | Proxmox Equivalent |
+| Muxon Capability | Libvirt Equivalent | Proxmox Equivalent |
 |-------------------|-------------------|-------------------|
 | performance: high | pool_type: [rbd, nvme] | storage_type: [rbd, zfspool] |
 | media: ssd | pool_type: [rbd, lvm-thin] | storage_type: [rbd, zfspool, lvmthin] |
@@ -150,7 +150,7 @@ CREATE TABLE provider_storage (
 ```sql
 CREATE TABLE storage_capability_mappings (
   id UUID PRIMARY KEY,
-  infron_capability VARCHAR(64) NOT NULL,
+  muxon_capability VARCHAR(64) NOT NULL,
   provider_type VARCHAR(32) NOT NULL,
   provider_capability VARCHAR(64) NOT NULL,
   value_mapping JSONB                  -- Translation map
@@ -396,6 +396,6 @@ Key metrics to monitor:
 
 ## References
 
-- Design Document: `/plans/unified-storage/infron_storage_design_mar25.md`
+- Design Document: `/plans/unified-storage/muxon_storage_design_mar25.md`
 - Implementation Status: `/plans/unified-storage/capability-based-implementation-status.md`
 - Migration Plan: `/.windsurf/plans/capability-based-storage-migration-1ff7a0.md`

@@ -1,7 +1,7 @@
 # Muxon Cloud Management UI - Design Specification
 
 ## Overview
-Modern, high-conversion Cloud Management UI for Infron (OSS) and Infron Nexus (Enterprise).
+Modern, high-conversion Cloud Management UI for Muxon (OSS) and Muxon Nexus (Enterprise).
 
 ## Design Philosophy
 - **Vibe Coding**: Prioritize visual quality, subtle animations, and polished interactions
@@ -306,7 +306,7 @@ components/
 ### Enterprise Detection
 ```typescript
 // Detect enterprise features
-const isEnterprise = user?.realm !== 'infron-dev' || 
+const isEnterprise = user?.realm !== 'muxon-dev' || 
                        user?.tenants?.length > 1;
 
 // Conditional rendering

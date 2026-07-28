@@ -99,7 +99,7 @@ The worker has **read-only** access to entity tables and **never** writes job ro
 | | `usage-billing`, `director`, `net-advanced`, `audit-export` | Satellite enterprise capabilities |
 | **UI** | `ui/themes` | Enterprise theming assets |
 
-Enterprise resolves core via Gradle `includeBuild("../muxon-core")` when a local checkout exists, otherwise from Maven (`com.scal.muxon:*:0.1.0`).
+Enterprise resolves core via Gradle `includeBuild("../muxon-core")` when a local checkout exists, otherwise from Maven (`com.yorel.muxon:*:0.1.0`).
 
 ## Shared Abstractions
 
@@ -107,16 +107,16 @@ Cross-cutting contracts live in **core libraries** so both editions share the sa
 
 | Abstraction | Package | Purpose |
 |---|---|---|
-| `VmProvider` | `com.scal.muxon.providers` | Async VM lifecycle against a hypervisor |
+| `VmProvider` | `com.yorel.muxon.providers` | Async VM lifecycle against a hypervisor |
 | `ProviderContext` | same | Provider-scoped connection/placement context |
 | `StorageProvider` / `StorageDiscoveryProvider` | `providers.storage` | Block/object storage operations and discovery |
-| `CommandQueue` | `com.scal.muxon.spi.queue` | Orchestrator → worker command transport |
+| `CommandQueue` | `com.yorel.muxon.spi.queue` | Orchestrator → worker command transport |
 | `TaskEventQueue` | same | Worker → orchestrator job progress |
 | `EntityEventQueue` | same | Worker → core-services entity state updates |
 | `EventPublisher` | same | Legacy event sink (superseded by typed queues) |
-| `AuthorizationService` | `com.scal.muxon.auth` | Permission checks decoupled from transport |
-| `Permission` / `RoleRegistry` | `com.scal.muxon.auth` | Built-in permission catalog and role templates |
-| `CapabilityProvider` / `ModuleProvider` | `com.scal.muxon.info` | Product capability advertisement (`/api/v1/info`) |
+| `AuthorizationService` | `com.yorel.muxon.auth` | Permission checks decoupled from transport |
+| `Permission` / `RoleRegistry` | `com.yorel.muxon.auth` | Built-in permission catalog and role templates |
+| `CapabilityProvider` / `ModuleProvider` | `com.yorel.muxon.info` | Product capability advertisement (`/api/v1/info`) |
 
 ## Extension Points
 
@@ -127,7 +127,7 @@ Cross-cutting contracts live in **core libraries** so both editions share the sa
 | **Enterprise Kafka** | Set `muxon.queue.backend=kafka`; `NexusQueueKafkaAutoConfiguration` registers Kafka beans before DB auto-config |
 | **Authorization** | Implement `AuthorizationService`; mark `@Primary` in enterprise to override OSS Caffeine-based impl |
 | **Capabilities** | Add a `@Component` implementing `CapabilityProvider`; `CapabilityRegistry` aggregates all providers |
-| **REST controllers** | Enterprise adds controllers under `com.scal.muxon.ent.controllers` implementing OpenAPI interfaces from `nexus-api` |
+| **REST controllers** | Enterprise adds controllers under `com.yorel.muxon.ent.controllers` implementing OpenAPI interfaces from `nexus-api` |
 | **Flyway** | OSS scripts in `classpath:db/migration/oss`; enterprise adds `classpath:db/migration/enterprise` |
 | **Spring listeners** | `META-INF/spring.factories` registers `ConfigDecryptor` before datasource creation (encrypted passwords) |
 

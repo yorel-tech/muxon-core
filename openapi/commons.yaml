@@ -109,7 +109,7 @@ components:
     EntityReference:
       type: object
       description: >
-        Reference object used to describe any Infron entity lie datacenter, tenant, user, role etc.
+        Reference object used to describe any Muxon entity lie datacenter, tenant, user, role etc.
       properties:
         id:
           type: string

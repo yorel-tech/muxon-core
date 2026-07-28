@@ -14,7 +14,7 @@ sudo mkdir -p /etc/pki/qemu
 if [ ! -f /etc/pki/CA/cacert.pem ]; then
     echo "Creating self-signed CA certificate..."
     sudo openssl genrsa -out /etc/pki/CA/cakey.pem 2048
-    sudo openssl req -new -x509 -days 3650 -key /etc/pki/CA/cakey.pem -out /etc/pki/CA/cacert.pem -subj "/C=US/ST=State/L=City/O=Organization/CN=Infron-CA"
+    sudo openssl req -new -x509 -days 3650 -key /etc/pki/CA/cakey.pem -out /etc/pki/CA/cacert.pem -subj "/C=US/ST=State/L=City/O=Organization/CN=Muxon-CA"
     echo "CA certificate created at /etc/pki/CA/cacert.pem"
 else
     echo "CA certificate already exists at /etc/pki/CA/cacert.pem"

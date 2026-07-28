@@ -12,12 +12,12 @@ Spring Boot service that authenticates VM console sessions (opaque token in the 
 
 See `src/main/resources/application.yaml`:
 
-- `infron.console.allowed-origins` — browser `Origin` allow list for WebSocket handshake.
-- `infron.console.trust-all-hypervisor-tls` — dev-only; trust any certificate when connecting to Proxmox VNC proxy (TLS).
-- `infron.console.cleanup-interval-ms` — how often to expire stale DB rows.
+- `muxon.console.allowed-origins` — browser `Origin` allow list for WebSocket handshake.
+- `muxon.console.trust-all-hypervisor-tls` — dev-only; trust any certificate when connecting to Proxmox VNC proxy (TLS).
+- `muxon.console.cleanup-interval-ms` — how often to expire stale DB rows.
 
 ## Manual end-to-end check
 
-1. Start **core-services**, **console-proxy**, and **infron-web**.
-2. Ensure `infron.console.proxy-ws-base-url` in core-services matches the proxy URL (e.g. `ws://localhost:8082/ws/console`).
+1. Start **core-services**, **console-proxy**, and **muxon-web**.
+2. Ensure `muxon.console.proxy-ws-base-url` in core-services matches the proxy URL (e.g. `ws://localhost:8082/ws/console`).
 3. Create/start a VM; open **View console** in the tenant VMs UI.

@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Node API
+  title: Muxon Node API
   version: 0.1.0
   description: Node API for managing infrastructure nodes
   license:

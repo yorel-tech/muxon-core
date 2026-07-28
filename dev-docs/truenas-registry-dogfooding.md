@@ -24,10 +24,10 @@ make helm-oss    ──helm install───────────────
 Images are published as:
 
 ```text
-<truenas-host>:5000/scal/<service>:<version>
+<truenas-host>:5000/yorel/<service>:<version>
 ```
 
-Default namespace is `scal` (`REGISTRY_NAMESPACE`).
+Default namespace is `yorel` (`REGISTRY_NAMESPACE`).
 
 ---
 
@@ -204,7 +204,7 @@ cd muxon-build
 # OSS dogfood build
 make images-oss \
   REGISTRY=<truenas-host>:5000 \
-  REGISTRY_NAMESPACE=scal \
+  REGISTRY_NAMESPACE=yorel \
   VERSION=0.1.0-dogfood
 ```
 
@@ -212,17 +212,17 @@ This compiles muxon-core + muxon-web, builds Docker images, and pushes:
 
 | Image | Tag example |
 |-------|-------------|
-| core-services | `<truenas-host>:5000/scal/core-services:0.1.0-dogfood` |
-| orchestrator | `<truenas-host>:5000/scal/orchestrator:0.1.0-dogfood` |
-| console-proxy | `<truenas-host>:5000/scal/console-proxy:0.1.0-dogfood` |
-| muxon-initializer | `<truenas-host>:5000/scal/muxon-initializer:0.1.0-dogfood` |
-| web | `<truenas-host>:5000/scal/web:0.1.0-dogfood` |
+| core-services | `<truenas-host>:5000/yorel/core-services:0.1.0-dogfood` |
+| orchestrator | `<truenas-host>:5000/yorel/orchestrator:0.1.0-dogfood` |
+| console-proxy | `<truenas-host>:5000/yorel/console-proxy:0.1.0-dogfood` |
+| muxon-initializer | `<truenas-host>:5000/yorel/muxon-initializer:0.1.0-dogfood` |
+| web | `<truenas-host>:5000/yorel/web:0.1.0-dogfood` |
 
 Verify on TrueNAS:
 
 ```bash
 curl http://<truenas-host>:5000/v2/_catalog
-curl http://<truenas-host>:5000/v2/scal/core-services/tags/list
+curl http://<truenas-host>:5000/v2/yorel/core-services/tags/list
 ```
 
 **Enterprise:** use `make images-enterprise` with the same `REGISTRY` and `VERSION`.
@@ -236,7 +236,7 @@ curl http://<truenas-host>:5000/v2/scal/core-services/tags/list
 ```bash
 make helm-oss \
   REGISTRY=<truenas-host>:5000 \
-  REGISTRY_NAMESPACE=scal \
+  REGISTRY_NAMESPACE=yorel \
   VERSION=0.1.0-dogfood \
   HELM_REPO=http://<truenas-host>:8081
 ```
@@ -284,7 +284,7 @@ kubectl create namespace muxon
 
 helm install muxon ../dist/helm/muxon-core-0.1.0-dogfood.tgz \
   -n muxon \
-  --set image.repository=<truenas-host>:5000/scal/core-services \
+  --set image.repository=<truenas-host>:5000/yorel/core-services \
   --set image.tag=0.1.0-dogfood \
   --set postgres.enabled=true \
   --set keycloak.enabled=true
@@ -311,7 +311,7 @@ make images-oss REGISTRY=<truenas-host>:5000 VERSION=0.1.0-dogfood
 
 # 3. Upgrade release
 helm upgrade muxon dist/helm/muxon-core-0.1.0-dogfood.tgz -n muxon \
-  --set image.repository=<truenas-host>:5000/scal/core-services \
+  --set image.repository=<truenas-host>:5000/yorel/core-services \
   --set image.tag=0.1.0-dogfood
 ```
 
@@ -351,7 +351,7 @@ make helm-oss REGISTRY=truenas.lan:5000 HELM_REPO=http://truenas.lan:8081 VERSIO
 
 # Cluster: install
 helm install muxon dist/helm/muxon-core-0.1.0-dogfood.tgz -n muxon \
-  --set image.repository=truenas.lan:5000/scal/core-services \
+  --set image.repository=truenas.lan:5000/yorel/core-services \
   --set image.tag=0.1.0-dogfood
 ```
 

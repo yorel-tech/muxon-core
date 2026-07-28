@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Muxon",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

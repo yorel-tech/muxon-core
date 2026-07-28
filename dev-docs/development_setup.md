@@ -23,7 +23,7 @@ This guide covers:
 ## Clone the repo
 
 ```bash
-git clone git@github.com:scal/muxon-core.git
+git clone git@github.com:yorel/muxon-core.git
 cd muxon-core
 ```
 
@@ -168,7 +168,7 @@ You typically run services against the dev stack:
 
 ### 1) Run `muxon-initializer` (bootstrap)
 
-`muxon-initializer` is `services:muxon-initializer` with main class `com.scal.muxon.bootstrap.BootstrapApplication`.
+`muxon-initializer` is `services:muxon-initializer` with main class `com.yorel.muxon.bootstrap.BootstrapApplication`.
 It requires CLI arguments pointing at an initial config YAML and a few secrets on disk.
 
 Create local secret files (example paths used by the IntelliJ run config). The passphrase and DB password below match the default dev Postgres user password in `compose/dev-stack.yml`.
@@ -211,7 +211,7 @@ This will:
 ### 2) Run `core-services`
 
 Module: `services:core-services`  
-Main: `com.scal.muxon.CoreServicesApplication`
+Main: `com.yorel.muxon.CoreServicesApplication`
 
 ```bash
 export MUXON_PASSPHRASE='Infr0n@1234'
@@ -221,7 +221,7 @@ export MUXON_PASSPHRASE='Infr0n@1234'
 ### 3) Run `console-proxy`
 
 Module: `services:console-proxy`  
-Main: `com.scal.muxon.console.ConsoleProxyApplication`
+Main: `com.yorel.muxon.console.ConsoleProxyApplication`
 
 ```bash
 ./gradlew :services:console-proxy:bootRun
@@ -230,7 +230,7 @@ Main: `com.scal.muxon.console.ConsoleProxyApplication`
 ### 4) Run `orchestrator`
 
 Module: `services:orchestrator`  
-Main: `com.scal.muxon.orch.OrchestratorApp`
+Main: `com.yorel.muxon.orch.OrchestratorApp`
 
 ```bash
 export MUXON_PASSPHRASE='Infr0n@1234'
@@ -298,7 +298,7 @@ If Spring Security rejects tokens due to a missing `aud`, add an **Audience mapp
 
 ```bash
 sudo apt install -y postgresql-client
-psql --host=localhost --port=5432 -U infron
+psql --host=localhost --port=5432 -U muxon
 ```
 
 - **DBeaver**

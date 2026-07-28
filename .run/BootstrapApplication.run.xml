@@ -2,7 +2,7 @@
   <configuration default="false" name="BootstrapApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
     <module name="muxon-core.services.muxon-initializer.main" />
     <option name="PROGRAM_PARAMETERS" value="--initial-config $PROJECT_DIR$/services/muxon-initializer/src/main/resources/initial-config.yaml --output-folder $PROJECT_DIR$/build/initializer-out --muxon-passphrase $USER_HOME$/.secrets/passphrase --muxon-oidc-secret $USER_HOME$/.secrets/muxon-oidc-secret --muxon-db-password $USER_HOME$/.secrets/passphrase" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.scal.muxon.bootstrap.BootstrapApplication" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.yorel.muxon.bootstrap.BootstrapApplication" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

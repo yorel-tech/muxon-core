@@ -29,19 +29,19 @@ End-to-end installation (Docker, Kubernetes/Helm, appliance, cloud-init) is docu
 
 ## Docker (compose)
 
-Use [compose/infron.yml](../compose/infron.yml) with **secrets** and **configs** (not raw `environment:` for passwords).
+Use [compose/muxon.yml](../compose/muxon.yml) with **secrets** and **configs** (not raw `environment:` for passwords).
 
 ## Kubernetes
 
-The **infron-core** Helm chart renders a **ConfigMap** for `initial-config.yaml` and runs bootstrap in an **init container**. Pass a full file with:
+The **muxon-core** Helm chart renders a **ConfigMap** for `initial-config.yaml` and runs bootstrap in an **init container**. Pass a full file with:
 
 ```bash
-helm install infron ./deploy/helm/infron-core -n infron \
+helm install muxon ./deploy/helm/muxon-core -n muxon \
   --set-file bootstrap.initialConfigYaml=./initial-config.yaml
 ```
 
-For the **infron-nexus** parent chart, use:
+For the **muxon-nexus** parent chart, use:
 
 ```bash
---set-file infron-core.bootstrap.initialConfigYaml=./initial-config.yaml
+--set-file muxon-core.bootstrap.initialConfigYaml=./initial-config.yaml
 ```

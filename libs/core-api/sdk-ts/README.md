@@ -1,4 +1,4 @@
-# Infron Core TypeScript SDK
+# Muxon Core TypeScript SDK
 
 Generated from `openapi/openapi.yaml`.
 

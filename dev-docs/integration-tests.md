@@ -4,7 +4,7 @@
 
 ```bash
 cd muxon-core/integration-tests
-DOCKER_HOST=unix:///run/user/1000/podman/podman.sock ../gradlew test --tests "com.scal.muxon.tests.IntegrationTestSuite"
+DOCKER_HOST=unix:///run/user/1000/podman/podman.sock ../gradlew test --tests "com.yorel.muxon.tests.IntegrationTestSuite"
 ```
 
 This runs tests in order:
@@ -30,8 +30,8 @@ docker build -t muxon-core-services:test -f services/core-services/Dockerfile .
 Prefer pulling a CI-published image when available:
 
 ```bash
-docker pull ghcr.io/<owner>/scal/core-services:main
-docker tag ghcr.io/<owner>/scal/core-services:main muxon-core-services:test
+docker pull ghcr.io/<owner>/yorel/core-services:main
+docker tag ghcr.io/<owner>/yorel/core-services:main muxon-core-services:test
 ```
 
 ### Debugging

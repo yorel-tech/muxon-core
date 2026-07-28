@@ -1,6 +1,6 @@
 # Muxon Enterprise (Nexus) System
 
-muxon-enterprise (`com.scal.muxon.ent:0.1.0`) extends muxon-core without forking the REST API. The primary pattern is **composition + override**: depend on core artifacts, scan core Spring packages, replace selected beans, and add enterprise-only controllers and migrations.
+muxon-enterprise (`com.yorel.muxon.ent:0.1.0`) extends muxon-core without forking the REST API. The primary pattern is **composition + override**: depend on core artifacts, scan core Spring packages, replace selected beans, and add enterprise-only controllers and migrations.
 
 ## Relationship to Core
 
@@ -34,7 +34,7 @@ flowchart LR
 Gradle `settings.gradle.kts`:
 
 - `includeBuild("../muxon-core")` when local checkout exists
-- Otherwise resolves `com.scal.muxon:*:0.1.0` from Maven Local / GitHub Packages
+- Otherwise resolves `com.yorel.muxon:*:0.1.0` from Maven Local / GitHub Packages
 
 ## Module Map
 
@@ -66,26 +66,26 @@ muxon-enterprise/
 
 ```java
 @ComponentScan(basePackages = {
-    "com.scal.muxon.config", "com.scal.muxon.security", "com.scal.muxon.controllers",
-    "com.scal.muxon.services", "com.scal.muxon.events", "com.scal.muxon.grpc",
-    "com.scal.muxon.info", "com.scal.muxon.hateoas", "com.scal.muxon.auth",
-    "com.scal.muxon.web", "com.scal.muxon.db.resolver", "com.scal.muxon.ent"
+    "com.yorel.muxon.config", "com.yorel.muxon.security", "com.yorel.muxon.controllers",
+    "com.yorel.muxon.services", "com.yorel.muxon.events", "com.yorel.muxon.grpc",
+    "com.yorel.muxon.info", "com.yorel.muxon.hateoas", "com.yorel.muxon.auth",
+    "com.yorel.muxon.web", "com.yorel.muxon.db.resolver", "com.yorel.muxon.ent"
 })
-@EntityScan({ "com.scal.muxon.ent.db.model", "com.scal.muxon.db.model" })
-@EnableJpaRepositories({ "com.scal.muxon.ent.db.repository", "com.scal.muxon.db.repository" })
+@EntityScan({ "com.yorel.muxon.ent.db.model", "com.yorel.muxon.db.model" })
+@EnableJpaRepositories({ "com.yorel.muxon.ent.db.repository", "com.yorel.muxon.db.repository" })
 ```
 
 Effects:
 
 - All core REST controllers and services are active unchanged
-- Enterprise controllers (`com.scal.muxon.ent.controllers.*`) add endpoints (projects, roles, bindings)
+- Enterprise controllers (`com.yorel.muxon.ent.controllers.*`) add endpoints (projects, roles, bindings)
 - Enterprise entities join the same persistence unit as core entities
-- `com.scal.muxon.ent.*` beans override core defaults via `@Primary`
+- `com.yorel.muxon.ent.*` beans override core defaults via `@Primary`
 
 ### Dependencies (build.gradle.kts)
 
 ```
-com.scal.muxon:core-api, core-auth, core-persistence, auth-api, core-services
+com.yorel.muxon:core-api, core-auth, core-persistence, auth-api, core-services
 project(:libs:nexus-api, nexus-auth, nexus-persistence)
 + spring-boot-starter-data-redis
 ```
@@ -96,7 +96,7 @@ project(:libs:nexus-api, nexus-auth, nexus-persistence)
 
 | | Core OSS | Enterprise |
 |---|---|---|
-| Class | `com.scal.muxon.services.AuthorizationServiceImpl` | `com.scal.muxon.ent.services.AuthorizationServiceImpl` |
+| Class | `com.yorel.muxon.services.AuthorizationServiceImpl` | `com.yorel.muxon.ent.services.AuthorizationServiceImpl` |
 | Tenant cache | Caffeine in-memory | Redis (`perm:tenants:{externalId}`) |
 | Permission sources | `RoleRegistry` built-in roles only | Built-in roles **+** `nexus_role_permissions` DB catalog |
 | ABAC | None | Optional OPA (`authz.opa.enabled`, `authz.opa.url`) |
@@ -145,11 +145,11 @@ Topics (defaults): `muxon.vm.commands`, `muxon.task.events`, `muxon.entity.event
 
 ### 6. Enterprise permission annotations
 
-Enterprise controllers use `com.scal.muxon.ent.auth.RequiresPermission` with `com.scal.muxon.ent.auth.Permission`:
+Enterprise controllers use `com.yorel.muxon.ent.auth.RequiresPermission` with `com.yorel.muxon.ent.auth.Permission`:
 
 - `project:read`, `project:edit`, `project:manage`, `project:settings`
 
-Core `PermissionInterceptor` only recognizes `auth-api` annotations (`com.scal.muxon.auth.RequiresPermission`). Enterprise project controllers use the nexus variant; a unified interceptor bridge may be needed for full integration.
+Core `PermissionInterceptor` only recognizes `auth-api` annotations (`com.yorel.muxon.auth.RequiresPermission`). Enterprise project controllers use the nexus variant; a unified interceptor bridge may be needed for full integration.
 
 ## Enterprise-Only Features
 
@@ -181,7 +181,7 @@ Enterprise RBAC is stored separately from core `role_bindings`. Bindings still r
 
 ## api-gateway
 
-Spring Cloud Gateway (`GatewayApp`) — scans only `com.scal.muxon.gateway`.
+Spring Cloud Gateway (`GatewayApp`) — scans only `com.yorel.muxon.gateway`.
 
 **SecurityConfig:**
 
@@ -240,7 +240,7 @@ Orchestrator and console-proxy remain core services; only the API front-end swap
 
 1. **Add REST endpoints** — define OpenAPI in `nexus-api`, implement controller in `nexus-services`
 2. **Add permissions** — extend `nexus-auth.Permission`, seed rows in `nexus_permissions`
-3. **Override behavior** — place `@Primary` `@Service` in `com.scal.muxon.ent` and ensure component scan includes `ent`
+3. **Override behavior** — place `@Primary` `@Service` in `com.yorel.muxon.ent` and ensure component scan includes `ent`
 4. **Add schema** — new Flyway script under `db/migration/enterprise`, entity in `nexus-persistence`
 5. **Replace infrastructure** — provide `@Bean` + `@ConditionalOnMissingBean` or use existing Kafka auto-config properties
 

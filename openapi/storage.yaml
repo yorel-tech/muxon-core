@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Storage Classes API
+  title: Muxon Storage Classes API
   version: 2026-03-27
   description: Capability-based storage class and provider storage discovery APIs. This contract is additive and compatible with existing string-based storageClass references in VM and datacenter APIs.
 

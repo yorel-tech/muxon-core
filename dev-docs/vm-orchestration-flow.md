@@ -128,6 +128,6 @@ This document is the baseline for the orchestration flow; the queue decoupling p
 
 The open-source distribution uses the database-backed queue only via the transport-agnostic `CommandQueue` and `EventPublisher` interfaces:
 
-- **DB (default, OSS)**: `infron.queue.backend=db` or unset. Uses the `queue_entry` table and `DbCommandQueue` / `DbEventPublisher`.
+- **DB (default, OSS)**: `muxon.queue.backend=db` or unset. Uses the `queue_entry` table and `DbCommandQueue` / `DbEventPublisher`.
 
-Alternative backends (such as message buses) are provided by enterprise extensions (for example, infron-nexus) and are not part of this repository.
+Alternative backends (such as message buses) are provided by enterprise extensions (for example, muxon-nexus) and are not part of this repository.

@@ -25,7 +25,7 @@ logging:
   level:
     root: "INFO"
     org.springframework: "INFO"
-    com.scal.muxon: "DEBUG"
+    com.yorel.muxon: "DEBUG"
   file:
     name: "logs/muxon-orchestrator.log"
   pattern:

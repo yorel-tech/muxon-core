@@ -19,7 +19,7 @@ Use this prompt with Eraser MCP `generate` after authenticating (`mcp_auth` in C
 
 ## Color legend (match UI themes)
 
-- **Core (OSS / Infron)**: fill/stroke **#0EA5E9** (primary), accent **#0284C7**, light bg **#E0F2FE**
+- **Core (OSS / Muxon)**: fill/stroke **#0EA5E9** (primary), accent **#0284C7**, light bg **#E0F2FE**
 - **Enterprise (Nexus)**: fill/stroke **#8B5CF6** (primary), accent **#7C3AED**, light bg **#EDE9FE**
 - **Shared / infrastructure**: neutral gray **#64748B**, storage **#0891B2**, network **#16A34A**
 - **Hypervisor / physical**: dark **#1E293B**
@@ -34,7 +34,7 @@ Create a large, high-resolution cloud architecture diagram for the **Muxon priva
 ### Region 1 — End users & clients (neutral)
 
 - **End User** (browser)
-- **Web UI** (Muxon / Infron SPA — Core sky-blue theme; Nexus purple theme when enterprise)
+- **Web UI** (Muxon / Muxon SPA — Core sky-blue theme; Nexus purple theme when enterprise)
 - **API Clients** (CLI, automation, Terraform-style integrators)
 - Arrows: User → Web UI → HTTPS; API Clients → HTTPS
 

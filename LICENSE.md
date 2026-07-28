@@ -1,6 +1,6 @@
 # Business Source License 1.1 (Template)
 Licensor: Krito Technologies
-Licensed Work: Infron Core
+Licensed Work: Muxon Core
 Additional Use Grant: Personal, non-commercial, internal evaluation.
 Change Date: 2029-01-01
 Change License: Apache-2.0

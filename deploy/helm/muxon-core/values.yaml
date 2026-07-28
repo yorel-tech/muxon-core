@@ -1,5 +1,5 @@
 image:
-  repository: localhost:5000/scal/core-services
+  repository: localhost:5000/yorel/core-services
   tag: 0.1.0
 
 nameOverride: ""

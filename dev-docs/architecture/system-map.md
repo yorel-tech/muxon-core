@@ -183,7 +183,7 @@ flowchart LR
 
 Domain state lives in JPA entities under `core-persistence` (OSS) and `nexus-persistence` (enterprise). Services map entities ↔ OpenAPI DTOs; workers read entities but do not own entity state transitions.
 
-### 3.1 Core domain (`com.scal.muxon.db.model`)
+### 3.1 Core domain (`com.yorel.muxon.db.model`)
 
 | Domain | Entities | Primary table owner |
 |---|---|---|
@@ -196,7 +196,7 @@ Domain state lives in JPA entities under `core-persistence` (OSS) and `nexus-per
 | **Orchestration** | `JobEntity`, `TaskStepEntity`, `TaskLogEntity`, `QueueEntryEntity`, `EntityEventEntity` | orchestrator (jobs/tasks/queue) · core-services (entity_events) |
 | **Platform** | `SystemInitEntity`, `SystemSettingsEntity`, `AuditLogEntity` | core-services |
 
-### 3.2 Enterprise domain (`com.scal.muxon.ent.db.model`)
+### 3.2 Enterprise domain (`com.yorel.muxon.ent.db.model`)
 
 | Domain | Entities | Tables |
 |---|---|---|
@@ -207,14 +207,14 @@ Domain state lives in JPA entities under `core-persistence` (OSS) and `nexus-per
 
 | Layer | Package | Responsibility |
 |---|---|---|
-| **Auth contract** | `com.scal.muxon.auth` (`auth-api`) | `AuthorizationService`, `@RequiresPermission` |
-| **Permission catalog** | `com.scal.muxon.auth` (`core-auth`) | `Permission`, `RoleRegistry` |
-| **Enterprise permissions** | `com.scal.muxon.ent.auth` (`nexus-auth`) | Enterprise `Permission`, `@RequiresPermission` |
-| **Provider SPI** | `com.scal.muxon.providers` (`core-provider`) | `VmProvider`, `StorageProvider`, queue ports |
-| **Queue ports** | `com.scal.muxon.spi.queue` | `CommandQueue`, `TaskEventQueue`, `EntityEventQueue` |
-| **Worker runtime** | `com.scal.muxon.worker` (`core-worker`) | `TaskRouter`, task executors, provider registry |
-| **Guest customization** | `com.scal.muxon.customization` (`core-customization`) | Seed ISO, OS renderers |
-| **Capabilities** | `com.scal.muxon.info` | `CapabilityProvider`, `ModuleProvider`, `/api/v1/info` |
+| **Auth contract** | `com.yorel.muxon.auth` (`auth-api`) | `AuthorizationService`, `@RequiresPermission` |
+| **Permission catalog** | `com.yorel.muxon.auth` (`core-auth`) | `Permission`, `RoleRegistry` |
+| **Enterprise permissions** | `com.yorel.muxon.ent.auth` (`nexus-auth`) | Enterprise `Permission`, `@RequiresPermission` |
+| **Provider SPI** | `com.yorel.muxon.providers` (`core-provider`) | `VmProvider`, `StorageProvider`, queue ports |
+| **Queue ports** | `com.yorel.muxon.spi.queue` | `CommandQueue`, `TaskEventQueue`, `EntityEventQueue` |
+| **Worker runtime** | `com.yorel.muxon.worker` (`core-worker`) | `TaskRouter`, task executors, provider registry |
+| **Guest customization** | `com.yorel.muxon.customization` (`core-customization`) | Seed ISO, OS renderers |
+| **Capabilities** | `com.yorel.muxon.info` | `CapabilityProvider`, `ModuleProvider`, `/api/v1/info` |
 
 ### 3.4 Domain layer dependency (logical)
 
@@ -265,7 +265,7 @@ flowchart TB
 
 ## 4. Repository Map
 
-All OSS repositories: `com.scal.muxon.db.repository` in `libs/core-persistence`.
+All OSS repositories: `com.yorel.muxon.db.repository` in `libs/core-persistence`.
 
 | Repository | Entity | Domain |
 |---|---|---|
@@ -306,7 +306,7 @@ All OSS repositories: `com.scal.muxon.db.repository` in `libs/core-persistence`.
 | `SystemInitRepository` | `SystemInitEntity` | Platform |
 | `SystemSettingsRepository` | `SystemSettingsEntity` | Platform |
 
-Enterprise repositories: `com.scal.muxon.ent.db.repository` in `libs/nexus-persistence`.
+Enterprise repositories: `com.yorel.muxon.ent.db.repository` in `libs/nexus-persistence`.
 
 | Repository | Entity | Domain |
 |---|---|---|

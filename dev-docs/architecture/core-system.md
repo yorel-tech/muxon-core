@@ -1,6 +1,6 @@
 # Muxon Core System
 
-muxon-core (`com.scal.muxon:0.1.0`) is the open control-plane foundation. All modules are declared in `settings.gradle.kts`.
+muxon-core (`com.yorel.muxon:0.1.0`) is the open control-plane foundation. All modules are declared in `settings.gradle.kts`.
 
 ## Module Map
 
@@ -51,7 +51,7 @@ Dependencies: all core libs + `auth-api` + gRPC client stack.
 
 ### orchestrator
 
-Entry point: `OrchestratorApp` — scans entire `com.scal.muxon` tree.
+Entry point: `OrchestratorApp` — scans entire `com.yorel.muxon` tree.
 
 Responsibilities:
 
@@ -81,7 +81,7 @@ One-shot bootstrap:
 ### VmProvider contract
 
 ```java
-// libs/core-provider — com.scal.muxon.providers.VmProvider
+// libs/core-provider — com.yorel.muxon.providers.VmProvider
 CompletableFuture<VmCreationResult> createVm(VmCreationRequest request);
 CompletableFuture<VmDeletionResult> deleteVm(VmDeletionRequest request);
 // start/stop/restart/suspend/resume, getVmInfo, listVms, getCapabilities, validateVmSpec
@@ -223,7 +223,7 @@ Console resolve is an exception: core-services enqueues a `CommandQueue` message
 
 ## Build & Publish
 
-- Group: `com.scal.muxon`, version `0.1.0`
+- Group: `com.yorel.muxon`, version `0.1.0`
 - Java 25
 - `core-services` published as a library JAR consumed by `nexus-services`
-- Maven repository: GitHub Packages (`scal/muxon-core`)
+- Maven repository: GitHub Packages (`yorel/muxon-core`)

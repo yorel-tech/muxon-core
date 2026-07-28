@@ -3,8 +3,8 @@
     <envs>
       <env name="MUXON_PASSPHRASE" value="Infr0n@1234" />
     </envs>
-    <module name="infron-core.services.core-services.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.scal.muxon.CoreServicesApplication" />
+    <module name="muxon-core.services.core-services.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.yorel.muxon.CoreServicesApplication" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

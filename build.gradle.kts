@@ -5,7 +5,7 @@ plugins {
 }
 
 allprojects {
-    group = "com.scal.muxon"
+    group = "com.yorel.muxon"
     version = "0.1.0"
 
     repositories {
@@ -57,7 +57,7 @@ publishing {
 
         maven {
             name = "github"
-            url = uri("https://maven.pkg.github.com/scal/muxon-core")
+            url = uri("https://maven.pkg.github.com/yorel/muxon-core")
             credentials {
                 username = System.getenv("GITHUB_ACTOR")
                 password = System.getenv("GITHUB_TOKEN")

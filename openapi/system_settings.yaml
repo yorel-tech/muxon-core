@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Infron System Settings API
+  title: Muxon System Settings API
   version: 1.0.0
-  description: System and tenant settings management API for Infron-Core cloud management platform
+  description: System and tenant settings management API for Muxon-Core cloud management platform
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
@@ -21,7 +21,7 @@ components:
       properties:
         name:
           type: string
-          example: "Infron Cloud Platform"
+          example: "Muxon Cloud Platform"
           maxLength: 255
         description:
           type: string
@@ -268,11 +268,11 @@ components:
         subject:
           type: string
           maxLength: 200
-          example: "Infron Test Email"
+          example: "Muxon Test Email"
         body:
           type: string
           maxLength: 5000
-          example: "This is a test email from Infron"
+          example: "This is a test email from Muxon"
       additionalProperties: false
 
     # IdP Validation Request
@@ -323,7 +323,7 @@ components:
           example: INVALID_IDP_TYPE
         message:
           type: string
-          example: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
+          example: Only OIDC is supported in Muxon-Core. SAML and other protocols are Nexus (Enterprise) features.
         details:
           type: object
           additionalProperties: true
@@ -665,7 +665,7 @@ paths:
                 invalidIdpType:
                   value:
                     code: INVALID_IDP_TYPE
-                    message: Only OIDC is supported in Infron-Core. SAML and other protocols are Nexus (Enterprise) features.
+                    message: Only OIDC is supported in Muxon-Core. SAML and other protocols are Nexus (Enterprise) features.
         '401':
           $ref: './commons.yaml#/components/responses/Unauthorized'
         '403':

@@ -1,4 +1,4 @@
--- Run this in your infron DB to see why migrations 10–14 might not have run.
+-- Run this in your muxon DB to see why migrations 10–14 might not have run.
 -- Check for failed migrations (success = false) and which versions exist.
 
 SELECT version, description, success, installed_on, execution_time
