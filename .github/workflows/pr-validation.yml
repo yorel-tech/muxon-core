@@ -1,0 +1,89 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  core-build:
+    name: core-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: gradle
+      - name: Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
+      - name: Spotless
+        run: ./gradlew spotlessCheck --no-daemon
+      - name: Unit tests
+        run: ./gradlew test -x :integration-tests:test --no-daemon
+      - name: Build
+        run: ./gradlew build -x test -x :integration-tests:test --no-daemon
+
+  request-enterprise-compatibility:
+    name: request-enterprise-compatibility
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Dispatch private enterprise build
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PRIVATE_REPO_DISPATCH_TOKEN }}
+          repository: ${{ secrets.PRIVATE_REPO_NAME }}
+          event-type: oss-pr-compat
+          client-payload: |
+            {
+              "sha": "${{ github.event.pull_request.head.sha }}",
+              "pr": ${{ github.event.number }},
+              "ref": "${{ github.event.pull_request.head.ref }}",
+              "public_repo": "${{ github.repository }}"
+            }
+
+  fork-enterprise-compatibility-notice:
+    name: enterprise-compatibility-fork-notice
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Do not run private build for forks
+        run: |
+          echo "Fork PRs cannot trigger private Enterprise builds."
+          echo "Maintainers must re-run compatibility from a trusted branch after review."
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'pending',
+              context: 'enterprise-compatibility',
+              description: 'Awaiting maintainer trusted-branch compatibility run'
+            })
+
+  all-checks-passed:
+    name: all-checks-passed
+    needs:
+      - core-build
+      - request-enterprise-compatibility
+      - fork-enterprise-compatibility-notice
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate public Core checks
+        run: |
+          set -euo pipefail
+          if [[ "${{ needs.core-build.result }}" != "success" ]]; then
+            echo "core-build failed"
+            exit 1
+          fi
+          echo "core-build passed. Merge still requires enterprise-compatibility for trusted PRs."
