@@ -8,8 +8,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   contact:
     name: API Support
-    url: http://www.sal.com/support
-    email: support@sal.com
+    url: http://www.scalion.com/support
+    email: support@scalion.com
 
 servers:
   - url: /api/v1

@@ -24,8 +24,8 @@ Enterprise runs a separate init step, **`nexus-initializer`**, which:
 
 End-to-end installation (Docker, Kubernetes/Helm, appliance, cloud-init) is documented for operators in:
 
-- [docs/admin-guide/install-core.md](../docs/admin-guide/install-core.md)
-- [docs/admin-guide/install-nexus.md](../docs/admin-guide/install-nexus.md)
+- [install-core.md](../../../muxon-docs/admin-guide/install-core.md)
+- [install-nexus.md](../../../muxon-docs/admin-guide/install-nexus.md)
 
 ## Docker (compose)
 

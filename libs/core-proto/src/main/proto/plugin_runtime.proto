@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginRuntimeProto";
+
+// Implemented by plugins that declare a `runtime` capability.
+service RuntimeCapabilityService {
+  rpc ProvisionRuntime(ProvisionRuntimeRequest)       returns (ProvisionRuntimeResponse);
+  rpc DeprovisionRuntime(DeprovisionRuntimeRequest)   returns (DeprovisionRuntimeResponse);
+  rpc GetRuntimeStatus(GetRuntimeStatusRequest)       returns (RuntimeStatusResponse);
+}
+
+message ProvisionRuntimeRequest {
+  TenantContext context          = 1;
+  string        runtime_id       = 2;
+  string        runtime_name     = 3;
+  string        spec_json        = 4;
+  string        correlation_id   = 5;
+}
+
+message ProvisionRuntimeResponse {
+  bool        success        = 1;
+  string      external_id    = 2;
+  PluginError error          = 3;
+}
+
+message DeprovisionRuntimeRequest {
+  TenantContext context        = 1;
+  string        runtime_id     = 2;
+  string        external_id    = 3;
+  string        correlation_id = 4;
+}
+
+message DeprovisionRuntimeResponse {
+  bool        success = 1;
+  PluginError error   = 2;
+}
+
+message GetRuntimeStatusRequest {
+  TenantContext context     = 1;
+  string        runtime_id  = 2;
+  string        external_id = 3;
+}
+
+message RuntimeStatusResponse {
+  string      status      = 1;  // e.g. RUNNING, STOPPED, ERROR
+  string      detail      = 2;
+  PluginError error       = 3;
+}

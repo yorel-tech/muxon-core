@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginCapabilityProto";
+
+// Required by all plugins. Used for health checking and capability handshake on activation.
+service PluginCapabilityService {
+  rpc CheckHealth(HealthRequest)              returns (HealthResponse);
+  rpc DescribeCapabilities(DescribeRequest)  returns (CapabilityDescriptor);
+}
+
+message HealthRequest {
+  TenantContext context = 1;
+}
+
+message HealthResponse {
+  bool    healthy      = 1;
+  string  status_message = 2;
+}
+
+message DescribeRequest {
+  TenantContext context = 1;
+}
+
+// Descriptor returned by a plugin listing all gRPC services it implements.
+message CapabilityDescriptor {
+  repeated string implemented_services = 1;  // e.g. "RuntimeCapabilityService"
+  string          plugin_id            = 2;
+  string          plugin_version       = 3;
+}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginCommonProto";
+
+// Carries per-call tenant and observability context propagated via gRPC metadata.
+// Attached to every outbound call from core to a plugin via TenantContextInterceptor.
+message TenantContext {
+  string tenant_id    = 1;
+  string operation_id = 2;  // idempotency key
+  string trace_id     = 3;  // distributed trace
+  string plugin_id    = 4;
+}
+
+// Structured plugin error returned in response bodies.
+message PluginError {
+  string code    = 1;
+  string message = 2;
+  string detail  = 3;
+}

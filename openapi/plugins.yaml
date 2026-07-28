@@ -1,0 +1,271 @@
+openapi: "3.0.3"
+info:
+  title: Plugin Management API
+  version: "1.0"
+
+paths:
+  /api/v1/admin/plugins:
+    post:
+      summary: Register a plugin from its manifest
+      operationId: registerPlugin
+      tags: [Plugins]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginRegistrationRequest'
+      responses:
+        "201":
+          description: Plugin registered
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plugin'
+        "409":
+          description: Duplicate name+version
+        "422":
+          description: Manifest validation error
+
+    get:
+      summary: List all registered plugins
+      operationId: listPlugins
+      tags: [Plugins]
+      responses:
+        "200":
+          description: Plugin list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Plugin'
+
+  /api/v1/admin/plugins/{pluginId}:
+    get:
+      summary: Get plugin detail including capabilities
+      operationId: getPlugin
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "200":
+          description: Plugin detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginDetail'
+        "404":
+          description: Not found
+
+    delete:
+      summary: Delete a REGISTERED or DISABLED plugin
+      operationId: deletePlugin
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "204":
+          description: Deleted
+        "422":
+          description: Plugin has active resource instances or is BUILTIN
+
+  /api/v1/admin/plugins/{pluginId}/activate:
+    post:
+      summary: Activate a plugin (health check + state transition)
+      operationId: activatePlugin
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "200":
+          description: Plugin activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plugin'
+        "422":
+          description: Health check failed or capability mismatch
+
+  /api/v1/admin/plugins/{pluginId}/disable:
+    post:
+      summary: Disable an active or degraded plugin
+      operationId: disablePlugin
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "200":
+          description: Plugin disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plugin'
+
+  /api/v1/admin/plugins/{pluginId}/capabilities:
+    get:
+      summary: List plugin capabilities
+      operationId: listPluginCapabilities
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "200":
+          description: Capability list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PluginCapability'
+
+  /api/v1/admin/plugins/{pluginId}/health-check:
+    post:
+      summary: Trigger an on-demand health check
+      operationId: healthCheckPlugin
+      tags: [Plugins]
+      parameters:
+        - $ref: '#/components/parameters/pluginId'
+      responses:
+        "200":
+          description: Health check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginHealthCheckResult'
+
+components:
+  parameters:
+    pluginId:
+      name: pluginId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    PluginRegistrationRequest:
+      type: object
+      required: [manifest]
+      properties:
+        manifest:
+          $ref: '#/components/schemas/PluginManifest'
+
+    PluginManifest:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          example: platform.io/v1
+        kind:
+          type: string
+          example: Plugin
+        metadata:
+          type: object
+          required: [name, version]
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+        spec:
+          type: object
+          required: [capabilities]
+          properties:
+            grpc:
+              type: object
+              properties:
+                address:
+                  type: string
+            image:
+              type: string
+            executionTarget:
+              type: string
+            capabilities:
+              type: array
+              items:
+                type: object
+                required: [type]
+                properties:
+                  type:
+                    type: string
+                    enum: [runtime, service, resource-provider, ui-extension]
+                  name:
+                    type: string
+                  config:
+                    type: object
+                    additionalProperties: true
+
+    Plugin:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: string
+        source:
+          type: string
+          enum: [BUILTIN, EXTERNAL]
+        status:
+          type: string
+          enum: [REGISTERED, ACTIVE, DEGRADED, DISABLED]
+        grpcAddress:
+          type: string
+        healthEndpoint:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PluginDetail:
+      allOf:
+        - $ref: '#/components/schemas/Plugin'
+        - type: object
+          properties:
+            capabilities:
+              type: array
+              items:
+                $ref: '#/components/schemas/PluginCapability'
+
+    PluginCapability:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pluginId:
+          type: string
+          format: uuid
+        capabilityType:
+          type: string
+          enum: [RUNTIME, SERVICE, RESOURCE_PROVIDER, UI_EXTENSION]
+        capabilityName:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PluginHealthCheckResult:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+        statusMessage:
+          type: string
+        latencyMs:
+          type: integer

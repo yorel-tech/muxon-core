@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginUiProto";
+
+// Implemented by plugins that declare a `ui-extension` capability.
+service UiExtensionService {
+  rpc ListUiModules(ListUiModulesRequest) returns (ListUiModulesResponse);
+}
+
+message ListUiModulesRequest {
+  TenantContext context = 1;
+}
+
+message UiModuleDefinition {
+  string          id                   = 1;  // stable dot-namespaced identifier, e.g. kubernetes.pod-console
+  string          display_name         = 2;
+  string          module_url           = 3;
+  repeated string required_permissions = 4;
+  repeated string target_kinds         = 5;
+}
+
+message ListUiModulesResponse {
+  repeated UiModuleDefinition modules = 1;
+  PluginError                 error   = 2;
+}

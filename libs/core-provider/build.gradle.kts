@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-group = "com.sal.muxon"
+group = "com.scal.muxon"
 version = "0.1.0"
 
 dependencies {

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginResourceProto";
+
+// Implemented by plugins that declare a `resource-provider` capability.
+service ResourceReconcileService {
+  rpc ReconcileResource(ReconcileRequest)           returns (ReconcileResponse);
+  rpc GetResourceStatus(GetResourceStatusRequest)   returns (ResourceStatusResponse);
+  rpc DeleteResource(DeleteResourceRequest)         returns (DeleteResourceResponse);
+}
+
+message ReconcileRequest {
+  TenantContext context         = 1;
+  string        resource_id     = 2;
+  string        kind            = 3;
+  string        desired_state   = 4;  // JSON payload conforming to the kind's schema
+  string        current_state   = 5;  // JSON payload; empty on first reconcile
+  string        correlation_id  = 6;
+}
+
+message ReconcileResponse {
+  bool        accepted      = 1;  // plugin accepted the reconcile request
+  string      status        = 2;  // RECONCILING, READY, FAILED
+  PluginError error         = 3;
+}
+
+message GetResourceStatusRequest {
+  TenantContext context     = 1;
+  string        resource_id = 2;
+  string        kind        = 3;
+}
+
+message ResourceStatusResponse {
+  string      status  = 1;
+  string      detail  = 2;
+  string      state   = 3;  // current state JSON
+  PluginError error   = 4;
+}
+
+message DeleteResourceRequest {
+  TenantContext context        = 1;
+  string        resource_id    = 2;
+  string        kind           = 3;
+  string        correlation_id = 4;
+}
+
+message DeleteResourceResponse {
+  bool        accepted = 1;
+  PluginError error    = 2;
+}

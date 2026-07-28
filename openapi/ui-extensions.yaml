@@ -1,0 +1,60 @@
+openapi: "3.0.3"
+info:
+  title: UI Extension Manifest API
+  version: "1.0"
+
+paths:
+  /api/v1/ui/extensions:
+    get:
+      summary: List UI module definitions visible to the current user
+      description: |
+        Returns UI module definitions that satisfy all three conditions:
+        1. The owning plugin is ACTIVE.
+        2. The plugin is published to the requesting user's current tenant.
+        3. All requiredPermissions are satisfied by the user's effective permission set.
+        Pull-based; the frontend calls at startup and when a fresh manifest is needed.
+      operationId: listUiExtensions
+      tags: [UI Extensions]
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: UI module manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UiExtensionManifest'
+        "401":
+          description: Unauthenticated
+
+components:
+  schemas:
+    UiExtensionManifest:
+      type: object
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/UiModuleEntry'
+
+    UiModuleEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Stable dot-namespaced identifier, e.g. kubernetes.pod-console
+        displayName:
+          type: string
+        moduleUrl:
+          type: string
+          description: URL from which the browser loads the micro-frontend bundle
+        targetKinds:
+          type: array
+          items:
+            type: string
+          description: Resource kinds this module renders (for routing by the frontend)

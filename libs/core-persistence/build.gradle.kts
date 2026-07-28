@@ -19,7 +19,7 @@ tasks.register<JavaExec>("validateDbSchema") {
     group = "verification"
 
     classpath = sourceSets.main.get().runtimeClasspath
-    mainClass.set("com.sal.muxon.db.schema.DbSchemaValidator")
+    mainClass.set("com.scal.muxon.db.schema.DbSchemaValidator")
     args(
         "${project.projectDir}/src/main/resources/db-schema.yaml",
         "${project.projectDir}/src/main/resources/db/migration/oss"

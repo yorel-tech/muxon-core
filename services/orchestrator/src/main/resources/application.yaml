@@ -35,7 +35,7 @@ logging:
   level:
     root: "INFO"
     org.springframework: "INFO"
-    com.sal.muxon: "DEBUG"
+    com.scal.muxon: "DEBUG"
   file:
     name: "logs/muxon-orchestrator.log"
   pattern:
@@ -48,6 +48,21 @@ muxon:
     enabled: false
   system: null
   tenants: null
+  plugins:
+    framework:
+      enabled: true
+    health:
+      interval-seconds: 30
+    catalog:
+      approval-required: false
+    timeouts:
+      health-seconds: 5
+      reconcile-seconds: 60
+      catalog-provision-seconds: 120
+      status-query-seconds: 10
+    circuit-breaker:
+      failure-threshold: 5
+      cooldown-seconds: 30
   queue:
     backend: "db"
   worker:

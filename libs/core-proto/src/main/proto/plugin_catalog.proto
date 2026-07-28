@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.scal.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginCatalogProto";
+
+// Implemented by plugins that contribute catalog items (service or runtime capabilities with catalog declarations).
+service CatalogContributionService {
+  rpc ValidateCatalogConfig(ValidateConfigRequest)         returns (ValidateConfigResponse);
+  rpc ProvisionCatalogItem(ProvisionCatalogItemRequest)    returns (ProvisionCatalogItemResponse);
+  rpc DeprovisionCatalogItem(DeprovisionCatalogItemRequest) returns (DeprovisionCatalogItemResponse);
+}
+
+message ValidateConfigRequest {
+  TenantContext context          = 1;
+  string        catalog_item_name = 2;
+  string        config_json      = 3;
+}
+
+message ValidationError {
+  string field   = 1;
+  string message = 2;
+}
+
+message ValidateConfigResponse {
+  bool                    valid   = 1;
+  repeated ValidationError errors = 2;
+}
+
+message ProvisionCatalogItemRequest {
+  TenantContext context            = 1;
+  string        service_instance_id = 2;  // platform-assigned ID
+  string        catalog_item_name  = 3;
+  string        config_json        = 4;
+  string        correlation_id     = 5;
+}
+
+message ProvisionCatalogItemResponse {
+  bool        accepted    = 1;
+  string      external_id = 2;
+  PluginError error       = 3;
+}
+
+message DeprovisionCatalogItemRequest {
+  TenantContext context             = 1;
+  string        service_instance_id = 2;
+  string        external_id         = 3;
+  string        correlation_id      = 4;
+}
+
+message DeprovisionCatalogItemResponse {
+  bool        accepted = 1;
+  PluginError error    = 2;
+}
