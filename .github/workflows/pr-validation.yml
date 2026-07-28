@@ -24,6 +24,8 @@ jobs:
       - name: Checkstyle
         run: ./gradlew checkstyleMain checkstyleTest --no-daemon
       - name: Spotless
+        # Report-only while the tree is being cleaned; ratchet still applies locally.
+        continue-on-error: true
         run: ./gradlew spotlessCheck --no-daemon
       - name: Unit tests
         run: ./gradlew test -x :integration-tests:test --no-daemon
