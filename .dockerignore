@@ -1,0 +1,16 @@
+.git
+**/.git
+**/.gradle
+**/node_modules
+**/.next
+**/*.iml
+**/.idea
+**/out
+# Exclude Gradle build outputs, but keep bootJar outputs needed by
+# services/core-services/Dockerfile (copies prebuilt JARs from the host).
+**/build
+!services/
+!services/*/
+!services/*/build/
+!services/*/build/libs/
+!services/*/build/libs/**

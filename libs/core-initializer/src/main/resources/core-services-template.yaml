@@ -44,7 +44,7 @@ logging:
     root: INFO
     org.springframework: INFO
     org.hibernate: INFO
-    com.sal.muxon: DEBUG
+    com.yorel.muxon: DEBUG
 
   file:
     name: logs/muxon-core.log

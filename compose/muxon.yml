@@ -11,7 +11,7 @@
 # External database / IdP only (no bundled postgres/keycloak):
 #     docker compose -f compose/muxon.yml up -d
 #
-# See docs/admin-guide/install-core.md for full steps.
+# See muxon-docs/admin-guide/install-core.md for full steps.
 
 name: muxon
 
@@ -69,7 +69,7 @@ services:
       start_period: 60s
 
   core-services:
-    image: ghcr.io/sal/muxon-core/core-services:${MUXON_VERSION:-latest}
+    image: ghcr.io/yorel/muxon-core/core-services:${MUXON_VERSION:-latest}
     ports:
       - "8080:8080"
     secrets:

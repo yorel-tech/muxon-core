@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Content Storage API
+  title: Muxon Content Storage API
   version: 2026-04-05
   description: >
     Platform-managed content storage backends: local filesystem path, NFS mount path on core-services, or S3-compatible object storage.

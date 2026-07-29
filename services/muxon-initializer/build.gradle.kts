@@ -10,6 +10,6 @@ dependencies {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "com.sal.muxon.bootstrap.BootstrapApplication"
+        attributes["Main-Class"] = "com.yorel.muxon.bootstrap.BootstrapApplication"
     }
 }

@@ -5,7 +5,7 @@ package muxon.workflow.v1;
 import "job_common.proto";
 
 option java_multiple_files = true;
-option java_package = "com.sal.muxon.grpc.workflow.v1";
+option java_package = "com.yorel.muxon.grpc.workflow.v1";
 option java_outer_classname = "ContentLibraryWorkflowProto";
 
 // Content library workflow operations. Implemented by services/orchestrator.

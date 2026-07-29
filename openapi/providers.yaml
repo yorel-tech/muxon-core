@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Providers API
+  title: Muxon Providers API
   version: 2025-11-03
   description: Infrastructure provider management API for Proxmox, Libvirt, etc.
 

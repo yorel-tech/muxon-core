@@ -5,8 +5,8 @@ through the `/api/v1/info` endpoint.
 
 ## Providers
 
-- **Core** (infron-core): `CoreCapabilityProvider` supplies core capabilities and modules.
-- **Enterprise** (infron-nexus): `EnterpriseCapabilityProvider` supplies enterprise capabilities and modules (separate methods).
+- **Core** (muxon-core): `CoreCapabilityProvider` supplies core capabilities and modules.
+- **Enterprise** (muxon-nexus): `EnterpriseCapabilityProvider` supplies enterprise capabilities and modules (separate methods).
 - **License**: `LicensedCapabilityProvider` supplies capabilities from the configured license.
 - **Plugins**: Provision for plugins to expose their own capabilities can be added later.
 

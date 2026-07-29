@@ -99,9 +99,9 @@ tasks.named<GenerateTask>("openApiGenerate") {
     // Treat first $ref in allOf as Java superclass so VmTemplateContentItemCreate extends ContentItemCreateBase.
     openapiNormalizer.set(mapOf("REF_AS_PARENT_IN_ALLOF" to "true"))
 
-    apiPackage.set("com.sal.muxon.api")
-    modelPackage.set("com.sal.muxon.api.model")
-    invokerPackage.set("com.sal.muxon.api.invoker")
+    apiPackage.set("com.yorel.muxon.api")
+    modelPackage.set("com.yorel.muxon.api.model")
+    invokerPackage.set("com.yorel.muxon.api.invoker")
 
 //    globalProperties.set(
 //        mapOf(

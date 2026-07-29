@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-group = "com.sal.muxon"
+group = "com.yorel.muxon"
 version = "0.1.0"
 
 dependencies {

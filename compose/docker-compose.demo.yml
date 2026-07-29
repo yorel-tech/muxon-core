@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:18
     environment:
-      POSTGRES_USER: infron
-      POSTGRES_PASSWORD: infron
-      POSTGRES_DB: infron
+      POSTGRES_USER: muxon
+      POSTGRES_PASSWORD: muxon
+      POSTGRES_DB: muxon
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U infron"]
+      test: ["CMD-SHELL", "pg_isready -U muxon"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -24,7 +24,7 @@ services:
     ports:
       - "8085:8080"
     volumes:
-      - ./compose/keycloak/realm-infron-dev.json:/opt/keycloak/data/import/infron-dev.json:ro
+      - ./compose/keycloak/realm-muxon-dev.json:/opt/keycloak/data/import/muxon-dev.json:ro
     depends_on:
       postgres:
         condition: service_healthy

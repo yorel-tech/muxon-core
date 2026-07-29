@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Content Library API
+  title: Muxon Content Library API
   version: 2026-04-01
   description: Content library, item catalog, and system/tenant views.
 
@@ -975,7 +975,7 @@ paths:
       - $ref: '#/components/parameters/libraryId'
     post:
       tags: [PlatformContentLibraries]
-      summary: Replicate remote artifacts into Infron content store (remote libraries only)
+      summary: Replicate remote artifacts into Muxon content store (remote libraries only)
       operationId: replicatePlatformContentLibrary
       security:
         - BearerAuth: []

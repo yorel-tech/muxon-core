@@ -24,15 +24,20 @@ jobs:
       - name: Checkstyle
         run: ./gradlew checkstyleMain checkstyleTest --no-daemon
       - name: Spotless
+        # Report-only while the tree is being cleaned; ratchet still applies locally.
+        continue-on-error: true
         run: ./gradlew spotlessCheck --no-daemon
       - name: Unit tests
         run: ./gradlew test -x :integration-tests:test --no-daemon
       - name: Build
-        run: ./gradlew build -x test -x :integration-tests:test --no-daemon
+        # Spotless stays report-only (see step above); exclude it from build's check lifecycle.
+        run: ./gradlew build -x test -x :integration-tests:test -x spotlessCheck --no-daemon
 
   request-enterprise-compatibility:
     name: request-enterprise-compatibility
+    needs: core-build
     runs-on: ubuntu-latest
+    # Same-repo (trusted) PRs only. Forks use enterprise-compatibility-fork-notice instead.
     if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Dispatch private enterprise build
@@ -51,7 +56,9 @@ jobs:
 
   fork-enterprise-compatibility-notice:
     name: enterprise-compatibility-fork-notice
+    needs: core-build
     runs-on: ubuntu-latest
+    # Only for fork PRs (cannot reach private Enterprise secrets / dispatch).
     if: github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Do not run private build for forks

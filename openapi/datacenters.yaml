@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Infron Datacenters & Tenant Grants API
+  title: Muxon Datacenters & Tenant Grants API
   version: 2025-11-03
   description: Datacenter/provider capability definitions and Tenant→Datacenter grant (quotas & feature access) management.
 

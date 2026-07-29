@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package muxon.plugin.v1;
+
+import "plugin_common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.yorel.muxon.grpc.plugin.v1";
+option java_outer_classname = "PluginServiceProto";
+
+// Implemented by plugins that declare a `service` capability.
+service ServiceCapabilityService {
+  rpc ProvisionService(ProvisionServiceRequest)     returns (ProvisionServiceResponse);
+  rpc DeprovisionService(DeprovisionServiceRequest) returns (DeprovisionServiceResponse);
+  rpc GetServiceStatus(GetServiceStatusRequest)     returns (ServiceStatusResponse);
+  rpc ListServicePlans(ListServicePlansRequest)     returns (ListServicePlansResponse);
+}
+
+message ProvisionServiceRequest {
+  TenantContext context         = 1;
+  string        service_id      = 2;
+  string        plan_id         = 3;
+  string        config_json     = 4;
+  string        correlation_id  = 5;
+}
+
+message ProvisionServiceResponse {
+  bool        success     = 1;
+  string      external_id = 2;
+  PluginError error       = 3;
+}
+
+message DeprovisionServiceRequest {
+  TenantContext context        = 1;
+  string        service_id     = 2;
+  string        external_id    = 3;
+  string        correlation_id = 4;
+}
+
+message DeprovisionServiceResponse {
+  bool        success = 1;
+  PluginError error   = 2;
+}
+
+message GetServiceStatusRequest {
+  TenantContext context     = 1;
+  string        service_id  = 2;
+  string        external_id = 3;
+}
+
+message ServiceStatusResponse {
+  string      status  = 1;
+  string      detail  = 2;
+  PluginError error   = 3;
+}
+
+message ListServicePlansRequest {
+  TenantContext context      = 1;
+  string        service_name = 2;
+}
+
+message ServicePlan {
+  string name        = 1;
+  string display_name = 2;
+  string description = 3;
+  string schema_json  = 4;
+}
+
+message ListServicePlansResponse {
+  repeated ServicePlan plans = 1;
+  PluginError          error = 2;
+}

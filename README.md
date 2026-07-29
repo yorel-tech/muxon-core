@@ -1,4 +1,4 @@
-# Infron Core
+# Muxon Core
 
 Open, source-available foundation for private cloud control.
 
@@ -20,7 +20,14 @@ docker compose -f compose/dev-stack.yml up -d
 ./gradlew :services:core-services:bootRun
 ```
 
+## Documentation
+
+- **Public guides:** [`muxon-docs`](../muxon-docs/) — concepts, admin guide, user guide
+- **Developer setup:** [`dev-docs`](dev-docs/) — local development, architecture, build system
+
 ## Installation (operators)
 
-- [Install Infron Core](docs/admin-guide/install-core.md) — Docker Compose, Kubernetes/Helm, VM appliance, secrets, and `initial-config.yaml`
-- [Install Infron Nexus (enterprise)](docs/admin-guide/install-nexus.md) — Helm `infron-nexus` and nested `infron-core` values
+- [Install Muxon Core](../muxon-docs/admin-guide/install-core.md) — Docker Compose, Kubernetes/Helm, VM appliance, secrets, and `initial-config.yaml`
+- [Install Muxon Nexus (enterprise)](../muxon-docs/admin-guide/install-nexus.md) — Helm `muxon-nexus` and nested `muxon-core` values
+
+<!-- ci-gate-test: verify enterprise-compatibility status -->

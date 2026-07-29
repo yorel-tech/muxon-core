@@ -17,7 +17,7 @@ Repair updates the stored checksum so it matches your **current** migration file
 If you have [Flyway CLI](https://flywaydb.org/documentation/usage/commandline/) installed:
 
 ```bash
-cd infron-core/libs/core-persistence
+cd muxon-core/libs/core-persistence
 flyway repair \
   -url="jdbc:postgresql://<host>:<port>/<database>" \
   -user="<user>" \

@@ -4,11 +4,11 @@
       <env name="MUXON_PASSPHRASE" value="Infr0n@1234" />
     </envs>
     <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UnknownPolicyInFreeMode" />
-    <module name="infron-core.services.orchestrator.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.sal.muxon.orch.OrchestratorApp" />
+    <module name="muxon-core.services.orchestrator.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.yorel.muxon.orch.OrchestratorApp" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.sal.muxon.orch.*" />
+        <option name="PATTERN" value="com.yorel.muxon.orch.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
