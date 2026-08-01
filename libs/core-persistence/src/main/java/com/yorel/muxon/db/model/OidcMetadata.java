@@ -1,211 +1,223 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.model;
 
 import java.util.List;
 
-/**
- * Metadata configuration for OIDC identity providers
- */
+/** Metadata configuration for OIDC identity providers */
 public class OidcMetadata {
 
-    // Required OIDC fields
-    private String issuerUri;
-    private String clientId;
-    private String clientSecret;
-    private String redirectUri;
-    private String scope;
+  // Required OIDC fields
+  private String issuerUri;
+  private String clientId;
+  private String clientSecret;
+  private String redirectUri;
+  private String scope;
 
-    // Optional OIDC endpoints (can be discovered from issuerUri)
-    private String authorizationEndpoint;
-    private String tokenEndpoint;
-    private String userInfoEndpoint;
-    private String jwkSetUri;
-    private String endSessionEndpoint;
+  // Optional OIDC endpoints (can be discovered from issuerUri)
+  private String authorizationEndpoint;
+  private String tokenEndpoint;
+  private String userInfoEndpoint;
+  private String jwkSetUri;
+  private String endSessionEndpoint;
 
-    // Additional configuration
-    private Boolean validateIssuer = true;
-    private List<String> validAudiences;
-    private String usernameAttribute = "preferred_username";
-    private String emailAttribute = "email";
-    private String displayNameAttribute = "name";
-    private String groupsAttribute = "groups";
+  // Additional configuration
+  private Boolean validateIssuer = true;
+  private List<String> validAudiences;
+  private String usernameAttribute = "preferred_username";
+  private String emailAttribute = "email";
+  private String displayNameAttribute = "name";
+  private String groupsAttribute = "groups";
 
-    // PKCE configuration
-    private Boolean usePkce = true;
-    private String pkceMethod = "S256";
+  // PKCE configuration
+  private Boolean usePkce = true;
+  private String pkceMethod = "S256";
 
-    // Token validation
-    private Integer clockSkewSeconds = 60;
-    private Boolean validateSignature = true;
+  // Token validation
+  private Integer clockSkewSeconds = 60;
+  private Boolean validateSignature = true;
 
-    // Constructors
-    public OidcMetadata() {
-    }
+  // Constructors
+  public OidcMetadata() {}
 
-    public OidcMetadata(String issuerUri, String clientId, String clientSecret, String redirectUri) {
-        this.issuerUri = issuerUri;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-        this.redirectUri = redirectUri;
-    }
+  public OidcMetadata(String issuerUri, String clientId, String clientSecret, String redirectUri) {
+    this.issuerUri = issuerUri;
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
+    this.redirectUri = redirectUri;
+  }
 
-    // Getters and setters
-    public String getIssuerUri() {
-        return issuerUri;
-    }
+  // Getters and setters
+  public String getIssuerUri() {
+    return issuerUri;
+  }
 
-    public void setIssuerUri(String issuerUri) {
-        this.issuerUri = issuerUri;
-    }
+  public void setIssuerUri(String issuerUri) {
+    this.issuerUri = issuerUri;
+  }
 
-    public String getClientId() {
-        return clientId;
-    }
+  public String getClientId() {
+    return clientId;
+  }
 
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
+  public void setClientId(String clientId) {
+    this.clientId = clientId;
+  }
 
-    public String getClientSecret() {
-        return clientSecret;
-    }
+  public String getClientSecret() {
+    return clientSecret;
+  }
 
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
-    }
+  public void setClientSecret(String clientSecret) {
+    this.clientSecret = clientSecret;
+  }
 
-    public String getRedirectUri() {
-        return redirectUri;
-    }
+  public String getRedirectUri() {
+    return redirectUri;
+  }
 
-    public void setRedirectUri(String redirectUri) {
-        this.redirectUri = redirectUri;
-    }
+  public void setRedirectUri(String redirectUri) {
+    this.redirectUri = redirectUri;
+  }
 
-    public String getScope() {
-        return scope;
-    }
+  public String getScope() {
+    return scope;
+  }
 
-    public void setScope(String scope) {
-        this.scope = scope;
-    }
+  public void setScope(String scope) {
+    this.scope = scope;
+  }
 
-    public String getAuthorizationEndpoint() {
-        return authorizationEndpoint;
-    }
+  public String getAuthorizationEndpoint() {
+    return authorizationEndpoint;
+  }
 
-    public void setAuthorizationEndpoint(String authorizationEndpoint) {
-        this.authorizationEndpoint = authorizationEndpoint;
-    }
+  public void setAuthorizationEndpoint(String authorizationEndpoint) {
+    this.authorizationEndpoint = authorizationEndpoint;
+  }
 
-    public String getTokenEndpoint() {
-        return tokenEndpoint;
-    }
+  public String getTokenEndpoint() {
+    return tokenEndpoint;
+  }
 
-    public void setTokenEndpoint(String tokenEndpoint) {
-        this.tokenEndpoint = tokenEndpoint;
-    }
+  public void setTokenEndpoint(String tokenEndpoint) {
+    this.tokenEndpoint = tokenEndpoint;
+  }
 
-    public String getUserInfoEndpoint() {
-        return userInfoEndpoint;
-    }
+  public String getUserInfoEndpoint() {
+    return userInfoEndpoint;
+  }
 
-    public void setUserInfoEndpoint(String userInfoEndpoint) {
-        this.userInfoEndpoint = userInfoEndpoint;
-    }
+  public void setUserInfoEndpoint(String userInfoEndpoint) {
+    this.userInfoEndpoint = userInfoEndpoint;
+  }
 
-    public String getJwkSetUri() {
-        return jwkSetUri;
-    }
+  public String getJwkSetUri() {
+    return jwkSetUri;
+  }
 
-    public void setJwkSetUri(String jwkSetUri) {
-        this.jwkSetUri = jwkSetUri;
-    }
+  public void setJwkSetUri(String jwkSetUri) {
+    this.jwkSetUri = jwkSetUri;
+  }
 
-    public String getEndSessionEndpoint() {
-        return endSessionEndpoint;
-    }
+  public String getEndSessionEndpoint() {
+    return endSessionEndpoint;
+  }
 
-    public void setEndSessionEndpoint(String endSessionEndpoint) {
-        this.endSessionEndpoint = endSessionEndpoint;
-    }
+  public void setEndSessionEndpoint(String endSessionEndpoint) {
+    this.endSessionEndpoint = endSessionEndpoint;
+  }
 
-    public Boolean getValidateIssuer() {
-        return validateIssuer;
-    }
+  public Boolean getValidateIssuer() {
+    return validateIssuer;
+  }
 
-    public void setValidateIssuer(Boolean validateIssuer) {
-        this.validateIssuer = validateIssuer;
-    }
+  public void setValidateIssuer(Boolean validateIssuer) {
+    this.validateIssuer = validateIssuer;
+  }
 
-    public List<String> getValidAudiences() {
-        return validAudiences;
-    }
+  public List<String> getValidAudiences() {
+    return validAudiences;
+  }
 
-    public void setValidAudiences(List<String> validAudiences) {
-        this.validAudiences = validAudiences;
-    }
+  public void setValidAudiences(List<String> validAudiences) {
+    this.validAudiences = validAudiences;
+  }
 
-    public String getUsernameAttribute() {
-        return usernameAttribute;
-    }
+  public String getUsernameAttribute() {
+    return usernameAttribute;
+  }
 
-    public void setUsernameAttribute(String usernameAttribute) {
-        this.usernameAttribute = usernameAttribute;
-    }
+  public void setUsernameAttribute(String usernameAttribute) {
+    this.usernameAttribute = usernameAttribute;
+  }
 
-    public String getEmailAttribute() {
-        return emailAttribute;
-    }
+  public String getEmailAttribute() {
+    return emailAttribute;
+  }
 
-    public void setEmailAttribute(String emailAttribute) {
-        this.emailAttribute = emailAttribute;
-    }
+  public void setEmailAttribute(String emailAttribute) {
+    this.emailAttribute = emailAttribute;
+  }
 
-    public String getDisplayNameAttribute() {
-        return displayNameAttribute;
-    }
+  public String getDisplayNameAttribute() {
+    return displayNameAttribute;
+  }
 
-    public void setDisplayNameAttribute(String displayNameAttribute) {
-        this.displayNameAttribute = displayNameAttribute;
-    }
+  public void setDisplayNameAttribute(String displayNameAttribute) {
+    this.displayNameAttribute = displayNameAttribute;
+  }
 
-    public String getGroupsAttribute() {
-        return groupsAttribute;
-    }
+  public String getGroupsAttribute() {
+    return groupsAttribute;
+  }
 
-    public void setGroupsAttribute(String groupsAttribute) {
-        this.groupsAttribute = groupsAttribute;
-    }
+  public void setGroupsAttribute(String groupsAttribute) {
+    this.groupsAttribute = groupsAttribute;
+  }
 
-    public Boolean getUsePkce() {
-        return usePkce;
-    }
+  public Boolean getUsePkce() {
+    return usePkce;
+  }
 
-    public void setUsePkce(Boolean usePkce) {
-        this.usePkce = usePkce;
-    }
+  public void setUsePkce(Boolean usePkce) {
+    this.usePkce = usePkce;
+  }
 
-    public String getPkceMethod() {
-        return pkceMethod;
-    }
+  public String getPkceMethod() {
+    return pkceMethod;
+  }
 
-    public void setPkceMethod(String pkceMethod) {
-        this.pkceMethod = pkceMethod;
-    }
+  public void setPkceMethod(String pkceMethod) {
+    this.pkceMethod = pkceMethod;
+  }
 
-    public Integer getClockSkewSeconds() {
-        return clockSkewSeconds;
-    }
+  public Integer getClockSkewSeconds() {
+    return clockSkewSeconds;
+  }
 
-    public void setClockSkewSeconds(Integer clockSkewSeconds) {
-        this.clockSkewSeconds = clockSkewSeconds;
-    }
+  public void setClockSkewSeconds(Integer clockSkewSeconds) {
+    this.clockSkewSeconds = clockSkewSeconds;
+  }
 
-    public Boolean getValidateSignature() {
-        return validateSignature;
-    }
+  public Boolean getValidateSignature() {
+    return validateSignature;
+  }
 
-    public void setValidateSignature(Boolean validateSignature) {
-        this.validateSignature = validateSignature;
-    }
+  public void setValidateSignature(Boolean validateSignature) {
+    this.validateSignature = validateSignature;
+  }
 }

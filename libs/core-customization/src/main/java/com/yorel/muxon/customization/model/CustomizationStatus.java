@@ -1,49 +1,88 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.customization.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import java.time.Instant;
 
-/**
- * Serialisable customization status stored in {@code vms.customization_status} JSONB.
- */
+/** Serialisable customization status stored in {@code vms.customization_status} JSONB. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CustomizationStatus {
 
-    private CustomizationPhase phase = CustomizationPhase.NONE;
-    /** Fine-grained Linux sub-phase: NETWORK_CONFIG, CONFIG, SCRIPTS_PRE, SCRIPTS_POST. */
-    private String subPhase;
-    private String message;
-    private Instant startedAt;
-    private Instant completedAt;
+  private CustomizationPhase phase = CustomizationPhase.NONE;
 
-    public CustomizationStatus() {}
+  /** Fine-grained Linux sub-phase: NETWORK_CONFIG, CONFIG, SCRIPTS_PRE, SCRIPTS_POST. */
+  private String subPhase;
 
-    public static CustomizationStatus none() {
-        return new CustomizationStatus();
-    }
+  private String message;
+  private Instant startedAt;
+  private Instant completedAt;
 
-    public static CustomizationStatus pending() {
-        CustomizationStatus s = new CustomizationStatus();
-        s.phase = CustomizationPhase.PENDING;
-        s.startedAt = Instant.now();
-        return s;
-    }
+  public CustomizationStatus() {}
 
-    public CustomizationPhase getPhase() { return phase; }
-    public void setPhase(CustomizationPhase phase) { this.phase = phase; }
+  public static CustomizationStatus none() {
+    return new CustomizationStatus();
+  }
 
-    public String getSubPhase() { return subPhase; }
-    public void setSubPhase(String subPhase) { this.subPhase = subPhase; }
+  public static CustomizationStatus pending() {
+    CustomizationStatus s = new CustomizationStatus();
+    s.phase = CustomizationPhase.PENDING;
+    s.startedAt = Instant.now();
+    return s;
+  }
 
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
+  public CustomizationPhase getPhase() {
+    return phase;
+  }
 
-    public Instant getStartedAt() { return startedAt; }
-    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
+  public void setPhase(CustomizationPhase phase) {
+    this.phase = phase;
+  }
 
-    public Instant getCompletedAt() { return completedAt; }
-    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+  public String getSubPhase() {
+    return subPhase;
+  }
+
+  public void setSubPhase(String subPhase) {
+    this.subPhase = subPhase;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setMessage(String message) {
+    this.message = message;
+  }
+
+  public Instant getStartedAt() {
+    return startedAt;
+  }
+
+  public void setStartedAt(Instant startedAt) {
+    this.startedAt = startedAt;
+  }
+
+  public Instant getCompletedAt() {
+    return completedAt;
+  }
+
+  public void setCompletedAt(Instant completedAt) {
+    this.completedAt = completedAt;
+  }
 }

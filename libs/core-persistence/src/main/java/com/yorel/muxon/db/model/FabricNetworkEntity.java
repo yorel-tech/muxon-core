@@ -1,103 +1,198 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.model;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "fabric_network")
 public class FabricNetworkEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(name = "id", updatable = false)
+  private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "node_cluster_id", nullable = false)
-    private NodeClusterEntity nodeCluster;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "node_cluster_id", nullable = false)
+  private NodeClusterEntity nodeCluster;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false)
-    private FabricNetworkType type;
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false)
+  private FabricNetworkType type;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false)
-    private FabricNetworkRole role;
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false)
+  private FabricNetworkRole role;
 
-    @Column(name = "external_id")
-    private String externalId;
+  @Column(name = "external_id")
+  private String externalId;
 
-    @Column(name = "vlan_id")
-    private Integer vlanId;
+  @Column(name = "vlan_id")
+  private Integer vlanId;
 
-    @Column(columnDefinition = "JSONB")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String config;
+  @Column(columnDefinition = "JSONB")
+  @JdbcTypeCode(SqlTypes.JSON)
+  private String config;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false)
-    private FabricNetworkStatus status = FabricNetworkStatus.ACTIVE;
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(nullable = false)
+  private FabricNetworkStatus status = FabricNetworkStatus.ACTIVE;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    public FabricNetworkEntity() {}
+  public FabricNetworkEntity() {}
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    this.createdAt = Instant.now();
+    this.updatedAt = Instant.now();
+  }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
+  @PreUpdate
+  protected void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+  public UUID getId() {
+    return id;
+  }
 
-    public NodeClusterEntity getNodeCluster() { return nodeCluster; }
-    public void setNodeCluster(NodeClusterEntity nodeCluster) { this.nodeCluster = nodeCluster; }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+  public NodeClusterEntity getNodeCluster() {
+    return nodeCluster;
+  }
 
-    public FabricNetworkType getType() { return type; }
-    public void setType(FabricNetworkType type) { this.type = type; }
+  public void setNodeCluster(NodeClusterEntity nodeCluster) {
+    this.nodeCluster = nodeCluster;
+  }
 
-    public FabricNetworkRole getRole() { return role; }
-    public void setRole(FabricNetworkRole role) { this.role = role; }
+  public String getName() {
+    return name;
+  }
 
-    public String getExternalId() { return externalId; }
-    public void setExternalId(String externalId) { this.externalId = externalId; }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public Integer getVlanId() { return vlanId; }
-    public void setVlanId(Integer vlanId) { this.vlanId = vlanId; }
+  public FabricNetworkType getType() {
+    return type;
+  }
 
-    public String getConfig() { return config; }
-    public void setConfig(String config) { this.config = config; }
+  public void setType(FabricNetworkType type) {
+    this.type = type;
+  }
 
-    public FabricNetworkStatus getStatus() { return status; }
-    public void setStatus(FabricNetworkStatus status) { this.status = status; }
+  public FabricNetworkRole getRole() {
+    return role;
+  }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+  public void setRole(FabricNetworkRole role) {
+    this.role = role;
+  }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+  public String getExternalId() {
+    return externalId;
+  }
 
-    public enum FabricNetworkType { BRIDGE, VLAN, VXLAN, OVS, UNDERLAY }
-    public enum FabricNetworkRole { TENANT_OVERLAY, STORAGE, MANAGEMENT, LIVE_MIGRATION }
-    public enum FabricNetworkStatus { ACTIVE, INACTIVE }
+  public void setExternalId(String externalId) {
+    this.externalId = externalId;
+  }
+
+  public Integer getVlanId() {
+    return vlanId;
+  }
+
+  public void setVlanId(Integer vlanId) {
+    this.vlanId = vlanId;
+  }
+
+  public String getConfig() {
+    return config;
+  }
+
+  public void setConfig(String config) {
+    this.config = config;
+  }
+
+  public FabricNetworkStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(FabricNetworkStatus status) {
+    this.status = status;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
+
+  public enum FabricNetworkType {
+    BRIDGE,
+    VLAN,
+    VXLAN,
+    OVS,
+    UNDERLAY
+  }
+
+  public enum FabricNetworkRole {
+    TENANT_OVERLAY,
+    STORAGE,
+    MANAGEMENT,
+    LIVE_MIGRATION
+  }
+
+  public enum FabricNetworkStatus {
+    ACTIVE,
+    INACTIVE
+  }
 }

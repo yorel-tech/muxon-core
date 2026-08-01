@@ -1,126 +1,141 @@
-/**
- * Entity for tenant table.
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.yorel.muxon.db.model;
 
-import com.yorel.muxon.api.model.TenantSettings;
 import com.yorel.muxon.api.enums.TenantStatus;
+import com.yorel.muxon.api.model.TenantSettings;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
 import org.hibernate.dialect.type.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
-
 @Entity
 @Table(name = "tenants")
 public class TenantEntity {
 
-    @Id
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @Column(name = "id")
+  private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Column(name = "display_name")
-    private String displayName;
+  @Column(name = "display_name")
+  private String displayName;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
-    private TenantStatus status;
+  @Enumerated(EnumType.STRING)
+  @JdbcType(PostgreSQLEnumJdbcType.class)
+  @Column(nullable = false, columnDefinition = "tenant_status default 'active'")
+  private TenantStatus status;
 
-    @Column(columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, String> metadata;
+  @Column(columnDefinition = "jsonb")
+  @JdbcTypeCode(SqlTypes.JSON)
+  private Map<String, String> metadata;
 
-    @Type(value = JsonBinaryType.class)
-    @Column(columnDefinition = "jsonb")
-    private TenantSettings settings;
+  @Type(value = JsonBinaryType.class)
+  @Column(columnDefinition = "jsonb")
+  private TenantSettings settings;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    // Constructors
-    public TenantEntity() {
-    }
+  // Constructors
+  public TenantEntity() {}
 
-    public TenantEntity(UUID id, String name) {
-        this.id = id;
-        this.name = name;
-    }
+  public TenantEntity(UUID id, String name) {
+    this.id = id;
+    this.name = name;
+  }
 
-    // Getters and setters
-    public UUID getId() {
-        return id;
-    }
+  // Getters and setters
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public String getDisplayName() {
-        return displayName;
-    }
+  public String getDisplayName() {
+    return displayName;
+  }
 
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
+  public void setDisplayName(String displayName) {
+    this.displayName = displayName;
+  }
 
-    public TenantStatus getStatus() {
-        return status;
-    }
+  public TenantStatus getStatus() {
+    return status;
+  }
 
-    public void setStatus(TenantStatus status) {
-        this.status = status;
-    }
+  public void setStatus(TenantStatus status) {
+    this.status = status;
+  }
 
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
+  public Map<String, String> getMetadata() {
+    return metadata;
+  }
 
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
-    }
+  public void setMetadata(Map<String, String> metadata) {
+    this.metadata = metadata;
+  }
 
-    public TenantSettings getSettings() {
-        return settings;
-    }
+  public TenantSettings getSettings() {
+    return settings;
+  }
 
-    public void setSettings(TenantSettings settings) {
-        this.settings = settings;
-    }
+  public void setSettings(TenantSettings settings) {
+    this.settings = settings;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

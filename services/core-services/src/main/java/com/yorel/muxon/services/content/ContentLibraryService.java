@@ -1,3 +1,18 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.services.content;
 
 import com.yorel.muxon.api.model.ContentLibrary;
@@ -11,6 +26,11 @@ import com.yorel.muxon.db.model.ContentLibraryEntity;
 import com.yorel.muxon.db.repository.ContentLibraryRepository;
 import com.yorel.muxon.db.repository.ContentStorageRepository;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,189 +38,198 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-
 @Service
 public class ContentLibraryService {
 
-    public static final UUID SYSTEM_TENANT_ID = UUID.fromString(Constants.SYSTEM_ID);
+  public static final UUID SYSTEM_TENANT_ID = UUID.fromString(Constants.SYSTEM_ID);
 
-    private final ContentLibraryRepository contentLibraryRepository;
-    private final ContentStorageRepository contentStorageRepository;
-    private final ContentLibraryApiConverter converter;
-    private final ObjectMapper objectMapper;
+  private final ContentLibraryRepository contentLibraryRepository;
+  private final ContentStorageRepository contentStorageRepository;
+  private final ContentLibraryApiConverter converter;
+  private final ObjectMapper objectMapper;
 
-    public ContentLibraryService(
-            ContentLibraryRepository contentLibraryRepository,
-            ContentStorageRepository contentStorageRepository,
-            ContentLibraryApiConverter converter,
-            ObjectMapper objectMapper) {
-        this.contentLibraryRepository = contentLibraryRepository;
-        this.contentStorageRepository = contentStorageRepository;
-        this.converter = converter;
-        this.objectMapper = objectMapper;
-    }
+  public ContentLibraryService(
+      ContentLibraryRepository contentLibraryRepository,
+      ContentStorageRepository contentStorageRepository,
+      ContentLibraryApiConverter converter,
+      ObjectMapper objectMapper) {
+    this.contentLibraryRepository = contentLibraryRepository;
+    this.contentStorageRepository = contentStorageRepository;
+    this.converter = converter;
+    this.objectMapper = objectMapper;
+  }
 
-    public ContentLibraryList listPlatform(Integer page, Integer perPage) {
-        Pageable pageable = PageRequest.of(page - 1, perPage, Sort.by("name"));
-        Page<ContentLibraryEntity> entityPage = contentLibraryRepository.findByTenantId(SYSTEM_TENANT_ID, pageable);
-        return converter.toPagedList(entityPage);
-    }
+  public ContentLibraryList listPlatform(Integer page, Integer perPage) {
+    Pageable pageable = PageRequest.of(page - 1, perPage, Sort.by("name"));
+    Page<ContentLibraryEntity> entityPage =
+        contentLibraryRepository.findByTenantId(SYSTEM_TENANT_ID, pageable);
+    return converter.toPagedList(entityPage);
+  }
 
-    public ContentLibraryList listVisibleToTenant(UUID tenantId, Integer page, Integer perPage) {
-        Pageable pageable = PageRequest.of(page - 1, perPage, Sort.by("name"));
-        Page<ContentLibraryEntity> entityPage =
-                contentLibraryRepository.findByTenantIdIn(List.of(tenantId, SYSTEM_TENANT_ID), pageable);
-        return converter.toPagedList(entityPage);
-    }
+  public ContentLibraryList listVisibleToTenant(UUID tenantId, Integer page, Integer perPage) {
+    Pageable pageable = PageRequest.of(page - 1, perPage, Sort.by("name"));
+    Page<ContentLibraryEntity> entityPage =
+        contentLibraryRepository.findByTenantIdIn(List.of(tenantId, SYSTEM_TENANT_ID), pageable);
+    return converter.toPagedList(entityPage);
+  }
 
-    public ContentLibrary get(UUID id) {
-        ContentLibraryEntity entity = contentLibraryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
-        return converter.toApi(entity);
-    }
-
-    public ContentLibrary getPlatform(UUID id) {
-        ContentLibraryEntity entity = contentLibraryRepository.findByIdAndTenantId(id, SYSTEM_TENANT_ID)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
-        return converter.toApi(entity);
-    }
-
-    public void requirePlatformLibrary(UUID libraryId) {
-        contentLibraryRepository.findByIdAndTenantId(libraryId, SYSTEM_TENANT_ID)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
-    }
-
-    /**
-     * Tenant may read own libraries or platform (system) libraries.
-     */
-    public void requireReadAccess(UUID tenantId, UUID libraryId) {
+  public ContentLibrary get(UUID id) {
+    ContentLibraryEntity entity =
         contentLibraryRepository
-                .findByIdAndTenantIdIn(libraryId, List.of(tenantId, SYSTEM_TENANT_ID))
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
-    }
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
+    return converter.toApi(entity);
+  }
 
-    /**
-     * Mutations only on libraries owned by the tenant.
-     */
-    public void requireWriteAccess(UUID tenantId, UUID libraryId) {
-        contentLibraryRepository.findByIdAndTenantId(libraryId, tenantId)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
-    }
+  public ContentLibrary getPlatform(UUID id) {
+    ContentLibraryEntity entity =
+        contentLibraryRepository
+            .findByIdAndTenantId(id, SYSTEM_TENANT_ID)
+            .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
+    return converter.toApi(entity);
+  }
 
-    @Transactional
-    public ContentLibrary create(ContentLibraryCreate body, UUID owningTenantId) {
-        if (!SYSTEM_TENANT_ID.equals(owningTenantId)
-                && body.getType() == ContentLibraryType.REMOTE) {
-            throw new IllegalArgumentException("Tenant content libraries must be local");
-        }
-        UUID storageId;
-        if (SYSTEM_TENANT_ID.equals(owningTenantId)) {
-            if (body.getContentStorageId() == null) {
-                throw new IllegalArgumentException("contentStorageId is required for platform content libraries");
-            }
-            storageId = body.getContentStorageId();
-            contentStorageRepository
-                    .findById(storageId)
-                    .orElseThrow(() -> new EntityNotFoundException("Content storage not found: " + storageId));
-        } else {
-            storageId = contentStorageRepository
-                    .findByDefaultStorageIsTrue()
-                    .orElseThrow(() -> new IllegalStateException("No default content storage is configured"))
-                    .getId();
-        }
-        ContentLibraryEntity entity = new ContentLibraryEntity();
-        entity.setName(body.getName());
-        entity.setDescription(body.getDescription());
-        entity.setLibraryType(body.getType().getValue().toLowerCase(Locale.ROOT));
-        entity.setAccessMode(body.getAccessMode() != null
-                ? body.getAccessMode().getValue().toLowerCase(Locale.ROOT)
-                : "read_write");
-        entity.setTenantId(owningTenantId);
-        entity.setSourceConfig(toMap(body.getSourceConfig()));
-        entity.setContentStorageId(storageId);
-        entity.setMetadata(body.getMetadata());
-        if (body.getType() == ContentLibraryType.LOCAL) {
-            entity.setSyncStatus("synced");
-            entity.setLastSyncedAt(Instant.now());
-        } else {
-            entity.setSyncStatus("never_synced");
-        }
-        return converter.toApi(contentLibraryRepository.save(entity));
-    }
+  public void requirePlatformLibrary(UUID libraryId) {
+    contentLibraryRepository
+        .findByIdAndTenantId(libraryId, SYSTEM_TENANT_ID)
+        .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+  }
 
-    @Transactional
-    public ContentLibrary replace(UUID id, ContentLibraryUpdate body) {
-        ContentLibraryEntity entity = contentLibraryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
-        entity.setName(body.getName() != null ? body.getName() : entity.getName());
-        entity.setDescription(body.getDescription());
-        if (body.getAccessMode() != null) {
-            entity.setAccessMode(body.getAccessMode().getValue().toLowerCase(Locale.ROOT));
-        }
-        entity.setSourceConfig(body.getSourceConfig() != null ? toMap(body.getSourceConfig()) : entity.getSourceConfig());
-        entity.setMetadata(body.getMetadata());
-        return converter.toApi(contentLibraryRepository.save(entity));
-    }
+  /** Tenant may read own libraries or platform (system) libraries. */
+  public void requireReadAccess(UUID tenantId, UUID libraryId) {
+    contentLibraryRepository
+        .findByIdAndTenantIdIn(libraryId, List.of(tenantId, SYSTEM_TENANT_ID))
+        .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+  }
 
-    @Transactional
-    public ContentLibrary update(UUID id, ContentLibraryUpdate body) {
-        ContentLibraryEntity entity = contentLibraryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
-        if (body.getName() != null) {
-            entity.setName(body.getName());
-        }
-        if (body.getDescription() != null) {
-            entity.setDescription(body.getDescription());
-        }
-        if (body.getAccessMode() != null) {
-            entity.setAccessMode(body.getAccessMode().getValue().toLowerCase(Locale.ROOT));
-        }
-        if (body.getSourceConfig() != null) {
-            entity.setSourceConfig(toMap(body.getSourceConfig()));
-        }
-        applyContentStorageIdIfPlatform(entity, body.getContentStorageId());
-        if (body.getMetadata() != null) {
-            entity.setMetadata(body.getMetadata());
-        }
-        return converter.toApi(contentLibraryRepository.save(entity));
-    }
+  /** Mutations only on libraries owned by the tenant. */
+  public void requireWriteAccess(UUID tenantId, UUID libraryId) {
+    contentLibraryRepository
+        .findByIdAndTenantId(libraryId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+  }
 
-    @Transactional
-    public void delete(UUID id) {
-        if (!contentLibraryRepository.existsById(id)) {
-            throw new EntityNotFoundException("Content library not found: " + id);
-        }
-        contentLibraryRepository.deleteById(id);
+  @Transactional
+  public ContentLibrary create(ContentLibraryCreate body, UUID owningTenantId) {
+    if (!SYSTEM_TENANT_ID.equals(owningTenantId) && body.getType() == ContentLibraryType.REMOTE) {
+      throw new IllegalArgumentException("Tenant content libraries must be local");
     }
+    UUID storageId;
+    if (SYSTEM_TENANT_ID.equals(owningTenantId)) {
+      if (body.getContentStorageId() == null) {
+        throw new IllegalArgumentException(
+            "contentStorageId is required for platform content libraries");
+      }
+      storageId = body.getContentStorageId();
+      contentStorageRepository
+          .findById(storageId)
+          .orElseThrow(
+              () -> new EntityNotFoundException("Content storage not found: " + storageId));
+    } else {
+      storageId =
+          contentStorageRepository
+              .findByDefaultStorageIsTrue()
+              .orElseThrow(
+                  () -> new IllegalStateException("No default content storage is configured"))
+              .getId();
+    }
+    ContentLibraryEntity entity = new ContentLibraryEntity();
+    entity.setName(body.getName());
+    entity.setDescription(body.getDescription());
+    entity.setLibraryType(body.getType().getValue().toLowerCase(Locale.ROOT));
+    entity.setAccessMode(
+        body.getAccessMode() != null
+            ? body.getAccessMode().getValue().toLowerCase(Locale.ROOT)
+            : "read_write");
+    entity.setTenantId(owningTenantId);
+    entity.setSourceConfig(toMap(body.getSourceConfig()));
+    entity.setContentStorageId(storageId);
+    entity.setMetadata(body.getMetadata());
+    if (body.getType() == ContentLibraryType.LOCAL) {
+      entity.setSyncStatus("synced");
+      entity.setLastSyncedAt(Instant.now());
+    } else {
+      entity.setSyncStatus("never_synced");
+    }
+    return converter.toApi(contentLibraryRepository.save(entity));
+  }
 
-    public ContentLibraryEntity requireEntity(UUID libraryId) {
-        return contentLibraryRepository.findById(libraryId)
-                .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+  @Transactional
+  public ContentLibrary replace(UUID id, ContentLibraryUpdate body) {
+    ContentLibraryEntity entity =
+        contentLibraryRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
+    entity.setName(body.getName() != null ? body.getName() : entity.getName());
+    entity.setDescription(body.getDescription());
+    if (body.getAccessMode() != null) {
+      entity.setAccessMode(body.getAccessMode().getValue().toLowerCase(Locale.ROOT));
     }
+    entity.setSourceConfig(
+        body.getSourceConfig() != null ? toMap(body.getSourceConfig()) : entity.getSourceConfig());
+    entity.setMetadata(body.getMetadata());
+    return converter.toApi(contentLibraryRepository.save(entity));
+  }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> toMap(Object sourceConfig) {
-        if (sourceConfig == null) {
-            return null;
-        }
-        return objectMapper.convertValue(sourceConfig, Map.class);
+  @Transactional
+  public ContentLibrary update(UUID id, ContentLibraryUpdate body) {
+    ContentLibraryEntity entity =
+        contentLibraryRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + id));
+    if (body.getName() != null) {
+      entity.setName(body.getName());
     }
+    if (body.getDescription() != null) {
+      entity.setDescription(body.getDescription());
+    }
+    if (body.getAccessMode() != null) {
+      entity.setAccessMode(body.getAccessMode().getValue().toLowerCase(Locale.ROOT));
+    }
+    if (body.getSourceConfig() != null) {
+      entity.setSourceConfig(toMap(body.getSourceConfig()));
+    }
+    applyContentStorageIdIfPlatform(entity, body.getContentStorageId());
+    if (body.getMetadata() != null) {
+      entity.setMetadata(body.getMetadata());
+    }
+    return converter.toApi(contentLibraryRepository.save(entity));
+  }
 
-    private void applyContentStorageIdIfPlatform(ContentLibraryEntity entity, UUID requestedStorageId) {
-        if (requestedStorageId == null) {
-            return;
-        }
-        if (!SYSTEM_TENANT_ID.equals(entity.getTenantId())) {
-            return;
-        }
-        contentStorageRepository
-                .findById(requestedStorageId)
-                .orElseThrow(() -> new EntityNotFoundException("Content storage not found: " + requestedStorageId));
-        entity.setContentStorageId(requestedStorageId);
+  @Transactional
+  public void delete(UUID id) {
+    if (!contentLibraryRepository.existsById(id)) {
+      throw new EntityNotFoundException("Content library not found: " + id);
     }
+    contentLibraryRepository.deleteById(id);
+  }
+
+  public ContentLibraryEntity requireEntity(UUID libraryId) {
+    return contentLibraryRepository
+        .findById(libraryId)
+        .orElseThrow(() -> new EntityNotFoundException("Content library not found: " + libraryId));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> toMap(Object sourceConfig) {
+    if (sourceConfig == null) {
+      return null;
+    }
+    return objectMapper.convertValue(sourceConfig, Map.class);
+  }
+
+  private void applyContentStorageIdIfPlatform(
+      ContentLibraryEntity entity, UUID requestedStorageId) {
+    if (requestedStorageId == null) {
+      return;
+    }
+    if (!SYSTEM_TENANT_ID.equals(entity.getTenantId())) {
+      return;
+    }
+    contentStorageRepository
+        .findById(requestedStorageId)
+        .orElseThrow(
+            () -> new EntityNotFoundException("Content storage not found: " + requestedStorageId));
+    entity.setContentStorageId(requestedStorageId);
+  }
 }

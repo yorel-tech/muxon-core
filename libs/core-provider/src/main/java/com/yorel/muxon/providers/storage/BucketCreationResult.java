@@ -1,3 +1,18 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.providers.storage;
 
 public record BucketCreationResult(
@@ -8,15 +23,18 @@ public record BucketCreationResult(
     String accessKeyId,
     String secretAccessKey,
     String message,
-    String errorCode
-) {
-    public static BucketCreationResult success(String bucketId, String providerBucketId, 
-                                               String endpoint, String accessKeyId, String secretAccessKey) {
-        return new BucketCreationResult(true, bucketId, providerBucketId, endpoint, 
-                                       accessKeyId, secretAccessKey, null, null);
-    }
+    String errorCode) {
+  public static BucketCreationResult success(
+      String bucketId,
+      String providerBucketId,
+      String endpoint,
+      String accessKeyId,
+      String secretAccessKey) {
+    return new BucketCreationResult(
+        true, bucketId, providerBucketId, endpoint, accessKeyId, secretAccessKey, null, null);
+  }
 
-    public static BucketCreationResult failure(String message, String errorCode) {
-        return new BucketCreationResult(false, null, null, null, null, null, message, errorCode);
-    }
+  public static BucketCreationResult failure(String message, String errorCode) {
+    return new BucketCreationResult(false, null, null, null, null, null, message, errorCode);
+  }
 }

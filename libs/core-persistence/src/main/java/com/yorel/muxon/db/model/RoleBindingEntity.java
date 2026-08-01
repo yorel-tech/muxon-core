@@ -1,127 +1,147 @@
-/**
- * Entity for role_binding table.
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.yorel.muxon.db.model;
 
 import com.yorel.muxon.api.enums.RoleBindingSubjectType;
 import com.yorel.muxon.api.enums.RoleScopeType;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
+import java.util.UUID;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.type.PostgreSQLEnumJdbcType;
 
-import java.time.Instant;
-import java.util.UUID;
-
 @Entity
-@Table(name = "role_bindings", uniqueConstraints = @UniqueConstraint(columnNames = {"role_name", "subject_type", "subject_id", "scope_type", "scope_id"}))
+@Table(
+    name = "role_bindings",
+    uniqueConstraints =
+        @UniqueConstraint(
+            columnNames = {"role_name", "subject_type", "subject_id", "scope_type", "scope_id"}))
 public class RoleBindingEntity {
 
-    @Id
-    @Column(name = "id")
-    private UUID id;
+  @Id
+  @Column(name = "id")
+  private UUID id;
 
-    @Column(name = "role_name", nullable = false)
-    private String roleName;
+  @Column(name = "role_name", nullable = false)
+  private String roleName;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "subject_type", nullable = false)
-    private RoleBindingSubjectType subjectType;
+  @Enumerated(EnumType.STRING)
+  @JdbcType(PostgreSQLEnumJdbcType.class)
+  @Column(name = "subject_type", nullable = false)
+  private RoleBindingSubjectType subjectType;
 
-    @Column(name = "subject_id", nullable = false)
-    private String subjectId;
+  @Column(name = "subject_id", nullable = false)
+  private String subjectId;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "scope_type", nullable = false)
-    private RoleScopeType scopeType;
+  @Enumerated(EnumType.STRING)
+  @JdbcType(PostgreSQLEnumJdbcType.class)
+  @Column(name = "scope_type", nullable = false)
+  private RoleScopeType scopeType;
 
-    @Column(name = "scope_id")
-    private UUID scopeId;
+  @Column(name = "scope_id")
+  private UUID scopeId;
 
-    @Column(name = "expires_at")
-    private Instant expiresAt;
+  @Column(name = "expires_at")
+  private Instant expiresAt;
 
-    @Column(name = "created_by")
-    private UUID createdBy;
+  @Column(name = "created_by")
+  private UUID createdBy;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    // Constructors
-    public RoleBindingEntity() {
-    }
+  // Constructors
+  public RoleBindingEntity() {}
 
-    // Getters and setters
-    public UUID getId() {
-        return id;
-    }
+  // Getters and setters
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public String getRoleName() {
-        return roleName;
-    }
+  public String getRoleName() {
+    return roleName;
+  }
 
-    public void setRoleName(String roleName) {
-        this.roleName = roleName;
-    }
+  public void setRoleName(String roleName) {
+    this.roleName = roleName;
+  }
 
-    public RoleBindingSubjectType getSubjectType() {
-        return subjectType;
-    }
+  public RoleBindingSubjectType getSubjectType() {
+    return subjectType;
+  }
 
-    public void setSubjectType(RoleBindingSubjectType subjectType) {
-        this.subjectType = subjectType;
-    }
+  public void setSubjectType(RoleBindingSubjectType subjectType) {
+    this.subjectType = subjectType;
+  }
 
-    public String getSubjectId() {
-        return subjectId;
-    }
+  public String getSubjectId() {
+    return subjectId;
+  }
 
-    public void setSubjectId(String subjectId) {
-        this.subjectId = subjectId;
-    }
+  public void setSubjectId(String subjectId) {
+    this.subjectId = subjectId;
+  }
 
-    public RoleScopeType getScopeType() {
-        return scopeType;
-    }
+  public RoleScopeType getScopeType() {
+    return scopeType;
+  }
 
-    public void setScopeType(RoleScopeType scopeType) {
-        this.scopeType = scopeType;
-    }
+  public void setScopeType(RoleScopeType scopeType) {
+    this.scopeType = scopeType;
+  }
 
-    public UUID getScopeId() {
-        return scopeId;
-    }
+  public UUID getScopeId() {
+    return scopeId;
+  }
 
-    public void setScopeId(UUID scopeId) {
-        this.scopeId = scopeId;
-    }
+  public void setScopeId(UUID scopeId) {
+    this.scopeId = scopeId;
+  }
 
-    public Instant getExpiresAt() {
-        return expiresAt;
-    }
+  public Instant getExpiresAt() {
+    return expiresAt;
+  }
 
-    public void setExpiresAt(Instant expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+  public void setExpiresAt(Instant expiresAt) {
+    this.expiresAt = expiresAt;
+  }
 
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
+  public UUID getCreatedBy() {
+    return createdBy;
+  }
 
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
+  public void setCreatedBy(UUID createdBy) {
+    this.createdBy = createdBy;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
 }

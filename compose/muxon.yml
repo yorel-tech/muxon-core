@@ -69,7 +69,7 @@ services:
       start_period: 60s
 
   core-services:
-    image: ghcr.io/yorel/muxon-core/core-services:${MUXON_VERSION:-latest}
+    image: ghcr.io/yorel-tech/yorel/core-services:${MUXON_VERSION:-latest}
     ports:
       - "8080:8080"
     secrets:

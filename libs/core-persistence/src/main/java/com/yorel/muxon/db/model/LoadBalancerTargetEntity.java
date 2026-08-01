@@ -1,7 +1,31 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.model;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -9,73 +33,118 @@ import java.util.UUID;
 @Table(name = "load_balancer_target")
 public class LoadBalancerTargetEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(name = "id", updatable = false)
+  private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "load_balancer_id", nullable = false)
-    private LoadBalancerEntity loadBalancer;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "load_balancer_id", nullable = false)
+  private LoadBalancerEntity loadBalancer;
 
-    @Column(name = "vm_id")
-    private UUID vmId;
+  @Column(name = "vm_id")
+  private UUID vmId;
 
-    @Column(name = "ip_address")
-    private String ipAddress;
+  @Column(name = "ip_address")
+  private String ipAddress;
 
-    @Column(nullable = false)
-    private int port;
+  @Column(nullable = false)
+  private int port;
 
-    @Column(nullable = false)
-    private int weight = 1;
+  @Column(nullable = false)
+  private int weight = 1;
 
-    @Column(nullable = false)
-    private String status = "HEALTHY";
+  @Column(nullable = false)
+  private String status = "HEALTHY";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    public LoadBalancerTargetEntity() {}
+  public LoadBalancerTargetEntity() {}
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    this.createdAt = Instant.now();
+    this.updatedAt = Instant.now();
+  }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
+  @PreUpdate
+  protected void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+  public UUID getId() {
+    return id;
+  }
 
-    public LoadBalancerEntity getLoadBalancer() { return loadBalancer; }
-    public void setLoadBalancer(LoadBalancerEntity loadBalancer) { this.loadBalancer = loadBalancer; }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public UUID getVmId() { return vmId; }
-    public void setVmId(UUID vmId) { this.vmId = vmId; }
+  public LoadBalancerEntity getLoadBalancer() {
+    return loadBalancer;
+  }
 
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+  public void setLoadBalancer(LoadBalancerEntity loadBalancer) {
+    this.loadBalancer = loadBalancer;
+  }
 
-    public int getPort() { return port; }
-    public void setPort(int port) { this.port = port; }
+  public UUID getVmId() {
+    return vmId;
+  }
 
-    public int getWeight() { return weight; }
-    public void setWeight(int weight) { this.weight = weight; }
+  public void setVmId(UUID vmId) {
+    this.vmId = vmId;
+  }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+  public String getIpAddress() {
+    return ipAddress;
+  }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+  public void setIpAddress(String ipAddress) {
+    this.ipAddress = ipAddress;
+  }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+  public int getPort() {
+    return port;
+  }
+
+  public void setPort(int port) {
+    this.port = port;
+  }
+
+  public int getWeight() {
+    return weight;
+  }
+
+  public void setWeight(int weight) {
+    this.weight = weight;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

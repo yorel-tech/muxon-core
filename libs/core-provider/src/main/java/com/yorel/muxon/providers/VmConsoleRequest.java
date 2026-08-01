@@ -1,3 +1,18 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.providers;
 
 import java.util.UUID;
@@ -5,15 +20,10 @@ import java.util.UUID;
 /**
  * Request to obtain connection parameters for a VM console on the provider.
  *
- * @param vmId                    Muxon VM id
+ * @param vmId Muxon VM id
  * @param tenantDatacenterGrantId Grant used for provider resolution
- * @param externalId              Provider-side VM identifier (e.g. Proxmox vmid, libvirt UUID)
- * @param nodeId                  Optional node where the VM runs (libvirt); may be null for Proxmox
+ * @param externalId Provider-side VM identifier (e.g. Proxmox vmid, libvirt UUID)
+ * @param nodeId Optional node where the VM runs (libvirt); may be null for Proxmox
  */
 public record VmConsoleRequest(
-        UUID vmId,
-        UUID tenantDatacenterGrantId,
-        String externalId,
-        UUID nodeId
-) {
-}
+    UUID vmId, UUID tenantDatacenterGrantId, String externalId, UUID nodeId) {}

@@ -1,86 +1,106 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.providers.libvirt;
 
-import com.yorel.muxon.providers.*;
-import com.yorel.muxon.db.model.ProviderEntity;
-import com.yorel.muxon.db.model.NodeEntity;
-import com.yorel.muxon.db.repository.NodeRepository;
 import com.yorel.muxon.api.model.ProviderType;
-import java.util.*;
+import com.yorel.muxon.db.model.NodeEntity;
+import com.yorel.muxon.db.model.ProviderEntity;
+import com.yorel.muxon.db.repository.NodeRepository;
+import com.yorel.muxon.providers.ProviderConnectionInfo;
+import com.yorel.muxon.providers.ProviderContext;
+import com.yorel.muxon.providers.ProviderPlacementInfo;
+import com.yorel.muxon.providers.Reference;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
- * Libvirt-specific provider context
- * Uses database IDs for node management (Libvirt manages individual nodes)
+ * Libvirt-specific provider context Uses database IDs for node management (Libvirt manages
+ * individual nodes)
  */
 public class LibvirtProviderContext implements ProviderContext {
-    
-    private final ProviderEntity providerEntity;
-    private final NodeRepository nodeRepository;
-    private final UUID targetNodeId;  // Database UUID
-    
-    public LibvirtProviderContext(ProviderEntity providerEntity, 
-                                 NodeRepository nodeRepository,
-                                 UUID targetNodeId) {
-        this.providerEntity = providerEntity;
-        this.nodeRepository = nodeRepository;
-        this.targetNodeId = targetNodeId;
+
+  private final ProviderEntity providerEntity;
+  private final NodeRepository nodeRepository;
+  private final UUID targetNodeId; // Database UUID
+
+  public LibvirtProviderContext(
+      ProviderEntity providerEntity, NodeRepository nodeRepository, UUID targetNodeId) {
+    this.providerEntity = providerEntity;
+    this.nodeRepository = nodeRepository;
+    this.targetNodeId = targetNodeId;
+  }
+
+  @Override
+  public ProviderType getProviderType() {
+    return ProviderType.LIBVIRT;
+  }
+
+  @Override
+  public ProviderConnectionInfo getConnectionInfo() {
+    return ProviderConnectionInfo.builder()
+        .endpoint(providerEntity.getEndpoint())
+        .credentials(providerEntity.getCredentials())
+        .connectionConfig(Map.of("nodeId", targetNodeId.toString()))
+        .build();
+  }
+
+  @Override
+  public Optional<ProviderPlacementInfo> getPlacementInfo() {
+    Optional<NodeEntity> nodeOpt = nodeRepository.findById(targetNodeId);
+    if (nodeOpt.isEmpty()) {
+      return Optional.empty();
     }
-    
-    @Override
-    public ProviderType getProviderType() {
-        return ProviderType.LIBVIRT;
-    }
-    
-    @Override
-    public ProviderConnectionInfo getConnectionInfo() {
-        return ProviderConnectionInfo.builder()
-            .endpoint(providerEntity.getEndpoint())
-            .credentials(providerEntity.getCredentials())
-            .connectionConfig(Map.of("nodeId", targetNodeId.toString()))
-            .build();
-    }
-    
-    @Override
-    public Optional<ProviderPlacementInfo> getPlacementInfo() {
-        Optional<NodeEntity> nodeOpt = nodeRepository.findById(targetNodeId);
-        if (nodeOpt.isEmpty()) {
-            return Optional.empty();
-        }
-        
-        NodeEntity node = nodeOpt.get();
-        Reference nodeRef = Reference.internal(
-            node.getName(), 
-            node.getName(),  // For libvirt, name is used as external ID
-            targetNodeId
-        );
-        
-        return Optional.of(ProviderPlacementInfo.builder()
+
+    NodeEntity node = nodeOpt.get();
+    Reference nodeRef =
+        Reference.internal(
+            node.getName(),
+            node.getName(), // For libvirt, name is used as external ID
+            targetNodeId);
+
+    return Optional.of(
+        ProviderPlacementInfo.builder()
             .targetResource(nodeRef)
             .preferences(node.getMetadata() != null ? node.getMetadata() : Map.of())
             .constraints(Map.of())
             .build());
-    }
-    
-    @Override
-    public Map<String, Object> getMetadata() {
-        return Map.of(
-            "providerId", providerEntity.getId().toString(),
-            "nodeId", targetNodeId.toString(),
-            "nodeType", "libvirt"
-        );
-    }
-    
-    @Override
-    public Optional<Reference> getTargetResource() {
-        Optional<NodeEntity> nodeOpt = nodeRepository.findById(targetNodeId);
-        return nodeOpt.map(node -> Reference.internal(
-            node.getName(), 
-            node.getName(),  // External ID for libvirt
-            targetNodeId
-        ));
-    }
-    
-    // Helper method to get node entity
-    public Optional<NodeEntity> getTargetNodeEntity() {
-        return nodeRepository.findById(targetNodeId);
-    }
+  }
+
+  @Override
+  public Map<String, Object> getMetadata() {
+    return Map.of(
+        "providerId", providerEntity.getId().toString(),
+        "nodeId", targetNodeId.toString(),
+        "nodeType", "libvirt");
+  }
+
+  @Override
+  public Optional<Reference> getTargetResource() {
+    Optional<NodeEntity> nodeOpt = nodeRepository.findById(targetNodeId);
+    return nodeOpt.map(
+        node ->
+            Reference.internal(
+                node.getName(),
+                node.getName(), // External ID for libvirt
+                targetNodeId));
+  }
+
+  // Helper method to get node entity
+  public Optional<NodeEntity> getTargetNodeEntity() {
+    return nodeRepository.findById(targetNodeId);
+  }
 }

@@ -1,108 +1,129 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.queue;
 
 import com.yorel.muxon.api.enums.QueueCategory;
 import com.yorel.muxon.api.enums.QueueStatus;
 import com.yorel.muxon.api.model.EntityType;
-import com.yorel.muxon.spi.queue.EntityEventMessage;
-import com.yorel.muxon.spi.queue.EntityEventQueue;
 import com.yorel.muxon.db.model.QueueEntryEntity;
 import com.yorel.muxon.db.repository.QueueEntryRepository;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.yorel.muxon.spi.queue.EntityEventMessage;
+import com.yorel.muxon.spi.queue.EntityEventQueue;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Database-backed implementation of {@link EntityEventQueue}.
- * Uses the {@code orchestrator_queue} table with {@code ENTITY_EVENT} category.
+ * Database-backed implementation of {@link EntityEventQueue}. Uses the {@code orchestrator_queue}
+ * table with {@code ENTITY_EVENT} category.
  */
 public class DbEntityEventQueue implements EntityEventQueue {
 
-    private static final String SOURCE = "worker";
-    private static final String TASK_ID_KEY = "_taskId";
+  private static final String SOURCE = "worker";
+  private static final String TASK_ID_KEY = "_taskId";
 
-    private final QueueEntryRepository repository;
+  private final QueueEntryRepository repository;
 
-    public DbEntityEventQueue(QueueEntryRepository repository) {
-        this.repository = repository;
+  public DbEntityEventQueue(QueueEntryRepository repository) {
+    this.repository = repository;
+  }
+
+  @Override
+  @Transactional
+  public void publishEntityEvent(
+      EntityType entityType,
+      UUID entityId,
+      String eventType,
+      UUID taskId,
+      Map<String, Object> payload) {
+    QueueEntryEntity entry = new QueueEntryEntity();
+    entry.setQueueType(eventType);
+    entry.setQueueCategory(QueueCategory.ENTITY_EVENT);
+    entry.setEntityType(com.yorel.muxon.api.enums.EntityType.valueOf(entityType.name()));
+    entry.setEntityId(entityId);
+    entry.setStatus(QueueStatus.PENDING);
+
+    Map<String, Object> enriched = new HashMap<>(payload != null ? payload : Map.of());
+    if (taskId != null) {
+      enriched.put(TASK_ID_KEY, taskId.toString());
     }
+    entry.setPayload(enriched);
+    entry.setActorType("WORKER");
+    entry.setSource(SOURCE);
+    Instant now = Instant.now();
+    entry.setCreatedAt(now);
+    entry.setUpdatedAt(now);
+    repository.save(entry);
+  }
 
-    @Override
-    @Transactional
-    public void publishEntityEvent(EntityType entityType, UUID entityId,
-                                   String eventType, UUID taskId,
-                                   Map<String, Object> payload) {
-        QueueEntryEntity entry = new QueueEntryEntity();
-        entry.setQueueType(eventType);
-        entry.setQueueCategory(QueueCategory.ENTITY_EVENT);
-        entry.setEntityType(com.yorel.muxon.api.enums.EntityType.valueOf(entityType.name()));
-        entry.setEntityId(entityId);
-        entry.setStatus(QueueStatus.PENDING);
-
-        Map<String, Object> enriched = new HashMap<>(payload != null ? payload : Map.of());
-        if (taskId != null) {
-            enriched.put(TASK_ID_KEY, taskId.toString());
-        }
-        entry.setPayload(enriched);
-        entry.setActorType("WORKER");
-        entry.setSource(SOURCE);
-        Instant now = Instant.now();
-        entry.setCreatedAt(now);
-        entry.setUpdatedAt(now);
-        repository.save(entry);
+  @Override
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public List<EntityEventMessage> pollEntityEvents(int limit) {
+    List<QueueEntryEntity> entries =
+        repository.findPendingByCategoryForUpdate(
+            QueueCategory.ENTITY_EVENT, PageRequest.of(0, limit));
+    Instant now = Instant.now();
+    for (QueueEntryEntity e : entries) {
+      e.setStatus(QueueStatus.PROCESSING);
+      e.setProcessedAt(now);
+      e.setUpdatedAt(now);
     }
-
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public List<EntityEventMessage> pollEntityEvents(int limit) {
-        List<QueueEntryEntity> entries = repository.findPendingByCategoryForUpdate(
-                QueueCategory.ENTITY_EVENT, PageRequest.of(0, limit));
-        Instant now = Instant.now();
-        for (QueueEntryEntity e : entries) {
-            e.setStatus(QueueStatus.PROCESSING);
-            e.setProcessedAt(now);
-            e.setUpdatedAt(now);
-        }
-        if (!entries.isEmpty()) {
-            repository.saveAll(entries);
-        }
-        return entries.stream().map(this::toMessage).toList();
+    if (!entries.isEmpty()) {
+      repository.saveAll(entries);
     }
+    return entries.stream().map(this::toMessage).toList();
+  }
 
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markProcessed(UUID eventId) {
-        repository.markCompleted(eventId, Instant.now());
-    }
+  @Override
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markProcessed(UUID eventId) {
+    repository.markCompleted(eventId, Instant.now());
+  }
 
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(UUID eventId, String error) {
-        repository.markFailed(eventId, error, Instant.now());
-    }
+  @Override
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void markFailed(UUID eventId, String error) {
+    repository.markFailed(eventId, error, Instant.now());
+  }
 
-    private EntityEventMessage toMessage(QueueEntryEntity e) {
-        Map<String, Object> payload = e.getPayload() != null ? e.getPayload() : Map.of();
-        UUID taskId = null;
-        Object rawTaskId = payload.get(TASK_ID_KEY);
-        if (rawTaskId != null) {
-            try { taskId = UUID.fromString(rawTaskId.toString()); } catch (IllegalArgumentException ignored) {}
-        }
-        EntityType modelType = EntityType.valueOf(e.getEntityType().name());
-        return EntityEventMessage.builder()
-                .id(e.getId())
-                .entityType(modelType)
-                .entityId(e.getEntityId())
-                .eventType(e.getQueueType())
-                .taskId(taskId)
-                .payload(payload)
-                .source(e.getSource())
-                .createdAt(e.getCreatedAt())
-                .build();
+  private EntityEventMessage toMessage(QueueEntryEntity e) {
+    Map<String, Object> payload = e.getPayload() != null ? e.getPayload() : Map.of();
+    UUID taskId = null;
+    Object rawTaskId = payload.get(TASK_ID_KEY);
+    if (rawTaskId != null) {
+      try {
+        taskId = UUID.fromString(rawTaskId.toString());
+      } catch (IllegalArgumentException ignored) {
+      }
     }
+    EntityType modelType = EntityType.valueOf(e.getEntityType().name());
+    return EntityEventMessage.builder()
+        .id(e.getId())
+        .entityType(modelType)
+        .entityId(e.getEntityId())
+        .eventType(e.getQueueType())
+        .taskId(taskId)
+        .payload(payload)
+        .source(e.getSource())
+        .createdAt(e.getCreatedAt())
+        .build();
+  }
 }

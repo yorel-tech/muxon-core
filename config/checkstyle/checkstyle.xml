@@ -12,7 +12,7 @@
   <property name="fileExtensions" value="java"/>
 
   <module name="BeforeExecutionExclusionFileFilter">
-    <property name="fileNamePattern" value="module\-info\.java$"/>
+    <property name="fileNamePattern" value="module\-info\.java$|[/\\]build[/\\]generated[/\\]"/>
   </module>
 
   <module name="FileTabCharacter">
@@ -20,7 +20,7 @@
   </module>
 
   <module name="LineLength">
-    <property name="max" value="140"/>
+    <property name="max" value="200"/>
     <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
   </module>
 
@@ -33,7 +33,9 @@
     </module>
     <module name="AvoidStarImport"/>
     <module name="OneTopLevelClass"/>
-    <module name="NeedBraces"/>
+    <module name="NeedBraces">
+      <property name="allowSingleLineStatement" value="true"/>
+    </module>
     <module name="LeftCurly"/>
     <module name="RightCurly"/>
     <module name="WhitespaceAfter"/>
@@ -53,6 +55,8 @@
     <module name="ModifierOrder"/>
     <module name="EmptyLineSeparator">
       <property name="allowNoEmptyLineBetweenFields" value="true"/>
+      <!-- PACKAGE_DEF omitted: Spotless license headers sit directly above package. -->
+      <property name="tokens" value="IMPORT, STATIC_IMPORT, CLASS_DEF, INTERFACE_DEF, ENUM_DEF, RECORD_DEF, METHOD_DEF, CTOR_DEF, VARIABLE_DEF, STATIC_INIT, INSTANCE_INIT, COMPACT_CTOR_DEF"/>
     </module>
     <module name="PackageName">
       <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
@@ -62,7 +66,9 @@
     <module name="ParameterName"/>
     <module name="LocalVariableName"/>
     <module name="ClassTypeParameterName"/>
-    <module name="MethodTypeParameterName"/>
+    <module name="MethodTypeParameterName">
+      <property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+    </module>
     <module name="InterfaceTypeParameterName"/>
     <module name="NoFinalizer"/>
     <module name="GenericWhitespace"/>
@@ -70,6 +76,10 @@
     <module name="NoWhitespaceAfter"/>
     <module name="NoWhitespaceBefore"/>
     <module name="ParenPad"/>
-    <module name="OperatorWrap"/>
+    <module name="OperatorWrap">
+      <property name="option" value="NL"/>
+      <!-- COLON omitted: enhanced-for `:` must stay on the same line. -->
+      <property name="tokens" value="QUESTION,EQUAL,NOT_EQUAL,DIV,PLUS,MINUS,STAR,MOD,SR,BSR,GE,GT,SL,LE,LT,BXOR,BOR,LOR,BAND,LAND,TYPE_EXTENSION_AND,LITERAL_INSTANCEOF"/>
+    </module>
   </module>
 </module>

@@ -1,24 +1,39 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.repository;
 
 import com.yorel.muxon.db.model.StackEntity;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 @Repository
 public interface StackRepository extends JpaRepository<StackEntity, UUID> {
 
-    List<StackEntity> findByTenantDatacenterGrantId(UUID tenantDatacenterGrantId);
+  List<StackEntity> findByTenantDatacenterGrantId(UUID tenantDatacenterGrantId);
 
-    Optional<StackEntity> findByTenantDatacenterGrantIdAndName(UUID tenantDatacenterGrantId, String name);
+  Optional<StackEntity> findByTenantDatacenterGrantIdAndName(
+      UUID tenantDatacenterGrantId, String name);
 
-    boolean existsByTenantDatacenterGrantIdAndName(UUID tenantDatacenterGrantId, String name);
+  boolean existsByTenantDatacenterGrantIdAndName(UUID tenantDatacenterGrantId, String name);
 
-    @Query("SELECT COUNT(v) > 0 FROM VmEntity v WHERE v.stackId = :stackId AND v.status != 'DELETED'")
-    boolean hasActiveVms(@Param("stackId") UUID stackId);
+  @Query("SELECT COUNT(v) > 0 FROM VmEntity v WHERE v.stackId = :stackId AND v.status != 'DELETED'")
+  boolean hasActiveVms(@Param("stackId") UUID stackId);
 }

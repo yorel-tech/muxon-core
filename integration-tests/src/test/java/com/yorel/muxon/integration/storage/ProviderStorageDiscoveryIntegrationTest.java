@@ -1,12 +1,36 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.integration.storage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.yorel.muxon.CoreServicesApplication;
+import com.yorel.muxon.api.model.ProviderType;
 import com.yorel.muxon.db.model.ProviderEntity;
 import com.yorel.muxon.db.model.ProviderStorageEntity;
 import com.yorel.muxon.db.repository.ProviderRepository;
 import com.yorel.muxon.db.repository.ProviderStorageRepository;
-import com.yorel.muxon.services.storage.ProviderStorageDiscoveryService;
 import com.yorel.muxon.services.storage.CapabilityMappingService;
-import com.yorel.muxon.api.model.ProviderType;
+import com.yorel.muxon.services.storage.ProviderStorageDiscoveryService;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,236 +39,221 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import com.yorel.muxon.CoreServicesApplication;
 import org.testcontainers.DockerClientFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-/**
- * Integration tests for provider storage discovery and normalization.
- */
+/** Integration tests for provider storage discovery and normalization. */
 @SpringBootTest(classes = CoreServicesApplication.class)
 @ActiveProfiles("test")
 @Transactional
 public class ProviderStorageDiscoveryIntegrationTest {
 
-    @BeforeAll
-    static void requireDocker() {
-        if (!DockerClientFactory.instance().isDockerAvailable()) {
-            throw new TestAbortedException("Docker is not available; skipping SpringBootTest storage integration tests");
-        }
+  @BeforeAll
+  static void requireDocker() {
+    if (!DockerClientFactory.instance().isDockerAvailable()) {
+      throw new TestAbortedException(
+          "Docker is not available; skipping SpringBootTest storage integration tests");
     }
+  }
 
-    @Autowired
-    private ProviderStorageDiscoveryService discoveryService;
+  @Autowired private ProviderStorageDiscoveryService discoveryService;
 
-    @Autowired
-    private CapabilityMappingService capabilityMappingService;
+  @Autowired private CapabilityMappingService capabilityMappingService;
 
-    @Autowired
-    private ProviderRepository providerRepository;
+  @Autowired private ProviderRepository providerRepository;
 
-    @Autowired
-    private ProviderStorageRepository providerStorageRepository;
+  @Autowired private ProviderStorageRepository providerStorageRepository;
 
-    private ProviderEntity testProvider;
+  private ProviderEntity testProvider;
 
-    @BeforeEach
-    public void setup() {
-        // Create test provider
-        testProvider = new ProviderEntity();
-        testProvider.setName("test-provider");
-        testProvider.setType(ProviderType.LIBVIRT);
-        testProvider.setEndpoint("ssh://test@localhost/system");
-        testProvider.setCredentials(Map.of("sshPrivateKey", "test-key"));
-        testProvider.setStatus("ACTIVE");
-        providerRepository.save(testProvider);
-    }
+  @BeforeEach
+  public void setup() {
+    // Create test provider
+    testProvider = new ProviderEntity();
+    testProvider.setName("test-provider");
+    testProvider.setType(ProviderType.LIBVIRT);
+    testProvider.setEndpoint("ssh://test@localhost/system");
+    testProvider.setCredentials(Map.of("sshPrivateKey", "test-key"));
+    testProvider.setStatus("ACTIVE");
+    providerRepository.save(testProvider);
+  }
 
-    @Test
-    public void testDiscoveryServiceInitialization() {
-        // Then: Service should be initialized with adapters
-        assertNotNull(discoveryService);
-        assertTrue(discoveryService.isDiscoverySupported("libvirt"));
-        assertTrue(discoveryService.isDiscoverySupported("proxmox"));
-        assertFalse(discoveryService.isDiscoverySupported("unknown"));
-    }
+  @Test
+  public void testDiscoveryServiceInitialization() {
+    // Then: Service should be initialized with adapters
+    assertNotNull(discoveryService);
+    assertTrue(discoveryService.isDiscoverySupported("libvirt"));
+    assertTrue(discoveryService.isDiscoverySupported("proxmox"));
+    assertFalse(discoveryService.isDiscoverySupported("unknown"));
+  }
 
-    @Test
-    public void testCapabilityNormalization_Libvirt() {
-        // When: Normalize Libvirt storage types
-        Map<String, Object> rbdCapabilities = capabilityMappingService
-            .normalizeStorageType("rbd", "libvirt");
-        Map<String, Object> lvmCapabilities = capabilityMappingService
-            .normalizeStorageType("lvm", "libvirt");
-        Map<String, Object> dirCapabilities = capabilityMappingService
-            .normalizeStorageType("dir", "libvirt");
+  @Test
+  public void testCapabilityNormalization_Libvirt() {
+    // When: Normalize Libvirt storage types
+    Map<String, Object> rbdCapabilities =
+        capabilityMappingService.normalizeStorageType("rbd", "libvirt");
+    Map<String, Object> lvmCapabilities =
+        capabilityMappingService.normalizeStorageType("lvm", "libvirt");
+    Map<String, Object> dirCapabilities =
+        capabilityMappingService.normalizeStorageType("dir", "libvirt");
 
-        // Then: Should have correct capabilities
-        assertEquals("high", rbdCapabilities.get("performance"));
-        assertEquals("replicated", rbdCapabilities.get("redundancy"));
-        
-        assertNotNull(lvmCapabilities.get("performance"));
-        assertEquals("none", lvmCapabilities.get("redundancy"));
-        
-        assertEquals("low", dirCapabilities.get("performance"));
-    }
+    // Then: Should have correct capabilities
+    assertEquals("high", rbdCapabilities.get("performance"));
+    assertEquals("replicated", rbdCapabilities.get("redundancy"));
 
-    @Test
-    public void testCapabilityNormalization_Proxmox() {
-        // When: Normalize Proxmox storage types
-        Map<String, Object> rbdCapabilities = capabilityMappingService
-            .normalizeStorageType("rbd", "proxmox");
-        Map<String, Object> zfsCapabilities = capabilityMappingService
-            .normalizeStorageType("zfspool", "proxmox");
-        Map<String, Object> lvmThinCapabilities = capabilityMappingService
-            .normalizeStorageType("lvmthin", "proxmox");
+    assertNotNull(lvmCapabilities.get("performance"));
+    assertEquals("none", lvmCapabilities.get("redundancy"));
 
-        // Then: Should have correct capabilities
-        assertEquals("high", rbdCapabilities.get("performance"));
-        assertEquals("replicated", rbdCapabilities.get("redundancy"));
-        
-        assertEquals("medium", zfsCapabilities.get("performance"));
-        assertEquals("medium", lvmThinCapabilities.get("performance"));
-    }
+    assertEquals("low", dirCapabilities.get("performance"));
+  }
 
-    @Test
-    public void testCapabilityMatching() {
-        // Given: Storage type and requirements
-        String storageType = "rbd";
-        String muxonCapability = "performance";
-        Object muxonValue = "high";
+  @Test
+  public void testCapabilityNormalization_Proxmox() {
+    // When: Normalize Proxmox storage types
+    Map<String, Object> rbdCapabilities =
+        capabilityMappingService.normalizeStorageType("rbd", "proxmox");
+    Map<String, Object> zfsCapabilities =
+        capabilityMappingService.normalizeStorageType("zfspool", "proxmox");
+    Map<String, Object> lvmThinCapabilities =
+        capabilityMappingService.normalizeStorageType("lvmthin", "proxmox");
 
-        // When: Check if storage type matches capability
-        boolean matches = capabilityMappingService.matchesCapability(
-            storageType, muxonCapability, muxonValue, "libvirt"
-        );
+    // Then: Should have correct capabilities
+    assertEquals("high", rbdCapabilities.get("performance"));
+    assertEquals("replicated", rbdCapabilities.get("redundancy"));
 
-        // Then: Should match
-        assertTrue(matches);
+    assertEquals("medium", zfsCapabilities.get("performance"));
+    assertEquals("medium", lvmThinCapabilities.get("performance"));
+  }
 
-        // When: Check non-matching
-        boolean noMatch = capabilityMappingService.matchesCapability(
-            "dir", "performance", "high", "libvirt"
-        );
+  @Test
+  public void testCapabilityMatching() {
+    // Given: Storage type and requirements
+    String storageType = "rbd";
+    String muxonCapability = "performance";
+    Object muxonValue = "high";
 
-        // Then: Should not match
-        assertFalse(noMatch);
-    }
+    // When: Check if storage type matches capability
+    boolean matches =
+        capabilityMappingService.matchesCapability(
+            storageType, muxonCapability, muxonValue, "libvirt");
 
-    @Test
-    public void testProviderStorageRepository() {
-        // Given: Create provider storage entries
-        ProviderStorageEntity storage1 = createTestStorage("pool1", "rbd");
-        ProviderStorageEntity storage2 = createTestStorage("pool2", "lvm");
+    // Then: Should match
+    assertTrue(matches);
 
-        // When: Query by provider
-        List<ProviderStorageEntity> byProvider = providerStorageRepository
-            .findByProviderId(testProvider.getId());
+    // When: Check non-matching
+    boolean noMatch =
+        capabilityMappingService.matchesCapability("dir", "performance", "high", "libvirt");
 
-        // Then: Should find both
-        assertEquals(2, byProvider.size());
+    // Then: Should not match
+    assertFalse(noMatch);
+  }
 
-        // When: Query by provider and enabled
-        List<ProviderStorageEntity> enabled = providerStorageRepository
-            .findByProviderIdAndEnabled(testProvider.getId(), true);
+  @Test
+  public void testProviderStorageRepository() {
+    // Given: Create provider storage entries
+    ProviderStorageEntity storage1 = createTestStorage("pool1", "rbd");
+    ProviderStorageEntity storage2 = createTestStorage("pool2", "lvm");
 
-        // Then: Should find both (both are enabled)
-        assertEquals(2, enabled.size());
+    // When: Query by provider
+    List<ProviderStorageEntity> byProvider =
+        providerStorageRepository.findByProviderId(testProvider.getId());
 
-        // When: Query by storage type
-        List<ProviderStorageEntity> rbdStorage = providerStorageRepository
-            .findByStorageType("rbd");
+    // Then: Should find both
+    assertEquals(2, byProvider.size());
 
-        // Then: Should find one
-        assertEquals(1, rbdStorage.size());
-        assertEquals("pool1", rbdStorage.get(0).getName());
-    }
+    // When: Query by provider and enabled
+    List<ProviderStorageEntity> enabled =
+        providerStorageRepository.findByProviderIdAndEnabled(testProvider.getId(), true);
 
-    @Test
-    public void testProviderStorageSync() {
-        // Given: Create initial storage
-        createTestStorage("old_pool", "rbd");
-        
-        List<ProviderStorageEntity> before = providerStorageRepository
-            .findByProviderId(testProvider.getId());
-        assertEquals(1, before.size());
+    // Then: Should find both (both are enabled)
+    assertEquals(2, enabled.size());
 
-        // When: Delete and recreate (simulating sync)
-        providerStorageRepository.deleteByProviderId(testProvider.getId());
-        createTestStorage("new_pool", "rbd");
+    // When: Query by storage type
+    List<ProviderStorageEntity> rbdStorage = providerStorageRepository.findByStorageType("rbd");
 
-        // Then: Should have new storage
-        List<ProviderStorageEntity> after = providerStorageRepository
-            .findByProviderId(testProvider.getId());
-        assertEquals(1, after.size());
-        assertEquals("new_pool", after.get(0).getName());
-    }
+    // Then: Should find one
+    assertEquals(1, rbdStorage.size());
+    assertEquals("pool1", rbdStorage.get(0).getName());
+  }
 
-    @Test
-    public void testCapabilityTranslation() {
-        // Given: Muxon capabilities
-        Map<String, Object> muxonCapabilities = Map.of(
+  @Test
+  public void testProviderStorageSync() {
+    // Given: Create initial storage
+    createTestStorage("old_pool", "rbd");
+
+    List<ProviderStorageEntity> before =
+        providerStorageRepository.findByProviderId(testProvider.getId());
+    assertEquals(1, before.size());
+
+    // When: Delete and recreate (simulating sync)
+    providerStorageRepository.deleteByProviderId(testProvider.getId());
+    createTestStorage("new_pool", "rbd");
+
+    // Then: Should have new storage
+    List<ProviderStorageEntity> after =
+        providerStorageRepository.findByProviderId(testProvider.getId());
+    assertEquals(1, after.size());
+    assertEquals("new_pool", after.get(0).getName());
+  }
+
+  @Test
+  public void testCapabilityTranslation() {
+    // Given: Muxon capabilities
+    Map<String, Object> muxonCapabilities =
+        Map.of(
             "performance", "high",
-            "media", "ssd"
-        );
+            "media", "ssd");
 
-        // When: Translate to Libvirt
-        Map<String, Object> libvirtCapabilities = capabilityMappingService
-            .translateToProviderCapabilities(muxonCapabilities, "libvirt");
+    // When: Translate to Libvirt
+    Map<String, Object> libvirtCapabilities =
+        capabilityMappingService.translateToProviderCapabilities(muxonCapabilities, "libvirt");
 
-        // Then: Should have provider-specific capabilities
-        assertNotNull(libvirtCapabilities);
-        assertNotNull(libvirtCapabilities.get("pool_type"));
+    // Then: Should have provider-specific capabilities
+    assertNotNull(libvirtCapabilities);
+    assertNotNull(libvirtCapabilities.get("pool_type"));
 
-        // When: Translate to Proxmox
-        Map<String, Object> proxmoxCapabilities = capabilityMappingService
-            .translateToProviderCapabilities(muxonCapabilities, "proxmox");
+    // When: Translate to Proxmox
+    Map<String, Object> proxmoxCapabilities =
+        capabilityMappingService.translateToProviderCapabilities(muxonCapabilities, "proxmox");
 
-        // Then: Should have provider-specific capabilities
-        assertNotNull(proxmoxCapabilities);
-        assertNotNull(proxmoxCapabilities.get("storage_type"));
-    }
+    // Then: Should have provider-specific capabilities
+    assertNotNull(proxmoxCapabilities);
+    assertNotNull(proxmoxCapabilities.get("storage_type"));
+  }
 
-    @Test
-    public void testFindByCapabilities() {
-        // Given: Create storage with specific capabilities
-        ProviderStorageEntity storage = createTestStorage("test_pool", "rbd");
-        storage.setCapabilities(Map.of(
+  @Test
+  public void testFindByCapabilities() {
+    // Given: Create storage with specific capabilities
+    ProviderStorageEntity storage = createTestStorage("test_pool", "rbd");
+    storage.setCapabilities(
+        Map.of(
             "performance", "high",
-            "media", "ssd"
-        ));
-        providerStorageRepository.save(storage);
+            "media", "ssd"));
+    providerStorageRepository.save(storage);
 
-        // When: Search by capabilities (using JSONB containment)
-        String capabilitiesJson = "{\"performance\": \"high\"}";
-        List<ProviderStorageEntity> found = providerStorageRepository
-            .findByCapabilitiesContaining(capabilitiesJson);
+    // When: Search by capabilities (using JSONB containment)
+    String capabilitiesJson = "{\"performance\": \"high\"}";
+    List<ProviderStorageEntity> found =
+        providerStorageRepository.findByCapabilitiesContaining(capabilitiesJson);
 
-        // Then: Should find the storage
-        assertFalse(found.isEmpty());
-        assertTrue(found.stream().anyMatch(s -> s.getName().equals("test_pool")));
-    }
+    // Then: Should find the storage
+    assertFalse(found.isEmpty());
+    assertTrue(found.stream().anyMatch(s -> s.getName().equals("test_pool")));
+  }
 
-    private ProviderStorageEntity createTestStorage(String name, String storageType) {
-        ProviderStorageEntity storage = new ProviderStorageEntity();
-        storage.setProviderId(testProvider.getId());
-        storage.setProviderType("libvirt");
-        storage.setExternalId(name);
-        storage.setName(name);
-        storage.setStorageType(storageType);
-        storage.setCapabilities(new HashMap<>());
-        storage.setMetrics(Map.of(
+  private ProviderStorageEntity createTestStorage(String name, String storageType) {
+    ProviderStorageEntity storage = new ProviderStorageEntity();
+    storage.setProviderId(testProvider.getId());
+    storage.setProviderType("libvirt");
+    storage.setExternalId(name);
+    storage.setName(name);
+    storage.setStorageType(storageType);
+    storage.setCapabilities(new HashMap<>());
+    storage.setMetrics(
+        Map.of(
             "free_gb", 100L,
             "total_gb", 200L,
-            "estimated_iops", 10000
-        ));
-        storage.setEnabled(true);
-        return providerStorageRepository.save(storage);
-    }
+            "estimated_iops", 10000));
+    storage.setEnabled(true);
+    return providerStorageRepository.save(storage);
+  }
 }

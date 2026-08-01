@@ -1,30 +1,45 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.web;
-
 
 import com.yorel.muxon.auth.PermissionInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.*;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    private final TenantAccessInterceptor tenantAccessInterceptor;
-    private final PermissionInterceptor permissionInterceptor;
+  private final TenantAccessInterceptor tenantAccessInterceptor;
+  private final PermissionInterceptor permissionInterceptor;
 
-    @Autowired
-    public WebConfig(TenantAccessInterceptor tenantAccessInterceptor, PermissionInterceptor permissionInterceptor) {
-        this.tenantAccessInterceptor = tenantAccessInterceptor;
-        this.permissionInterceptor = permissionInterceptor;
-    }
+  @Autowired
+  public WebConfig(
+      TenantAccessInterceptor tenantAccessInterceptor,
+      PermissionInterceptor permissionInterceptor) {
+    this.tenantAccessInterceptor = tenantAccessInterceptor;
+    this.permissionInterceptor = permissionInterceptor;
+  }
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        // apply permission check to all API routes
-        registry.addInterceptor(permissionInterceptor)
-                .addPathPatterns("/api/**");
-        // apply to tenant-scoped routes
-        registry.addInterceptor(tenantAccessInterceptor)
-                .addPathPatterns("/api/v1/tenants/*/**");
-    }
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    // apply permission check to all API routes
+    registry.addInterceptor(permissionInterceptor).addPathPatterns("/api/**");
+    // apply to tenant-scoped routes
+    registry.addInterceptor(tenantAccessInterceptor).addPathPatterns("/api/v1/tenants/*/**");
+  }
 }
