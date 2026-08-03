@@ -25,5 +25,6 @@ coverage/
 .env.*
 **/secrets/
 **/initial-config.yaml
+compose/keycloak/realm-muxon-dev.runtime.json
 **/services/core-services/src/main/resources/application.yaml
 node_modules/

@@ -58,6 +58,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 
@@ -69,9 +70,17 @@ public class CoreInitializerService {
    */
   private static final String DEFAULT_CONTENT_STORAGE_ROOT = "/var/lib/muxon/content-libraries";
 
+  /**
+   * Omit null fields so generated application.yaml does not bind e.g. {@code spring.main: null},
+   * which Spring Boot rejects when converting to {@code ApplicationProperties}.
+   */
   private static final ObjectMapper yamlMapper =
       YAMLMapper.builder()
           .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+          .changeDefaultPropertyInclusion(
+              incl ->
+                  incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                      .withContentInclusion(JsonInclude.Include.NON_NULL))
           .build();
 
   public record ServiceTemplate(String serviceName, String templateFile) {}
