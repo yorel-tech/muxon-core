@@ -1,80 +1,94 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.repository;
 
 import com.yorel.muxon.db.model.ProviderStorageEntity;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 /**
  * Repository for provider storage entity operations.
- * <p>
- * Manages normalized provider storage pools/classes discovered from
- * infrastructure providers (Libvirt, Proxmox).
- * </p>
+ *
+ * <p>Manages normalized provider storage pools/classes discovered from infrastructure providers
+ * (Libvirt, Proxmox).
  */
 public interface ProviderStorageRepository extends JpaRepository<ProviderStorageEntity, UUID> {
 
-    List<ProviderStorageEntity> findByProviderId(UUID providerId);
+  List<ProviderStorageEntity> findByProviderId(UUID providerId);
 
-    List<ProviderStorageEntity> findByProviderIdAndEnabled(UUID providerId, boolean enabled);
+  List<ProviderStorageEntity> findByProviderIdAndEnabled(UUID providerId, boolean enabled);
 
-    List<ProviderStorageEntity> findByProviderType(String providerType);
+  List<ProviderStorageEntity> findByProviderType(String providerType);
 
-    Optional<ProviderStorageEntity> findByProviderIdAndExternalId(UUID providerId, String externalId);
+  Optional<ProviderStorageEntity> findByProviderIdAndExternalId(UUID providerId, String externalId);
 
-    List<ProviderStorageEntity> findByProviderIdAndName(UUID providerId, String name);
+  List<ProviderStorageEntity> findByProviderIdAndName(UUID providerId, String name);
 
-    List<ProviderStorageEntity> findByDatacenterId(UUID datacenterId);
+  List<ProviderStorageEntity> findByDatacenterId(UUID datacenterId);
 
-    List<ProviderStorageEntity> findByEnabled(boolean enabled);
+  List<ProviderStorageEntity> findByEnabled(boolean enabled);
 
-    /**
-     * Find provider storage by name across all providers of a specific type.
-     *
-     * @param providerType provider type (libvirt, proxmox)
-     * @param name storage name
-     * @return list of matching provider storage
-     */
-    List<ProviderStorageEntity> findByProviderTypeAndName(String providerType, String name);
+  /**
+   * Find provider storage by name across all providers of a specific type.
+   *
+   * @param providerType provider type (libvirt, proxmox)
+   * @param name storage name
+   * @return list of matching provider storage
+   */
+  List<ProviderStorageEntity> findByProviderTypeAndName(String providerType, String name);
 
-    /**
-     * Find enabled provider storage that matches given capabilities.
-     * Uses JSONB containment operator (@>) to check if provider storage
-     * capabilities contain all required capabilities.
-     *
-     * @param capabilities required capabilities as JSONB
-     * @return list of matching provider storage
-     */
-    @Query(value = "SELECT * FROM provider_storages ps WHERE ps.enabled = true AND ps.capabilities @> CAST(:capabilities AS jsonb)", 
-           nativeQuery = true)
-    List<ProviderStorageEntity> findByCapabilitiesContaining(@Param("capabilities") String capabilities);
+  /**
+   * Find enabled provider storage that matches given capabilities. Uses JSONB containment operator
+   * (@>) to check if provider storage capabilities contain all required capabilities.
+   *
+   * @param capabilities required capabilities as JSONB
+   * @return list of matching provider storage
+   */
+  @Query(
+      value =
+          "SELECT * FROM provider_storages ps WHERE ps.enabled = true AND ps.capabilities @> CAST(:capabilities AS jsonb)",
+      nativeQuery = true)
+  List<ProviderStorageEntity> findByCapabilitiesContaining(
+      @Param("capabilities") String capabilities);
 
-    /**
-     * Find provider storage by storage type.
-     *
-     * @param storageType storage type (ceph-rbd, lvm, zfs, etc.)
-     * @return list of matching provider storage
-     */
-    List<ProviderStorageEntity> findByStorageType(String storageType);
+  /**
+   * Find provider storage by storage type.
+   *
+   * @param storageType storage type (ceph-rbd, lvm, zfs, etc.)
+   * @return list of matching provider storage
+   */
+  List<ProviderStorageEntity> findByStorageType(String storageType);
 
-    /**
-     * Find provider storage by provider and storage type.
-     *
-     * @param providerId provider ID
-     * @param storageType storage type
-     * @return list of matching provider storage
-     */
-    List<ProviderStorageEntity> findByProviderIdAndStorageType(UUID providerId, String storageType);
+  /**
+   * Find provider storage by provider and storage type.
+   *
+   * @param providerId provider ID
+   * @param storageType storage type
+   * @return list of matching provider storage
+   */
+  List<ProviderStorageEntity> findByProviderIdAndStorageType(UUID providerId, String storageType);
 
-    /**
-     * Delete all provider storage for a specific provider.
-     * Used when re-syncing provider storage.
-     *
-     * @param providerId provider ID
-     */
-    void deleteByProviderId(UUID providerId);
+  /**
+   * Delete all provider storage for a specific provider. Used when re-syncing provider storage.
+   *
+   * @param providerId provider ID
+   */
+  void deleteByProviderId(UUID providerId);
 }

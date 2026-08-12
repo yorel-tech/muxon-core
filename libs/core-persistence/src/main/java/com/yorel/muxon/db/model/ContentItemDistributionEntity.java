@@ -1,3 +1,18 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.model;
 
 import jakarta.persistence.Column;
@@ -9,7 +24,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,125 +31,124 @@ import java.util.UUID;
 @Table(name = "content_item_distributions")
 public class ContentItemDistributionEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(name = "id", updatable = false, nullable = false)
+  private UUID id;
 
-    @Column(name = "content_item_id", nullable = false)
-    private UUID contentItemId;
+  @Column(name = "content_item_id", nullable = false)
+  private UUID contentItemId;
 
-    @Column(name = "distribution_id", nullable = false)
-    private UUID distributionId;
+  @Column(name = "distribution_id", nullable = false)
+  private UUID distributionId;
 
-    @Column(name = "status", nullable = false, length = 32)
-    private String status;
+  @Column(name = "status", nullable = false, length = 32)
+  private String status;
 
-    @Column(name = "checksum_verified", nullable = false)
-    private boolean checksumVerified;
+  @Column(name = "checksum_verified", nullable = false)
+  private boolean checksumVerified;
 
-    @Column(name = "size_bytes")
-    private Long sizeBytes;
+  @Column(name = "size_bytes")
+  private Long sizeBytes;
 
-    @Column(name = "error_message")
-    private String errorMessage;
+  @Column(name = "error_message")
+  private String errorMessage;
 
-    @Column(name = "retry_count", nullable = false)
-    private int retryCount;
+  @Column(name = "retry_count", nullable = false)
+  private int retryCount;
 
-    @Column(name = "last_updated_at", nullable = false)
-    private Instant lastUpdatedAt;
+  @Column(name = "last_updated_at", nullable = false)
+  private Instant lastUpdatedAt;
 
-    @Version
-    private Long version;
+  @Version private Long version;
 
-    @PrePersist
-    protected void onCreate() {
-        lastUpdatedAt = Instant.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    lastUpdatedAt = Instant.now();
+  }
 
-    @PreUpdate
-    protected void onUpdate() {
-        lastUpdatedAt = Instant.now();
-    }
+  @PreUpdate
+  protected void onUpdate() {
+    lastUpdatedAt = Instant.now();
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public UUID getContentItemId() {
-        return contentItemId;
-    }
+  public UUID getContentItemId() {
+    return contentItemId;
+  }
 
-    public void setContentItemId(UUID contentItemId) {
-        this.contentItemId = contentItemId;
-    }
+  public void setContentItemId(UUID contentItemId) {
+    this.contentItemId = contentItemId;
+  }
 
-    public UUID getDistributionId() {
-        return distributionId;
-    }
+  public UUID getDistributionId() {
+    return distributionId;
+  }
 
-    public void setDistributionId(UUID distributionId) {
-        this.distributionId = distributionId;
-    }
+  public void setDistributionId(UUID distributionId) {
+    this.distributionId = distributionId;
+  }
 
-    public String getStatus() {
-        return status;
-    }
+  public String getStatus() {
+    return status;
+  }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+  public void setStatus(String status) {
+    this.status = status;
+  }
 
-    public boolean isChecksumVerified() {
-        return checksumVerified;
-    }
+  public boolean isChecksumVerified() {
+    return checksumVerified;
+  }
 
-    public void setChecksumVerified(boolean checksumVerified) {
-        this.checksumVerified = checksumVerified;
-    }
+  public void setChecksumVerified(boolean checksumVerified) {
+    this.checksumVerified = checksumVerified;
+  }
 
-    public Long getSizeBytes() {
-        return sizeBytes;
-    }
+  public Long getSizeBytes() {
+    return sizeBytes;
+  }
 
-    public void setSizeBytes(Long sizeBytes) {
-        this.sizeBytes = sizeBytes;
-    }
+  public void setSizeBytes(Long sizeBytes) {
+    this.sizeBytes = sizeBytes;
+  }
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
+  public String getErrorMessage() {
+    return errorMessage;
+  }
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+  }
 
-    public int getRetryCount() {
-        return retryCount;
-    }
+  public int getRetryCount() {
+    return retryCount;
+  }
 
-    public void setRetryCount(int retryCount) {
-        this.retryCount = retryCount;
-    }
+  public void setRetryCount(int retryCount) {
+    this.retryCount = retryCount;
+  }
 
-    public Instant getLastUpdatedAt() {
-        return lastUpdatedAt;
-    }
+  public Instant getLastUpdatedAt() {
+    return lastUpdatedAt;
+  }
 
-    public void setLastUpdatedAt(Instant lastUpdatedAt) {
-        this.lastUpdatedAt = lastUpdatedAt;
-    }
+  public void setLastUpdatedAt(Instant lastUpdatedAt) {
+    this.lastUpdatedAt = lastUpdatedAt;
+  }
 
-    public Long getVersion() {
-        return version;
-    }
+  public Long getVersion() {
+    return version;
+  }
 
-    public void setVersion(Long version) {
-        this.version = version;
-    }
+  public void setVersion(Long version) {
+    this.version = version;
+  }
 }

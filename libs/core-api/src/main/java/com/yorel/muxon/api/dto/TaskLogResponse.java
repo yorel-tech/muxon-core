@@ -1,61 +1,76 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.api.dto;
 
 import java.time.Instant;
 import java.util.UUID;
 
 public class TaskLogResponse {
-    private UUID id;
-    private Instant timestamp;
-    private String level;
-    private String message;
-    private Integer stepNumber;
-    private Object details;
+  private UUID id;
+  private Instant timestamp;
+  private String level;
+  private String message;
+  private Integer stepNumber;
+  private Object details;
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public Instant getTimestamp() {
-        return timestamp;
-    }
+  public Instant getTimestamp() {
+    return timestamp;
+  }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
-    }
+  public void setTimestamp(Instant timestamp) {
+    this.timestamp = timestamp;
+  }
 
-    public String getLevel() {
-        return level;
-    }
+  public String getLevel() {
+    return level;
+  }
 
-    public void setLevel(String level) {
-        this.level = level;
-    }
+  public void setLevel(String level) {
+    this.level = level;
+  }
 
-    public String getMessage() {
-        return message;
-    }
+  public String getMessage() {
+    return message;
+  }
 
-    public void setMessage(String message) {
-        this.message = message;
-    }
+  public void setMessage(String message) {
+    this.message = message;
+  }
 
-    public Integer getStepNumber() {
-        return stepNumber;
-    }
+  public Integer getStepNumber() {
+    return stepNumber;
+  }
 
-    public void setStepNumber(Integer stepNumber) {
-        this.stepNumber = stepNumber;
-    }
+  public void setStepNumber(Integer stepNumber) {
+    this.stepNumber = stepNumber;
+  }
 
-    public Object getDetails() {
-        return details;
-    }
+  public Object getDetails() {
+    return details;
+  }
 
-    public void setDetails(Object details) {
-        this.details = details;
-    }
+  public void setDetails(Object details) {
+    this.details = details;
+  }
 }

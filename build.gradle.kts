@@ -24,11 +24,10 @@ subprojects {
     apply(plugin = "checkstyle")
 
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
-        // Only enforce on files changed vs main so the first enablement does not rewrite the tree.
-        ratchetFrom("origin/main")
         java {
             target("src/**/*.java")
-            googleJavaFormat("1.25.2")
+            googleJavaFormat("1.35.0")
+            removeUnusedImports()
             licenseHeaderFile(rootProject.file("config/spotless/license-header.java"))
         }
     }
@@ -36,14 +35,15 @@ subprojects {
     configure<CheckstyleExtension> {
         toolVersion = "10.21.1"
         configFile = rootProject.file("config/checkstyle/checkstyle.xml")
-        // Report-only until the tree is cleaned; Spotless ratchet covers new/changed files.
-        isIgnoreFailures = true
-        maxWarnings = Integer.MAX_VALUE
+        isIgnoreFailures = false
+        maxWarnings = 0
     }
 
     tasks.withType<Checkstyle>().configureEach {
         val hasSources = file("src/main/java").exists() || file("src/test/java").exists()
         onlyIf { hasSources }
+        // OpenAPI Generator output is not Checkstyle-clean; keep linting hand-written sources only.
+        exclude("**/build/generated/**")
     }
 
     // Publish leaf modules so Enterprise can resolve Core from mavenLocal / GH packages.

@@ -1,53 +1,60 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.providers;
 
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Reference to a resource with both name and external ID
- * External ID is used for API operations, name for display/logging
+ * Reference to a resource with both name and external ID External ID is used for API operations,
+ * name for display/logging
  */
 public record Reference(
-    String name,           // Human-readable name for display/logging
-    String externalId,     // External ID used by provider APIs (VMID, node ID, etc.)
-    UUID internalId       // Internal database UUID (for Libvirt, null for external providers)
-) {
-    
-    public Reference(String name, String externalId) {
-        this(name, externalId, null);
-    }
-    
-    public Reference(String name, String externalId, UUID internalId) {
-        this.name = Objects.requireNonNull(name, "name cannot be null");
-        this.externalId = Objects.requireNonNull(externalId, "externalId cannot be null");
-        this.internalId = internalId;
-    }
-    
-    /**
-     * Create reference for external providers (no internal ID)
-     */
-    public static Reference external(String name, String externalId) {
-        return new Reference(name, externalId);
-    }
-    
-    /**
-     * Create reference for internal providers (with database UUID)
-     */
-    public static Reference internal(String name, String externalId, UUID internalId) {
-        return new Reference(name, externalId, internalId);
-    }
-    
-    /**
-     * Check if this is an external provider reference
-     */
-    public boolean isExternal() {
-        return internalId == null;
-    }
-    
-    /**
-     * Check if this is an internal provider reference
-     */
-    public boolean isInternal() {
-        return internalId != null;
-    }
+    String name, // Human-readable name for display/logging
+    String externalId, // External ID used by provider APIs (VMID, node ID, etc.)
+    UUID internalId // Internal database UUID (for Libvirt, null for external providers)
+    ) {
+
+  public Reference(String name, String externalId) {
+    this(name, externalId, null);
+  }
+
+  public Reference(String name, String externalId, UUID internalId) {
+    this.name = Objects.requireNonNull(name, "name cannot be null");
+    this.externalId = Objects.requireNonNull(externalId, "externalId cannot be null");
+    this.internalId = internalId;
+  }
+
+  /** Create reference for external providers (no internal ID) */
+  public static Reference external(String name, String externalId) {
+    return new Reference(name, externalId);
+  }
+
+  /** Create reference for internal providers (with database UUID) */
+  public static Reference internal(String name, String externalId, UUID internalId) {
+    return new Reference(name, externalId, internalId);
+  }
+
+  /** Check if this is an external provider reference */
+  public boolean isExternal() {
+    return internalId == null;
+  }
+
+  /** Check if this is an internal provider reference */
+  public boolean isInternal() {
+    return internalId != null;
+  }
 }

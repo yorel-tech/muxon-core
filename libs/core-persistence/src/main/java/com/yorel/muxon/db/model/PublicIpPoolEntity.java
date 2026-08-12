@@ -1,7 +1,31 @@
+/*
+ * Copyright 2026 Yorel.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yorel.muxon.db.model;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -9,82 +33,132 @@ import java.util.UUID;
 @Table(name = "public_ip_pool")
 public class PublicIpPoolEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false)
-    private UUID id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  @Column(name = "id", updatable = false)
+  private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "datacenter_id", nullable = false)
-    private DatacenterEntity datacenter;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "datacenter_id", nullable = false)
+  private DatacenterEntity datacenter;
 
-    @Column(nullable = false)
-    private String cidr;
+  @Column(nullable = false)
+  private String cidr;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    private String description;
+  private String description;
 
-    @Column(name = "total_ips", nullable = false)
-    private int totalIps;
+  @Column(name = "total_ips", nullable = false)
+  private int totalIps;
 
-    @Column(name = "allocated_ips", nullable = false)
-    private int allocatedIps;
+  @Column(name = "allocated_ips", nullable = false)
+  private int allocatedIps;
 
-    @Column(nullable = false)
-    private String status = "ACTIVE";
+  @Column(nullable = false)
+  private String status = "ACTIVE";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    public PublicIpPoolEntity() {}
+  public PublicIpPoolEntity() {}
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    this.createdAt = Instant.now();
+    this.updatedAt = Instant.now();
+  }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
-    }
+  @PreUpdate
+  protected void onUpdate() {
+    this.updatedAt = Instant.now();
+  }
 
-    public int getAvailableIps() {
-        return totalIps - allocatedIps;
-    }
+  public int getAvailableIps() {
+    return totalIps - allocatedIps;
+  }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+  public UUID getId() {
+    return id;
+  }
 
-    public DatacenterEntity getDatacenter() { return datacenter; }
-    public void setDatacenter(DatacenterEntity datacenter) { this.datacenter = datacenter; }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public String getCidr() { return cidr; }
-    public void setCidr(String cidr) { this.cidr = cidr; }
+  public DatacenterEntity getDatacenter() {
+    return datacenter;
+  }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+  public void setDatacenter(DatacenterEntity datacenter) {
+    this.datacenter = datacenter;
+  }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+  public String getCidr() {
+    return cidr;
+  }
 
-    public int getTotalIps() { return totalIps; }
-    public void setTotalIps(int totalIps) { this.totalIps = totalIps; }
+  public void setCidr(String cidr) {
+    this.cidr = cidr;
+  }
 
-    public int getAllocatedIps() { return allocatedIps; }
-    public void setAllocatedIps(int allocatedIps) { this.allocatedIps = allocatedIps; }
+  public String getName() {
+    return name;
+  }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+  public String getDescription() {
+    return description;
+  }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public int getTotalIps() {
+    return totalIps;
+  }
+
+  public void setTotalIps(int totalIps) {
+    this.totalIps = totalIps;
+  }
+
+  public int getAllocatedIps() {
+    return allocatedIps;
+  }
+
+  public void setAllocatedIps(int allocatedIps) {
+    this.allocatedIps = allocatedIps;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }
