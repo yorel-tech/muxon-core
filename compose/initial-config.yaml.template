@@ -1,34 +1,39 @@
-# Copy to muxon-core/initial-config.yaml and edit for your environment.
-#   cp compose/initial-config.yaml.template ../initial-config.yaml
+# Template for Muxon Core Docker Compose / install kit.
+# Rendered by ./install.sh into ../initial-config.yaml (kit root).
+# Manual: replace placeholder tokens listed in INSTALL.md.
 #
-# Internal profile (Docker): use service hostnames postgres and keycloak.
-# External: set datasource.url and system.idp.metadata.issuerUri to your endpoints.
+# Real OIDC client secret and DB password come from secret files, not this YAML:
+#   secrets/muxon-oidc-secret  → /run/secrets/muxon-oidc-secret
+#   secrets/muxon-db-password  → /run/secrets/muxon-db-password
+#
+# Internal profile (Docker): hostnames postgres and keycloak.
+# External: set __ISSUER_URI__ and __DATASOURCE_URL__ to your endpoints.
 
 muxon:
-  instanceName: "docker"
-  instanceId: 1
+  instanceName: "__INSTANCE_NAME__"
+  instanceId: __INSTANCE_ID__
 
   system:
-    systemAdminUserName: "admin@example.com"
+    systemAdminUserName: "__SYSTEM_ADMIN_USERNAME__"
     idp:
       name: "default-idp"
       protocol: "OIDC"
       metadata:
         # Internal compose: Keycloak listens on 8085 in the container.
-        issuerUri: "http://keycloak:8085/realms/muxon-dev"
-        clientId: "muxon-api"
+        issuerUri: "__ISSUER_URI__"
+        clientId: "__CLIENT_ID__"
         clientSecret: "provide-in-secrets"
 
   tenants:
     - name: "default"
       idpName: "default-idp"
-      tenantAdminUserName: "admin@example.com"
+      tenantAdminUserName: "__TENANT_ADMIN_USERNAME__"
 
   datasource:
     # Internal: host "postgres", DB "muxon", user "muxon"
     # Password is NOT set here — it comes from the Docker secret muxon-db-password
     # (file ../secrets/muxon-db-password), same value PostgreSQL uses.
-    url: jdbc:postgresql://postgres:5432/muxon
-    username: muxon
+    url: "__DATASOURCE_URL__"
+    username: "__DATASOURCE_USERNAME__"
     password: placeholder-not-used
     driver-class-name: org.postgresql.Driver

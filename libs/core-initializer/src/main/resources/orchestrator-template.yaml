@@ -43,8 +43,6 @@ muxon:
   instanceId: 19
   enterprise:
     enabled: false
-  system: null
-  tenants: null
   queue:
     backend: "db"
   worker:

@@ -2,16 +2,21 @@
 #
 # Paths in this file are relative to this compose file's directory (compose/).
 #
-# Internal stack (bundled PostgreSQL + Keycloak):
-#   From repo root: muxon-core/
-#     ./scripts/create-secrets.sh
-#     cp compose/initial-config.yaml.template ../initial-config.yaml   # edit URLs if needed
-#     docker compose -f compose/muxon.yml --profile internal up -d
+# Preferred: from muxon-core/ (or an unpacked install kit):
+#   ./install.sh
+#
+# Manual / internal stack:
+#   ./scripts/create-secrets.sh
+#   ./install.sh --render-only   # or follow INSTALL.md placeholder steps
+#   docker compose -f compose/muxon.yml --profile internal up -d
 #
 # External database / IdP only (no bundled postgres/keycloak):
-#     docker compose -f compose/muxon.yml up -d
+#   docker compose -f compose/muxon.yml up -d
 #
-# See muxon-docs/admin-guide/install-core.md for full steps.
+# Keycloak mounts the *runtime* realm (rendered). Pristine template:
+#   compose/keycloak/realm-muxon-dev.json
+#
+# See INSTALL.md and muxon-docs/admin-guide/install-core.md.
 
 name: muxon
 
@@ -28,7 +33,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18+ expects the volume at /var/lib/postgresql (not .../data).
+      # See https://github.com/docker-library/postgres/pull/1259
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U muxon -d muxon"]
       interval: 10s
@@ -44,15 +51,17 @@ services:
     command:
       - |
         export KEYCLOAK_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak-admin-password)"
+        export MUXON_API_CLIENT_SECRET="$$(cat /run/secrets/muxon-oidc-secret)"
         exec /opt/keycloak/bin/kc.sh start-dev --http-port=8085 --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
     secrets:
       - keycloak-admin-password
+      - muxon-oidc-secret
     ports:
       - "8085:8085"
     volumes:
-      - ./keycloak/realm-muxon-dev.json:/opt/keycloak/data/import/muxon-dev.json:ro
+      - ./keycloak/realm-muxon-dev.runtime.json:/opt/keycloak/data/import/muxon-dev.json:ro
     depends_on:
       postgres:
         condition: service_healthy

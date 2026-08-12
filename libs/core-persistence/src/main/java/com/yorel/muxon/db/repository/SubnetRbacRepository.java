@@ -33,18 +33,29 @@ public interface SubnetRbacRepository extends JpaRepository<SubnetRbacEntity, UU
   Optional<SubnetRbacEntity> findBySubnetIdAndPrincipalTypeAndPrincipalId(
       UUID subnetId, SubnetPrincipalType principalType, UUID principalId);
 
+  // permissions is PG TEXT[] (basic array); JPQL MEMBER OF / IS NOT EMPTY need a plural path.
   @Query(
-      "SELECT COUNT(r) > 0 FROM SubnetRbacEntity r WHERE r.subnet.id = :subnetId "
-          + "AND r.principalId = :principalId AND :permission MEMBER OF r.permissions")
+      value =
+          "SELECT EXISTS ("
+              + "SELECT 1 FROM subnet_rbac r "
+              + "WHERE r.subnet_id = :subnetId "
+              + "AND r.principal_id = :principalId "
+              + "AND :permission = ANY(r.permissions)"
+              + ")",
+      nativeQuery = true)
   boolean hasPermission(
       @Param("subnetId") UUID subnetId,
       @Param("principalId") UUID principalId,
       @Param("permission") String permission);
 
   @Query(
-      "SELECT DISTINCT s.subnet.id FROM SubnetRbacEntity s WHERE s.principalId = :principalId "
-          + "AND s.subnet.vpc.id = :vpcId "
-          + "AND (s.permissions IS NOT EMPTY)")
+      value =
+          "SELECT DISTINCT r.subnet_id FROM subnet_rbac r "
+              + "INNER JOIN subnet s ON s.id = r.subnet_id "
+              + "WHERE r.principal_id = :principalId "
+              + "AND s.vpc_id = :vpcId "
+              + "AND cardinality(r.permissions) > 0",
+      nativeQuery = true)
   List<UUID> findAuthorizedSubnetIds(
       @Param("principalId") UUID principalId, @Param("vpcId") UUID vpcId);
 }

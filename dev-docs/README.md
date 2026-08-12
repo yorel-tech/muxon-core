@@ -7,6 +7,7 @@ Internal setup, architecture, and build documentation for the Muxon platform. Fo
 | Document | Description |
 |----------|-------------|
 | [development_setup.md](development_setup.md) | Local JVM dev: Compose, services, web UI |
+| [local-ghcr-compose-deploy.md](local-ghcr-compose-deploy.md) | Pull GHCR images and run Compose install kit locally |
 | [initial-bootstrap.md](initial-bootstrap.md) | muxon-initializer, secrets, Flyway, generated config |
 | [idp-settings-firsttime.md](idp-settings-firsttime.md) | First-time IdP / OIDC configuration |
 | [integration-tests.md](integration-tests.md) | Integration test suite and CI notes |
